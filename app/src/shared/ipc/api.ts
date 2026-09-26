@@ -48,7 +48,8 @@ export interface StartupStatus {
 export interface JimuhubApi {
   getStartupStatus(): Promise<StartupStatus>
   listClients(filter?: ClientListFilter): Promise<Client[]>
-  getClient(id: number): Promise<Client | null>
+  /** 対象が存在しない場合はPromiseがreject(例外)される(ClientService.getClient()参照) */
+  getClient(id: number): Promise<Client>
   createClient(input: ClientInput): Promise<CreateClientResult>
   updateClient(id: number, input: ClientInput): Promise<UpdateClientResult>
   deactivateClient(id: number): Promise<DeactivateClientResult>

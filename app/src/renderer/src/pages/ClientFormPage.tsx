@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
-import { Button } from '../components/Button'
+import { Button, TextLink } from '../components/Button'
+import { Message } from '../components/Message'
 import { TextField, SelectField, TextAreaField } from '../components/FormField'
 import { ClientInputSchema, type ClientInput } from '@shared/schemas/client.schema'
 import { HONORIFICS } from '@shared/types/client'
+import { CLIENT_MESSAGES } from '@shared/messages/messages'
 
 const EMPTY_FORM: ClientInput = {
   name: '',
@@ -41,23 +43,28 @@ export function ClientFormPage({
   const [form, setForm] = useState<ClientInput>(EMPTY_FORM)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (mode === 'edit' && clientId !== undefined) {
-      window.jimuhubApi.getClient(clientId).then((client) => {
-        if (!client) return
-        setForm({
-          name: client.name,
-          honorific: client.honorific,
-          contactPerson: client.contactPerson ?? '',
-          postalCode: client.postalCode ?? '',
-          address: client.address ?? '',
-          phone: client.phone ?? '',
-          email: client.email ?? '',
-          invoiceRegistrationNumber: client.invoiceRegistrationNumber ?? '',
-          memo: client.memo ?? ''
+      window.jimuhubApi
+        .getClient(clientId)
+        .then((client) => {
+          setForm({
+            name: client.name,
+            honorific: client.honorific,
+            contactPerson: client.contactPerson ?? '',
+            postalCode: client.postalCode ?? '',
+            address: client.address ?? '',
+            phone: client.phone ?? '',
+            email: client.email ?? '',
+            invoiceRegistrationNumber: client.invoiceRegistrationNumber ?? '',
+            memo: client.memo ?? ''
+          })
         })
-      })
+        .catch((error: unknown) => {
+          setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+        })
     }
   }, [mode, clientId])
 
@@ -106,87 +113,100 @@ export function ClientFormPage({
       onNavigateClients={() => {}}
       onComingSoon={() => {}}
     >
-      <div className="form-columns">
-        <div>
-          <TextField
-            label="取引先名称"
-            required
-            placeholder="例: サンプル商事株式会社"
-            value={form.name}
-            error={errors.name}
-            onChange={(e) => updateField('name', e.target.value)}
-          />
-          <SelectField
-            label="敬称"
-            options={HONORIFICS}
-            value={form.honorific}
-            onChange={(e) => updateField('honorific', e.target.value as ClientInput['honorific'])}
-          />
-          <TextField
-            label="担当者名"
-            placeholder="例: サンプル 太郎"
-            value={form.contactPerson}
-            error={errors.contactPerson}
-            onChange={(e) => updateField('contactPerson', e.target.value)}
-          />
-          <TextField
-            label="郵便番号"
-            placeholder="例: 100-0001"
-            value={form.postalCode}
-            error={errors.postalCode}
-            onChange={(e) => updateField('postalCode', e.target.value)}
-          />
-          <TextAreaField
-            label="住所"
-            rows={2}
-            placeholder="例: 東京都千代田区千代田1-1-1"
-            value={form.address}
-            error={errors.address}
-            onChange={(e) => updateField('address', e.target.value)}
-          />
-        </div>
-        <div>
-          <TextField
-            label="電話番号"
-            placeholder="例: 03-1234-5678"
-            value={form.phone}
-            error={errors.phone}
-            onChange={(e) => updateField('phone', e.target.value)}
-          />
-          <TextField
-            label="メールアドレス"
-            placeholder="例: contact@example.com"
-            value={form.email}
-            error={errors.email}
-            onChange={(e) => updateField('email', e.target.value)}
-          />
-          <TextField
-            label="インボイス登録番号"
-            placeholder="例: T1234567890123"
-            hint="「T」+ 数字13桁の形式を推奨します(未登録の場合は空欄で構いません)"
-            value={form.invoiceRegistrationNumber}
-            error={errors.invoiceRegistrationNumber}
-            onChange={(e) => updateField('invoiceRegistrationNumber', e.target.value)}
-          />
-          <TextAreaField
-            label="メモ"
-            rows={4}
-            placeholder="補足事項があれば入力してください"
-            value={form.memo}
-            error={errors.memo}
-            onChange={(e) => updateField('memo', e.target.value)}
-          />
-        </div>
-      </div>
+      {loadError ? (
+        <>
+          <Message variant="error">{loadError}</Message>
+          <div className="back-link">
+            <TextLink onClick={onCancel}>&larr; 一覧へ戻る</TextLink>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="form-columns">
+            <div>
+              <TextField
+                label="取引先名称"
+                required
+                placeholder="例: サンプル商事株式会社"
+                value={form.name}
+                error={errors.name}
+                onChange={(e) => updateField('name', e.target.value)}
+              />
+              <SelectField
+                label="敬称"
+                options={HONORIFICS}
+                value={form.honorific}
+                onChange={(e) =>
+                  updateField('honorific', e.target.value as ClientInput['honorific'])
+                }
+              />
+              <TextField
+                label="担当者名"
+                placeholder="例: サンプル 太郎"
+                value={form.contactPerson}
+                error={errors.contactPerson}
+                onChange={(e) => updateField('contactPerson', e.target.value)}
+              />
+              <TextField
+                label="郵便番号"
+                placeholder="例: 100-0001"
+                value={form.postalCode}
+                error={errors.postalCode}
+                onChange={(e) => updateField('postalCode', e.target.value)}
+              />
+              <TextAreaField
+                label="住所"
+                rows={2}
+                placeholder="例: 東京都千代田区千代田1-1-1"
+                value={form.address}
+                error={errors.address}
+                onChange={(e) => updateField('address', e.target.value)}
+              />
+            </div>
+            <div>
+              <TextField
+                label="電話番号"
+                placeholder="例: 03-1234-5678"
+                value={form.phone}
+                error={errors.phone}
+                onChange={(e) => updateField('phone', e.target.value)}
+              />
+              <TextField
+                label="メールアドレス"
+                placeholder="例: contact@example.com"
+                value={form.email}
+                error={errors.email}
+                onChange={(e) => updateField('email', e.target.value)}
+              />
+              <TextField
+                label="インボイス登録番号"
+                placeholder="例: T1234567890123"
+                hint="「T」+ 数字13桁の形式を推奨します(未登録の場合は空欄で構いません)"
+                value={form.invoiceRegistrationNumber}
+                error={errors.invoiceRegistrationNumber}
+                onChange={(e) => updateField('invoiceRegistrationNumber', e.target.value)}
+              />
+              <TextAreaField
+                label="メモ"
+                rows={4}
+                placeholder="補足事項があれば入力してください"
+                value={form.memo}
+                error={errors.memo}
+                onChange={(e) => updateField('memo', e.target.value)}
+              />
+            </div>
+          </div>
 
-      <div className="form-actions">
-        <Button variant="primary" disabled={submitting} onClick={() => void handleSubmit()}>
-          {submitLabel}
-        </Button>
-        <Button variant="secondary" onClick={onCancel}>
-          キャンセル
-        </Button>
-      </div>
+          <div className="form-actions">
+            <Button variant="primary" disabled={submitting} onClick={() => void handleSubmit()}>
+              {submitLabel}
+            </Button>
+            <Button variant="secondary" onClick={onCancel}>
+              キャンセル
+            </Button>
+          </div>
+        </>
+      )}
     </AppShell>
   )
 }

@@ -1,4 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
+import * as fsModule from 'node:fs'
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -6,8 +7,18 @@ import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
 import { MigrationService } from './migration.service'
 import { BackupService } from './backup.service'
-import { CURRENT_SCHEMA_VERSION } from '@shared/backup/backup-file'
+import { CURRENT_SCHEMA_VERSION, type BackupFile } from '@shared/backup/backup-file'
+import { BACKUP_MESSAGES } from '@shared/messages/messages'
 import type { ClientInput } from '@shared/schemas/client.schema'
+
+/**
+ * copyFileSyncのみモック化し、既定では実際のファイルコピーを行う(通常のテストへの影響を避けるため)。
+ * 個別のテストでのみ`mockImplementationOnce`で一時的に失敗させる(No.2対応の検証用)。
+ */
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof fsModule>()
+  return { ...actual, copyFileSync: vi.fn(actual.copyFileSync) }
+})
 
 const baseInput: ClientInput = {
   name: '株式会社サンプル',
@@ -19,6 +30,37 @@ const baseInput: ClientInput = {
   email: 'sample@example.com',
   invoiceRegistrationNumber: 'T1234567890123',
   memo: '備考'
+}
+
+/**
+ * status列のCHECK制約('active'/'inactive'以外は拒否)に違反する復元データ。
+ * トランザクション内(insertWithId)で意図的に例外を発生させ、ロールバック・退避復旧を検証するために使用する。
+ */
+function buildBrokenPayload(): BackupFile {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    appVersion: '0.1.0',
+    exportedAt: '2026-09-26T12:00:00.000Z',
+    data: {
+      clients: [
+        {
+          id: 999,
+          name: '不正データ',
+          honorific: '御中',
+          contactPerson: null,
+          postalCode: null,
+          address: null,
+          phone: null,
+          email: null,
+          invoiceRegistrationNumber: null,
+          memo: null,
+          status: 'invalid-status',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }
+      ]
+    }
+  }
 }
 
 describe('BackupService', () => {
@@ -145,5 +187,49 @@ describe('BackupService', () => {
 
     const files = readdirSync(backupsDir)
     expect(files.length).toBe(3)
+  })
+
+  it('復元処理中に例外が発生した場合は、ロールバックし退避コピーから復旧する(詳細設計書4.3章手順8)', () => {
+    repository.insert(baseInput)
+    service.exportData(exportPath)
+
+    // status列のCHECK制約に違反するデータで、トランザクション内(insertWithId)を意図的に失敗させる
+    writeFileSync(exportPath, JSON.stringify(buildBrokenPayload()), 'utf-8')
+
+    const result = service.importData(exportPath)
+
+    // (1) importTransactionFailureが返ること
+    expect(result.success).toBe(false)
+    expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
+
+    // (2) データが退避コピー(直前のexportData時点)の内容に戻ること
+    const restored = repository.findAllForBackup()
+    expect(restored.map((c) => c.name)).toEqual(['株式会社サンプル'])
+
+    // (3) reopenしたあとも正常に動くこと(読み書きが継続できる)
+    const { id } = repository.insert({ ...baseInput, name: '再接続後に登録した取引先' })
+    expect(repository.findById(id)?.name).toBe('再接続後に登録した取引先')
+    expect(repository.findAllForBackup()).toHaveLength(2)
+  })
+
+  it('退避コピーからの復旧自体が失敗した場合も、例外を投げずにエラー結果を返す', async () => {
+    repository.insert(baseInput)
+    service.exportData(exportPath)
+    writeFileSync(exportPath, JSON.stringify(buildBrokenPayload()), 'utf-8')
+
+    const { copyFileSync: realCopyFileSync } = await vi.importActual<typeof fsModule>('node:fs')
+    const mockedCopyFileSync = vi.mocked(fsModule.copyFileSync)
+    // 1回目(復元前の退避コピー作成)は成功させ、2回目(失敗時の復旧コピー)だけ失敗させる
+    mockedCopyFileSync.mockImplementationOnce((...args: Parameters<typeof fsModule.copyFileSync>) =>
+      realCopyFileSync(...args)
+    )
+    mockedCopyFileSync.mockImplementationOnce(() => {
+      throw new Error('シミュレートしたディスク障害')
+    })
+
+    const result = service.importData(exportPath)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe(BACKUP_MESSAGES.importSafeguardRestoreFailure)
   })
 })

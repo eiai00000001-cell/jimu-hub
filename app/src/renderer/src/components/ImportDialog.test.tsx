@@ -23,20 +23,59 @@ function setupApi(result: {
   return importData
 }
 
-describe('ImportDialog', () => {
+describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('警告文を表示し、「ファイルを選択して復元」押下でimportDataを呼び出す', async () => {
-    const importData = setupApi({ success: true, importedCount: 12 })
+  it('初期状態では「ファイルを選択して復元」ボタン(副ボタン)のみを表示し、警告・importDataの呼び出しはまだ行わない', () => {
+    const importData = setupApi({ success: true, importedCount: 1 })
     render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
 
-    expect(
-      screen.getByText(/現在のデータがエクスポートファイルの内容で置き換わります/)
-    ).toBeInTheDocument()
+    const startButton = screen.getByRole('button', { name: 'ファイルを選択して復元' })
+    expect(startButton).toHaveClass('btn-secondary')
+    expect(screen.queryByText(/置き換わります/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '続行' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'キャンセル' })).not.toBeInTheDocument()
+    expect(importData).not.toHaveBeenCalled()
+  })
 
-    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+  it('「ファイルを選択して復元」押下で、警告(左に赤帯・アイコン付き)と「キャンセル」「続行」ボタンを表示する', async () => {
+    const importData = setupApi({ success: true, importedCount: 1 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+
+    const warning = screen.getByText(/現在のデータがエクスポートファイルの内容で置き換わります/)
+    expect(warning.closest('.message-warning')).toBeInTheDocument()
+
+    const cancelButton = screen.getByRole('button', { name: 'キャンセル' })
+    const continueButton = screen.getByRole('button', { name: '続行' })
+    expect(cancelButton).toHaveClass('btn-secondary')
+    expect(continueButton).toHaveClass('btn-danger')
+    expect(importData).not.toHaveBeenCalled()
+  })
+
+  it('確認状態で「キャンセル」を押すと、何も実行せず初期状態へ戻る', async () => {
+    const importData = setupApi({ success: true, importedCount: 1 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(screen.getByRole('button', { name: 'ファイルを選択して復元' })).toBeInTheDocument()
+    expect(screen.queryByText(/置き換わります/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '続行' })).not.toBeInTheDocument()
+    expect(importData).not.toHaveBeenCalled()
+  })
+
+  it('確認状態で「続行」を押すとimportDataを呼び出す(OS標準ファイル選択ダイアログを開く)', async () => {
+    const importData = setupApi({ success: true, importedCount: 1 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
     await waitFor(() => expect(importData).toHaveBeenCalled())
   })
 
@@ -45,7 +84,8 @@ describe('ImportDialog', () => {
     const onImported = vi.fn()
     render(<ImportDialog onClose={vi.fn()} onImported={onImported} />)
 
-    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
 
     expect(await screen.findByText('復元が完了しました(12件)')).toBeInTheDocument()
     expect(onImported).toHaveBeenCalledWith(12)
@@ -55,24 +95,26 @@ describe('ImportDialog', () => {
     setupApi({ success: false, error: '復元に失敗しました。データは復元前の状態に戻しました' })
     render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
 
-    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
 
     expect(
       await screen.findByText('復元に失敗しました。データは復元前の状態に戻しました')
     ).toBeInTheDocument()
   })
 
-  it('ダイアログがキャンセルされた場合(エラーなし)は警告文以外は表示しない', async () => {
+  it('OS標準ダイアログがキャンセルされた場合(エラーなし)は警告以外の結果メッセージは表示しない', async () => {
     setupApi({ success: false })
     const { container } = render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
 
-    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
 
     await waitFor(() => expect(window.jimuhubApi.importData).toHaveBeenCalled())
     expect(container.querySelectorAll('.message')).toHaveLength(1)
   })
 
-  it('閉じるボタンでonCloseを呼び出す', async () => {
+  it('閉じるボタンでonCloseを呼び出す(どの段階でも操作可能)', async () => {
     setupApi({ success: true, importedCount: 1 })
     const onClose = vi.fn()
     render(<ImportDialog onClose={onClose} onImported={vi.fn()} />)

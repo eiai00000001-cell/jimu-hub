@@ -37,10 +37,14 @@ function createMainWindow(): BrowserWindow {
     show: shouldShow,
     titleBarStyle: 'hiddenInset',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      // Electron公式が推奨する多層防御の観点でsandboxを有効化する(レビュー結果報告書 v0.0 No.4)。
+      // preload(src/preload/index.ts)は`electron`パッケージのみに依存しNode.js組み込みモジュールへの
+      // 直接依存が無いため、sandbox: trueでもcontextBridge経由のAPI呼び出しは問題なく動作する
+      // (E2Eテスト e2e/tests/*.spec.ts で動作確認済み)。
+      sandbox: true
     }
   })
 

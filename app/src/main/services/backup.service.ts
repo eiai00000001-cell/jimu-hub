@@ -110,7 +110,10 @@ export class BackupService {
       })
       return { success: true, importedCount: backupFile.data.clients.length }
     } catch {
-      this.restoreFromLatestSafeguardCopy()
+      const restoreResult = this.restoreFromLatestSafeguardCopy()
+      if (!restoreResult.success) {
+        return { success: false, error: BACKUP_MESSAGES.importSafeguardRestoreFailure }
+      }
       return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
     }
   }
@@ -151,14 +154,23 @@ export class BackupService {
       .sort()
   }
 
-  /** 復元処理が失敗した場合、直近の退避コピーからDBファイルを復旧する(詳細設計書4.3章手順8) */
-  private restoreFromLatestSafeguardCopy(): void {
-    const files = this.listBackupFiles()
-    const latest = files.at(-1)
-    if (!latest) {
-      return
+  /**
+   * 復元処理が失敗した場合、直近の退避コピーからDBファイルを復旧する(詳細設計書4.3章手順8)。
+   * 復旧処理自体(ファイルコピー・再接続)が失敗した場合も例外を外へ投げず、
+   * `{ success: false }`を返す(コーディング規約11章の方針)。
+   */
+  private restoreFromLatestSafeguardCopy(): { success: boolean } {
+    try {
+      const files = this.listBackupFiles()
+      const latest = files.at(-1)
+      if (!latest) {
+        return { success: true }
+      }
+      copyFileSync(join(this.deps.backupsDir, latest), this.deps.dbFilePath)
+      this.deps.database.reopen()
+      return { success: true }
+    } catch {
+      return { success: false }
     }
-    copyFileSync(join(this.deps.backupsDir, latest), this.deps.dbFilePath)
-    this.deps.database.reopen()
   }
 }

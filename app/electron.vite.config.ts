@@ -18,6 +18,16 @@ export default defineConfig({
       alias: {
         '@shared': resolve(__dirname, 'src/shared')
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // sandbox: true の場合、preloadスクリプトはCommonJS形式である必要があるため、
+          // ルートpackage.jsonの"type":"module"設定に関わらずCJS形式で出力する
+          format: 'cjs',
+          entryFileNames: '[name].js'
+        }
+      }
     }
   },
   renderer: {

@@ -76,6 +76,14 @@ describe('ClientService', () => {
     expect(found.status).toBe('inactive')
   })
 
+  it('updateClientは存在しないidの場合ClientNotFoundErrorを投げる(レビュー結果報告書 No.9)', () => {
+    expect(() => service.updateClient(9999, baseInput)).toThrow(ClientNotFoundError)
+  })
+
+  it('deactivateClientは存在しないidの場合ClientNotFoundErrorを投げる(レビュー結果報告書 No.9)', () => {
+    expect(() => service.deactivateClient(9999)).toThrow(ClientNotFoundError)
+  })
+
   it('listClientsは既定で利用中のみを名称昇順で返す', () => {
     const first = service.createClient({ ...baseInput, name: 'わ行株式会社' })
     service.createClient({ ...baseInput, name: 'あ行株式会社' })

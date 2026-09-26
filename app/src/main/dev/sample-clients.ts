@@ -2,7 +2,7 @@ import type { ClientInput } from '@shared/schemas/client.schema'
 
 /**
  * 動作確認用のサンプル取引先データ(架空の名称)。
- * `npm run seed` / `npm run seed:reset` でのみ投入され、通常起動時には登録されない(Q4回答반영)。
+ * `npm run seed` / `npm run seed:reset` でのみ投入され、通常起動時には登録されない(Q4回答反映)。
  * 一覧の五十音順並べ替え・検索絞り込みを確認しやすいよう、名称の先頭文字を意図的に分散させている。
  */
 export const SAMPLE_CLIENTS: ClientInput[] = [

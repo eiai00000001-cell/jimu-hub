@@ -145,4 +145,24 @@ describe('ClientFormPage(編集)', () => {
     )
     await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(5))
   })
+
+  it('編集対象の取引先が見つからない場合はエラーの案内を表示する(レビュー結果報告書 No.5)', async () => {
+    setupApi()
+    window.jimuhubApi.getClient = vi
+      .fn()
+      .mockRejectedValue(new Error('指定された取引先が見つかりません'))
+
+    render(
+      <ClientFormPage
+        mode="edit"
+        clientId={999}
+        onCreated={vi.fn()}
+        onUpdated={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('指定された取引先が見つかりません')).toBeInTheDocument()
+    expect(screen.queryByLabelText('取引先名称')).not.toBeInTheDocument()
+  })
 })

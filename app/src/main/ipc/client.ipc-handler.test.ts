@@ -87,4 +87,41 @@ describe('ClientIpcHandler', () => {
     const found = (await getHandler({}, created.id)) as { status: string }
     expect(found.status).toBe('inactive')
   })
+
+  describe('IPC境界での実行時バリデーション(レビュー結果報告書 No.3)', () => {
+    it('clients:getは不正なid(文字列)の場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsGet)!
+      await expect(handler({}, 'abc')).rejects.toThrow()
+    })
+
+    it('clients:getは不正なid(0以下)の場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsGet)!
+      await expect(handler({}, 0)).rejects.toThrow()
+    })
+
+    it('clients:updateは不正なidの場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsUpdate)!
+      await expect(handler({}, 'abc', baseInput)).rejects.toThrow()
+    })
+
+    it('clients:deactivateは不正なidの場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsDeactivate)!
+      await expect(handler({}, 'abc')).rejects.toThrow()
+    })
+
+    it('clients:listは不正なsort値の場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsList)!
+      await expect(handler({}, { sort: 'unknown_sort' })).rejects.toThrow()
+    })
+
+    it('clients:listは不正なstatusFilter値の場合はエラーになる', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsList)!
+      await expect(handler({}, { statusFilter: 'unknown_status' })).rejects.toThrow()
+    })
+
+    it('clients:listはfilter省略(undefined)の場合は正常に一覧を返す', async () => {
+      const handler = handlers.get(IPC_CHANNELS.clientsList)!
+      await expect(handler({})).resolves.toEqual([])
+    })
+  })
 })

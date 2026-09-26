@@ -50,6 +50,13 @@ test.describe('データ管理: エクスポートしてから復元する', () 
 
     await window.getByRole('button', { name: 'データを復元' }).click()
     await window.getByRole('button', { name: 'ファイルを選択して復元' }).click()
+
+    // キャンセルすると、OS標準ダイアログを開かずに初期状態へ戻ることを確認する(詳細設計書3.7章)
+    await window.getByRole('button', { name: 'キャンセル' }).click()
+    await expect(window.getByRole('button', { name: 'ファイルを選択して復元' })).toBeVisible()
+
+    await window.getByRole('button', { name: 'ファイルを選択して復元' }).click()
+    await window.getByRole('button', { name: '続行' }).click()
     await expect(window.getByText('復元が完了しました(1件)')).toBeVisible()
 
     await window.getByLabel('閉じる').click()

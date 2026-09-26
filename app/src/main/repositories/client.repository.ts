@@ -100,8 +100,9 @@ export class ClientRepository {
     return { id: row.id }
   }
 
-  update(id: number, input: ClientInput): void {
-    this.database.orm
+  /** 更新した行数(`changes`)を返す。存在しないidの場合は0件のまま例外は投げない(呼び出し元(Service層)で判定する) */
+  update(id: number, input: ClientInput): { changes: number } {
+    const result = this.database.orm
       .update(clients)
       .set({
         name: input.name,
@@ -117,14 +118,17 @@ export class ClientRepository {
       })
       .where(eq(clients.id, id))
       .run()
+    return { changes: result.changes }
   }
 
-  updateStatus(id: number, status: ClientStatus): void {
-    this.database.orm
+  /** 更新した行数(`changes`)を返す。存在しないidの場合は0件のまま例外は投げない(呼び出し元(Service層)で判定する) */
+  updateStatus(id: number, status: ClientStatus): { changes: number } {
+    const result = this.database.orm
       .update(clients)
       .set({ status, updatedAt: nowIso() })
       .where(eq(clients.id, id))
       .run()
+    return { changes: result.changes }
   }
 
   /** バックアップ(エクスポート)用に、状態を問わず全件をid昇順で取得する(詳細設計書4.2章) */

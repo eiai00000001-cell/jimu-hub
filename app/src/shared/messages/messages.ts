@@ -24,13 +24,17 @@ export const CLIENT_MESSAGES = {
 export const BACKUP_MESSAGES = {
   exportSuccess: (filePath: string): string => `保存しました(保存先: ${filePath})`,
   exportFailure: '保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください',
+  importIntro:
+    '選択したファイルの内容で、現在のデータを復元します。復元するファイルはこの後の画面で選択できます。',
   importWarning: '現在のデータがエクスポートファイルの内容で置き換わります。よろしいですか',
   importSuccess: (count: number): string => `復元が完了しました(${count}件)`,
   importParseFailure:
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
   importVersionTooNew:
     'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください',
-  importTransactionFailure: '復元に失敗しました。データは復元前の状態に戻しました'
+  importTransactionFailure: '復元に失敗しました。データは復元前の状態に戻しました',
+  importSafeguardRestoreFailure:
+    '復元に失敗した上、退避データへの復旧にも失敗しました。データが破損している可能性があります。エクスポートファイルからの復元をお試しいただくか、サポートにご連絡ください'
 } as const
 
 export const STARTUP_MESSAGES = {

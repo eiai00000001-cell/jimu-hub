@@ -105,12 +105,34 @@ describe('ClientRepository', () => {
     expect(found?.name).toBe('更新後の名称')
   })
 
+  it('updateは更新した行数を返す(存在するidは1件)', () => {
+    const { id } = repository.insert(baseInput)
+    const result = repository.update(id, { ...baseInput, name: '更新後の名称' })
+    expect(result.changes).toBe(1)
+  })
+
+  it('updateは存在しないidの場合、更新行数0を返す(例外を投げない)', () => {
+    const result = repository.update(9999, baseInput)
+    expect(result.changes).toBe(0)
+  })
+
   it('updateStatusで状態をinactiveに変更できる', () => {
     const { id } = repository.insert(baseInput)
     repository.updateStatus(id, 'inactive')
 
     const found = repository.findById(id)
     expect(found?.status).toBe('inactive')
+  })
+
+  it('updateStatusは更新した行数を返す(存在するidは1件)', () => {
+    const { id } = repository.insert(baseInput)
+    const result = repository.updateStatus(id, 'inactive')
+    expect(result.changes).toBe(1)
+  })
+
+  it('updateStatusは存在しないidの場合、更新行数0を返す(例外を投げない)', () => {
+    const result = repository.updateStatus(9999, 'inactive')
+    expect(result.changes).toBe(0)
   })
 
   it('findAllForBackupは状態に関わらずid昇順で全件返す(バックアップ用)', () => {

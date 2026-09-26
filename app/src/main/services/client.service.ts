@@ -44,12 +44,18 @@ export class ClientService {
 
   updateClient(id: number, input: ClientInput): { success: true } {
     const validated = parseOrThrow(input)
-    this.repository.update(id, validated)
+    const result = this.repository.update(id, validated)
+    if (result.changes === 0) {
+      throw new ClientNotFoundError()
+    }
     return { success: true }
   }
 
   deactivateClient(id: number): { success: true } {
-    this.repository.updateStatus(id, 'inactive')
+    const result = this.repository.updateStatus(id, 'inactive')
+    if (result.changes === 0) {
+      throw new ClientNotFoundError()
+    }
     return { success: true }
   }
 }
