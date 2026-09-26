@@ -14,3 +14,27 @@ Thumbs.db
 
 # ログ
 *.log
+
+# Node.js / npm
+node_modules/
+npm-debug.log*
+
+# Electron / electron-vite ビルド成果物
+app/out/
+app/dist/
+app/release/
+
+# electron-builder キャッシュ
+.cache/
+
+# アプリのローカルデータベース・自動バックアップ(開発確認用)
+app/dev-data/
+app/backups/
+*.sqlite
+*.sqlite-journal
+
+# Vitest / Playwright の実行結果
+app/coverage/
+app/e2e/.output/
+app/playwright-report/
+app/test-results/

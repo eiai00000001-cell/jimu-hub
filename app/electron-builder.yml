@@ -1,0 +1,24 @@
+appId: com.jimuhub.app
+productName: 事務HUB
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  category: public.app-category.business
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  # better-sqlite3のネイティブバイナリ(.node)はarchごとに内容が異なり、
+  # 1つのユニバーサルバイナリへ結合(lipo)できないため、electron-builderに
+  # 「archごとに別ファイルとして許容してよい」ことを明示する
+  x64ArchFiles: '**/*.node'
+asarUnpack:
+  - '**/*.node'
+npmRebuild: true

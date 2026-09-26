@@ -1,0 +1,74 @@
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { IPC_CHANNELS } from '@shared/ipc/channels'
+import type { BackupService, ExportDataResult, ImportDataResult } from '../services/backup.service'
+
+function defaultExportFileName(): string {
+  const now = new Date()
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(
+    now.getHours()
+  )}${pad(now.getMinutes())}`
+  return `事務HUB_backup_${stamp}.json`
+}
+
+/**
+ * `data:export`・`data:import`チャンネルを受信し`BackupService`を呼び出すIPC層。
+ * OS標準ダイアログ(保存先・復元ファイル選択)の表示はMainプロセスでのみ行う。
+ * 参照元: 詳細設計書 4.2章・4.3章、5章(クラス設計 `DataIpcHandler`)、7章
+ */
+export class DataIpcHandler {
+  constructor(private readonly service: BackupService) {}
+
+  registerHandlers(): void {
+    ipcMain.handle(IPC_CHANNELS.dataExport, () => this.handleExport())
+    ipcMain.handle(IPC_CHANNELS.dataImport, () => this.handleImport())
+  }
+
+  private async handleExport(): Promise<ExportDataResult> {
+    // E2Eテスト専用: OS標準ダイアログはPlaywrightから操作できないため、
+    // 環境変数でパスが指定されている場合のみダイアログ表示を省略する(本番では未設定のため通常どおり動作する)。
+    const e2eOverridePath = process.env.JIMUHUB_E2E_EXPORT_PATH
+    if (e2eOverridePath) {
+      return this.service.exportData(e2eOverridePath)
+    }
+
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    const options = {
+      defaultPath: `${app.getPath('documents')}/${defaultExportFileName()}`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    }
+    const result = focusedWindow
+      ? await dialog.showSaveDialog(focusedWindow, options)
+      : await dialog.showSaveDialog(options)
+
+    if (result.canceled || !result.filePath) {
+      return { success: false }
+    }
+
+    return this.service.exportData(result.filePath)
+  }
+
+  private async handleImport(): Promise<ImportDataResult> {
+    // E2Eテスト専用: 詳細は handleExport() のコメントを参照
+    const e2eOverridePath = process.env.JIMUHUB_E2E_IMPORT_PATH
+    if (e2eOverridePath) {
+      return this.service.importData(e2eOverridePath)
+    }
+
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    const options = {
+      properties: ['openFile' as const],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    }
+    const result = focusedWindow
+      ? await dialog.showOpenDialog(focusedWindow, options)
+      : await dialog.showOpenDialog(options)
+
+    const filePath = result.filePaths[0]
+    if (result.canceled || !filePath) {
+      return { success: false }
+    }
+
+    return this.service.importData(filePath)
+  }
+}
