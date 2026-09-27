@@ -6,7 +6,7 @@
 
 - 作成日: 2026-09-26
 - 対象イテレーション: イテレーション0(プロジェクト方針・基盤構築)
-- 参照元: 詳細設計書.md v0.2、デザインガイド.md v0.10、コーディング規約.md v0.0、レビュー結果報告書.md v0.2、テスト結果報告書.md v0.1、セキュリティチェック結果報告書.md v0.0(いずれも `docs/` 配下)
+- 参照元: 詳細設計書.md v1.0、デザインガイド.md v1.0、コーディング規約.md v1.0、レビュー結果報告書.md v1.0、テスト結果報告書.md v1.0、セキュリティチェック結果報告書.md v1.0(いずれも `docs/` 配下)
 
 ## 2. 実装概要
 
@@ -188,3 +188,4 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | v0.3 | 2026-09-27 | テスト結果報告書.md v0.0で検出されたBUG-01(重大度高)・BUG-02(重大度中)を修正した。BUG-01: `main/index.ts`で`new Database(dbFilePath)`がtry/catchの外側にあり、データベースファイル破損時にコンストラクタの同期例外を捕捉できず起動エラー画面が表示されずウィンドウ自体が無反応になっていた問題を、初期化処理を`initializeStartup()`(新設`src/main/startup.ts`)に切り出しtry/catchで一括して囲むことで修正した。BUG-02: `ClientDetailPage.tsx`で利用停止操作後に取引先を再取得しておらず、同一画面インスタンス内でバッジ・「編集」ボタンの表示が古いままだった問題を、利用停止成功後に`getClient()`で再取得しローカルstateを更新するよう修正した。単体テストを追加(壊れた/読み込めないデータベースファイルでのエラー状態返却、利用停止後の表示最新化)し、`app/e2e/scenarios/startup-error.spec.ts`・`client-lifecycle.spec.ts`を含む結合シナリオ15件がすべて合格することを確認した。単体・画面操作テストは143件に増加。BUG-03(参考、文言接頭辞)は今回対応していない(対応不要と指示された)。 |
 | v0.4 | 2026-09-27 | レビュー結果報告書.md v0.2の指摘2件に対応した。No.13(推奨): `initializeStartup()`で`new Database()`(コンストラクタ)は成功したが続く`database.initialize()`のみ失敗した場合、`database`変数がtry節のスコープに閉じておりcatch節から参照できず、開いたSQLite接続がクローズされないままリークしていた問題を、`database`をtry外側の関数スコープで宣言しcatch節で`database?.close()`を呼ぶよう修正した。参考(BUG-02修正で見つかった所見): `ClientDetailPage.tsx`の`handleConfirmDeactivate()`で、利用停止成功後の`getClient()`再取得が失敗すると未処理のPromise rejectionになっていた問題を、try/catchで捕捉し既存のMessage部品(エラー)+一覧への導線で案内するよう修正した(文言は詳細設計書8章「詳細画面表示時に対象取引先が存在しない」に対応する既存メッセージ定数`CLIENT_MESSAGES.notFound`を流用)。単体テストを追加(`initialize()`のみ失敗時の`close()`呼び出し確認、再取得失敗時のエラー案内表示確認)し、単体・画面操作テストは145件に増加。`test:e2e`・`test:e2e:scenarios`(15件)もあわせてすべて成功することを確認した。 |
 | v0.5 | 2026-09-27 | セキュリティチェック結果報告書.md v0.0の是正内容を反映した。配布版(パッケージ済み)では開発・テスト専用の環境変数(`JIMUHUB_DATA_DIR`・`ELECTRON_RENDERER_URL`・`JIMUHUB_E2E_EXPORT_PATH`・`JIMUHUB_E2E_IMPORT_PATH`)を無視するようにし(SEC-01)、画面遷移・新規ウィンドウ・権限要求の拒否とContent-Security-Policyの強化を追加した(SEC-02)。単体・画面操作テストは154件に増加し、`test:e2e`(2件)・`test:e2e:scenarios`(15件)・`typecheck`・`lint`もすべて成功することを確認した。 |
+| v1.0 | 2026-09-27 | イテレーション0の総括(イテレーション総括.md v1.0)で完了と判定されたため、v1.0とし次イテレーションの起点とした。本文の変更はない。 |
