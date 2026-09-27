@@ -1,0 +1,33 @@
+【TC-02 実施ログ】F-01 異常系: データベースファイル破損時の起動確認
+実施日時: 2026-09-27(実行環境はテスト結果報告書「文書情報」章を参照)
+実行コマンド: npx playwright test --config=e2e/scenarios/playwright.config.ts startup-error.spec.ts
+
+再現手順:
+1. テスト専用の一時データディレクトリを作成し、data.sqlite として不正な内容(有効なSQLiteファイルではない文字列)のファイルを事前に配置する
+2. JIMUHUB_DATA_DIR に上記ディレクトリを指定してアプリ(Electron)を起動する
+
+期待結果(詳細設計書4.1章手順5・8章):
+起動エラー画面に「データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください」と表示される。
+
+実際の結果:
+ウィンドウが一切表示されないまま(10秒待っても Electron の "window" イベントが発火しない)無反応になる。
+アプリを直接起動して標準エラー出力を確認したところ、以下の未処理の例外が発生していた。
+
+  UnhandledPromiseRejectionWarning: SqliteError: file is not a database
+      at Database.pragma (node_modules/better-sqlite3/lib/methods/pragma.js:10:27)
+      at Database.openConnection (out/main/index.js:79:16)
+      at new Database (out/main/index.js:74:28)
+      at file:///.../out/main/index.js:612:20  (app.whenReady().then(() => { const database = new Database(dbFilePath) ... })
+
+原因(コード参照のみ・修正はdeveloper対応):
+- src/main/index.ts の app.whenReady().then(() => { const database = new Database(dbFilePath) ... }) で、
+  `new Database(dbFilePath)` の呼び出しが try/catch の外側にある。
+- src/main/db/db.ts の Database コンストラクタは openConnection() 内で
+  connection.pragma('journal_mode = WAL') を同期的に呼び出しており、
+  data.sqlite の中身が不正なSQLiteファイルの場合、この時点で例外が投げられる。
+- try/catch は database.initialize() の呼び出しのみを囲んでいるため、コンストラクタ時点の例外を捕捉できない。
+- 結果として app.whenReady().then() のコールバック全体が未処理の例外で中断し、
+  createMainWindow() が一度も呼ばれないため、ウィンドウが表示されないまま無反応になる。
+
+重大度: 高(詳細設計書が明示的に定めた異常系シナリオが、エラー画面どころかウィンドウ自体が表示されない
+  より重大な状態になっており、利用者は強制終了以外に復旧手段がない)

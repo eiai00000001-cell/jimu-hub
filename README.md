@@ -101,6 +101,15 @@ npm run test:e2e:headed    # 見るだけ実行(ウィンドウを表示し、�
 - 対象はローカルのみ。テスト専用の一時ディレクトリ(`JIMUHUB_DATA_DIR`)にデータ保存先を切り替えるため、本番のデータベースファイルには一切影響しません。
 - OS標準のファイル保存・選択ダイアログはPlaywrightから直接操作できないため、E2Eテスト時のみ環境変数(`JIMUHUB_E2E_EXPORT_PATH`・`JIMUHUB_E2E_IMPORT_PATH`)でダイアログ表示を省略します(本番実行時はこれらの環境変数は設定されないため、通常どおりダイアログが表示されます)。
 
+### テストフェーズの結合シナリオ(Playwright, tester作成)
+
+上記の`e2e/tests`(developer作成、機能単体のE2E)とは別に、`e2e/scenarios`配下にテストフェーズ(tester)が追加した、詳細設計書ベースの機能横断シナリオ(結合テスト観点)があります。既存の`e2e/fixtures`を再利用し、専用の設定ファイル(`e2e/scenarios/playwright.config.ts`)で実行します。詳細は`docs/07_test/`配下のテスト成果物を参照してください。
+
+```bash
+npm run test:e2e:scenarios          # 通常実行(ウィンドウを表示しない・高速)
+npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表示し、操作をゆっくり再生する)
+```
+
 ## 4. 実装状況
 
 機能仕様書・詳細設計書のF-01〜F-08は、すべて実装済みです。

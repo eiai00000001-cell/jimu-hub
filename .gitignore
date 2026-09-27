@@ -38,3 +38,7 @@ app/coverage/
 app/e2e/.output/
 app/playwright-report/
 app/test-results/
+
+# テストの操作記録(trace)はPC内の絶対パスを含むため、ローカルにのみ保存する
+docs/07_test/evidence/**/*.zip
+app/e2e/scenarios/.output/
