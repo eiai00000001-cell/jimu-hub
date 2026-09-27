@@ -75,7 +75,9 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
     await window.getByRole('button', { name: 'データを復元' }).click()
     await window.getByRole('button', { name: 'ファイルを選択して復元' }).click()
     const continueButton = window.getByRole('button', { name: '続行' })
-    const continueStyle = await continueButton.evaluate((el) => getComputedStyle(el).backgroundColor)
+    const continueStyle = await continueButton.evaluate(
+      (el) => getComputedStyle(el).backgroundColor
+    )
     expect(continueStyle).toBe('rgb(179, 69, 58)') // #B3453A
 
     const cancelButton = window.getByRole('button', { name: 'キャンセル' })
@@ -90,7 +92,9 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
 
     // ホーム画面から「準備中」メニュー押下
     await window.getByRole('button', { name: '案件管理' }).click()
-    await expect(window.getByText('「案件管理」は以降のイテレーションで実装予定です。')).toBeVisible()
+    await expect(
+      window.getByText('「案件管理」は以降のイテレーションで実装予定です。')
+    ).toBeVisible()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム') // 画面遷移しないこと
 
     // 取引先一覧画面からも同様に案内表示のみで遷移しないこと(結合確認: 全画面共通のサイドバー挙動)

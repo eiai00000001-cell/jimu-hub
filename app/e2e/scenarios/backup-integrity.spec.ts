@@ -144,7 +144,9 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await window.getByRole('button', { name: 'ファイルを選択して復元' }).click()
     await window.getByRole('button', { name: '続行' }).click()
     await expect(
-      window.getByText('選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください')
+      window.getByText(
+        '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください'
+      )
     ).toBeVisible()
     await window.screenshot({ path: `${EVIDENCE_DIR}/02_import_parse_failure.png` })
   })

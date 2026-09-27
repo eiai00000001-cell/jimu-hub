@@ -61,6 +61,10 @@ export function ClientDetailPage({
 
   async function handleConfirmDeactivate(): Promise<void> {
     await window.jimuhubApi.deactivateClient(clientId)
+    // BUG-02修正: 利用停止後、同一の詳細画面インスタンス内でも最新の状態(バッジ・編集ボタンの活性/非活性)を
+    // 反映できるよう、取引先を再取得してローカルstateを更新する(詳細設計書4.8章手順4)。
+    const refreshed = await window.jimuhubApi.getClient(clientId)
+    setClient(refreshed)
     setConfirming(false)
     onDeactivated(clientId)
   }

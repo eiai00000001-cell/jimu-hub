@@ -103,6 +103,43 @@ describe('ClientDetailPage', () => {
     await waitFor(() => expect(onDeactivated).toHaveBeenCalledWith(3))
   })
 
+  it('利用停止操作後、同一画面内でバッジ・編集ボタンの表示が最新化される(BUG-02修正確認)', async () => {
+    const getClient = vi
+      .fn()
+      .mockResolvedValueOnce(activeClient)
+      .mockResolvedValueOnce({ ...activeClient, status: 'inactive' })
+    const deactivateClient = vi.fn().mockResolvedValue({ success: true })
+    window.jimuhubApi = {
+      getStartupStatus: vi.fn(),
+      listClients: vi.fn(),
+      getClient,
+      createClient: vi.fn(),
+      updateClient: vi.fn(),
+      deactivateClient,
+      exportData: vi.fn(),
+      importData: vi.fn()
+    } as unknown as Window['jimuhubApi']
+
+    render(
+      <ClientDetailPage
+        clientId={3}
+        onNavigateHome={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onDeactivated={vi.fn()}
+      />
+    )
+
+    await userEvent.click(await screen.findByText('利用停止にする'))
+    await userEvent.click(screen.getByText('はい'))
+
+    // getClientが利用停止後に再取得され(2回呼ばれ)、画面遷移なしで表示が最新化されることを確認する
+    await waitFor(() => expect(getClient).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('編集')).toBeDisabled()
+    expect(screen.queryByText('利用停止にする')).not.toBeInTheDocument()
+    expect(screen.getAllByText('利用停止', { exact: true }).length).toBeGreaterThan(0)
+  })
+
   it('確認ダイアログ「いいえ」では何も実行しない', async () => {
     const { deactivateClient } = setupApi(activeClient)
     render(

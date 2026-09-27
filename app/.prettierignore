@@ -2,6 +2,7 @@ node_modules
 out
 release
 e2e/.output
+e2e/scenarios/.output
 playwright-report
 test-results
 coverage

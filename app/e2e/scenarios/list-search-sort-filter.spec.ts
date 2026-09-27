@@ -46,11 +46,14 @@ test.describe('F-05: 取引先一覧の検索・並べ替え・状態フィル�
     const { window } = launched
 
     // window.jimuhubApi.createClient を直接呼び出し、事前データを投入する(画面操作の再現性を上げるため)
-    await window.evaluate(async (inputs) => {
-      for (const input of inputs) {
-        await window.jimuhubApi.createClient(input)
-      }
-    }, [client('あおぞら商事'), client('あおい商店'), client('株式会社ライトハウス')])
+    await window.evaluate(
+      async (inputs) => {
+        for (const input of inputs) {
+          await window.jimuhubApi.createClient(input)
+        }
+      },
+      [client('あおぞら商事'), client('あおい商店'), client('株式会社ライトハウス')]
+    )
 
     await window.getByRole('button', { name: '取引先管理' }).click()
 

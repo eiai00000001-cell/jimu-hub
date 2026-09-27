@@ -6,7 +6,17 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'e2e/.output/**']
+    ignores: [
+      'out/**',
+      'dist/**',
+      'release/**',
+      'node_modules/**',
+      'coverage/**',
+      'e2e/.output/**',
+      'e2e/scenarios/.output/**',
+      'playwright-report/**',
+      'test-results/**'
+    ]
   },
   ...tseslint.configs.recommended,
   {

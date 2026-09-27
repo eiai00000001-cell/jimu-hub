@@ -1,7 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { mkdirSync } from 'node:fs'
-import { Database } from './db/db'
 import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
 import { BackupService } from './services/backup.service'
@@ -9,8 +8,7 @@ import { MigrationService } from './services/migration.service'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
-import { STARTUP_MESSAGES } from '@shared/messages/messages'
-import type { StartupStatus } from '@shared/ipc/api'
+import { initializeStartup } from './startup'
 
 /**
  * データの保存場所。
@@ -58,30 +56,28 @@ function createMainWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  const database = new Database(dbFilePath)
-
-  let startupStatus: StartupStatus = { ok: true }
-  try {
-    database.initialize()
-  } catch (error) {
-    startupStatus = { ok: false, message: STARTUP_MESSAGES.databaseError }
-    console.error('データベース初期化に失敗しました', error)
-  }
-
-  const clientRepository = new ClientRepository(database)
-  const clientService = new ClientService(clientRepository)
-  const backupService = new BackupService({
-    database,
-    clientRepository,
-    migrationService: new MigrationService(),
-    dbFilePath,
-    backupsDir,
-    appVersion: app.getVersion()
-  })
+  // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
+  // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。
+  // これにより、データベースファイル破損時もここで処理が中断されず、必ずcreateMainWindow()まで到達する。
+  const { status: startupStatus, database } = initializeStartup(dbFilePath)
 
   new AppIpcHandler(startupStatus).registerHandlers()
-  new ClientIpcHandler(clientService).registerHandlers()
-  new DataIpcHandler(backupService).registerHandlers()
+
+  if (database) {
+    const clientRepository = new ClientRepository(database)
+    const clientService = new ClientService(clientRepository)
+    const backupService = new BackupService({
+      database,
+      clientRepository,
+      migrationService: new MigrationService(),
+      dbFilePath,
+      backupsDir,
+      appVersion: app.getVersion()
+    })
+
+    new ClientIpcHandler(clientService).registerHandlers()
+    new DataIpcHandler(backupService).registerHandlers()
+  }
 
   createMainWindow()
 
