@@ -6,6 +6,7 @@ type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const showSaveDialog = vi.fn()
 const showOpenDialog = vi.fn()
+const appState = { isPackaged: false }
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -21,7 +22,10 @@ vi.mock('electron', () => ({
     getFocusedWindow: () => null
   },
   app: {
-    getPath: () => '/tmp'
+    getPath: () => '/tmp',
+    get isPackaged() {
+      return appState.isPackaged
+    }
   }
 }))
 
@@ -95,6 +99,33 @@ describe('DataIpcHandler', () => {
     afterEach(() => {
       delete process.env.JIMUHUB_E2E_EXPORT_PATH
       delete process.env.JIMUHUB_E2E_IMPORT_PATH
+      appState.isPackaged = false
+    })
+
+    it('配布版(パッケージ済み)ではJIMUHUB_E2E_EXPORT_PATHを無視し、保存先ダイアログを表示する', async () => {
+      appState.isPackaged = true
+      process.env.JIMUHUB_E2E_EXPORT_PATH = '/tmp/e2e-export.json'
+      showSaveDialog.mockResolvedValue({ canceled: true })
+      const handler = handlers.get(IPC_CHANNELS.dataExport)!
+
+      const result = await handler({})
+
+      expect(showSaveDialog).toHaveBeenCalled()
+      expect(backupService.exportData).not.toHaveBeenCalled()
+      expect(result).toEqual({ success: false })
+    })
+
+    it('配布版(パッケージ済み)ではJIMUHUB_E2E_IMPORT_PATHを無視し、選択ダイアログを表示する', async () => {
+      appState.isPackaged = true
+      process.env.JIMUHUB_E2E_IMPORT_PATH = '/tmp/e2e-import.json'
+      showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
+      const handler = handlers.get(IPC_CHANNELS.dataImport)!
+
+      const result = await handler({})
+
+      expect(showOpenDialog).toHaveBeenCalled()
+      expect(backupService.importData).not.toHaveBeenCalled()
+      expect(result).toEqual({ success: false })
     })
 
     it('JIMUHUB_E2E_EXPORT_PATHが設定されている場合、保存先ダイアログを表示せずそのパスを使用する', async () => {

@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { ClientRepository } from './repositories/client.repository'
@@ -9,15 +9,18 @@ import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { initializeStartup } from './startup'
+import { applyWindowSecurity, denyAllPermissionRequests, readDevOnlyEnv } from './app-security'
 
 /**
  * データの保存場所。
  * 通常は `~/Library/Application Support/事務HUB` (基本設計書3章)。
  * E2Eテスト・見るだけ実行時のみ、環境変数 `JIMUHUB_DATA_DIR` でテスト専用ディレクトリに切り替える。
+ * 配布版(パッケージ済み)では環境変数を無視する(セキュリティチェック結果報告書 v0.0 SEC-01)。
  */
-const userDataDir = process.env.JIMUHUB_DATA_DIR ?? app.getPath('userData')
+const devDataDir = readDevOnlyEnv('JIMUHUB_DATA_DIR', app.isPackaged)
+const userDataDir = devDataDir ?? app.getPath('userData')
 mkdirSync(userDataDir, { recursive: true })
-if (process.env.JIMUHUB_DATA_DIR) {
+if (devDataDir) {
   app.setPath('userData', userDataDir)
 }
 
@@ -46,8 +49,12 @@ function createMainWindow(): BrowserWindow {
     }
   })
 
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  applyWindowSecurity(mainWindow.webContents)
+
+  // 開発サーバーのURL(electron-vite devが設定)は未パッケージ時のみ使用する(SEC-01)
+  const rendererUrl = readDevOnlyEnv('ELECTRON_RENDERER_URL', app.isPackaged)
+  if (rendererUrl) {
+    mainWindow.loadURL(rendererUrl)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
@@ -56,6 +63,8 @@ function createMainWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
+  denyAllPermissionRequests(session.defaultSession)
+
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。
   // これにより、データベースファイル破損時もここで処理が中断されず、必ずcreateMainWindow()まで到達する。

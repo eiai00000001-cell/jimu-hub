@@ -32,6 +32,11 @@ app/dev-data/
 app/backups/
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# アプリからエクスポートしたデータファイル(取引先の個人情報を含むため、誤ってコミットしない)
+事務HUB_backup_*.json
 
 # Vitest / Playwright の実行結果
 app/coverage/

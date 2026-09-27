@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
+import { readDevOnlyEnv } from '../app-security'
 import type { BackupService, ExportDataResult, ImportDataResult } from '../services/backup.service'
 
 function defaultExportFileName(): string {
@@ -26,8 +27,9 @@ export class DataIpcHandler {
 
   private async handleExport(): Promise<ExportDataResult> {
     // E2Eテスト専用: OS標準ダイアログはPlaywrightから操作できないため、
-    // 環境変数でパスが指定されている場合のみダイアログ表示を省略する(本番では未設定のため通常どおり動作する)。
-    const e2eOverridePath = process.env.JIMUHUB_E2E_EXPORT_PATH
+    // 環境変数でパスが指定されている場合のみダイアログ表示を省略する。
+    // 配布版(パッケージ済み)では環境変数を無視し、必ずダイアログを表示する(セキュリティチェック結果報告書 v0.0 SEC-01)。
+    const e2eOverridePath = readDevOnlyEnv('JIMUHUB_E2E_EXPORT_PATH', app.isPackaged)
     if (e2eOverridePath) {
       return this.service.exportData(e2eOverridePath)
     }
@@ -50,7 +52,7 @@ export class DataIpcHandler {
 
   private async handleImport(): Promise<ImportDataResult> {
     // E2Eテスト専用: 詳細は handleExport() のコメントを参照
-    const e2eOverridePath = process.env.JIMUHUB_E2E_IMPORT_PATH
+    const e2eOverridePath = readDevOnlyEnv('JIMUHUB_E2E_IMPORT_PATH', app.isPackaged)
     if (e2eOverridePath) {
       return this.service.importData(e2eOverridePath)
     }
