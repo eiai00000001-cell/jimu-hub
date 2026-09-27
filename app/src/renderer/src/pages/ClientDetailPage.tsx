@@ -61,12 +61,20 @@ export function ClientDetailPage({
 
   async function handleConfirmDeactivate(): Promise<void> {
     await window.jimuhubApi.deactivateClient(clientId)
-    // BUG-02修正: 利用停止後、同一の詳細画面インスタンス内でも最新の状態(バッジ・編集ボタンの活性/非活性)を
-    // 反映できるよう、取引先を再取得してローカルstateを更新する(詳細設計書4.8章手順4)。
-    const refreshed = await window.jimuhubApi.getClient(clientId)
-    setClient(refreshed)
     setConfirming(false)
-    onDeactivated(clientId)
+    try {
+      // BUG-02修正: 利用停止後、同一の詳細画面インスタンス内でも最新の状態(バッジ・編集ボタンの活性/非活性)を
+      // 反映できるよう、取引先を再取得してローカルstateを更新する(詳細設計書4.8章手順4)。
+      const refreshed = await window.jimuhubApi.getClient(clientId)
+      setClient(refreshed)
+      onDeactivated(clientId)
+    } catch (error) {
+      // レビュー結果報告書 v0.2(BUG-02参考所見)対応: 利用停止自体は成功しているが、
+      // 直後の再取得が失敗した場合(稀なタイミングでの競合等)に未処理のPromise rejectionと
+      // ならないよう捕捉し、既存のMessage部品(エラー)+一覧への導線で案内する
+      // (詳細設計書8章「詳細画面表示時に対象取引先が存在しない」の文言に合わせる)。
+      setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+    }
   }
 
   return (

@@ -140,6 +140,42 @@ describe('ClientDetailPage', () => {
     expect(screen.getAllByText('利用停止', { exact: true }).length).toBeGreaterThan(0)
   })
 
+  it('利用停止後の再取得(getClient)が失敗した場合、エラーを捕捉して案内を表示する(レビュー結果報告書 v0.2 参考)', async () => {
+    const getClient = vi
+      .fn()
+      .mockResolvedValueOnce(activeClient)
+      .mockRejectedValueOnce(new Error('指定された取引先が見つかりません'))
+    const deactivateClient = vi.fn().mockResolvedValue({ success: true })
+    window.jimuhubApi = {
+      getStartupStatus: vi.fn(),
+      listClients: vi.fn(),
+      getClient,
+      createClient: vi.fn(),
+      updateClient: vi.fn(),
+      deactivateClient,
+      exportData: vi.fn(),
+      importData: vi.fn()
+    } as unknown as Window['jimuhubApi']
+
+    render(
+      <ClientDetailPage
+        clientId={3}
+        onNavigateHome={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onDeactivated={vi.fn()}
+      />
+    )
+
+    await userEvent.click(await screen.findByText('利用停止にする'))
+    await userEvent.click(screen.getByText('はい'))
+
+    // 未処理のrejectionにならず、既存のMessage部品(エラー)+一覧への導線に切り替わることを確認する
+    expect(await screen.findByText('指定された取引先が見つかりません')).toBeInTheDocument()
+    expect(screen.queryByText('本当に利用停止にしますか')).not.toBeInTheDocument()
+    expect(screen.getByText('← 一覧へ戻る')).toBeInTheDocument()
+  })
+
   it('確認ダイアログ「いいえ」では何も実行しない', async () => {
     const { deactivateClient } = setupApi(activeClient)
     render(

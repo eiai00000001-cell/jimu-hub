@@ -18,15 +18,21 @@ export interface StartupResult {
  * (BUG-01修正: 従来は`new Database()`がtry/catchの外側にあり、例外発生時に
  * `app.whenReady().then()`のコールバック全体が中断し、ウィンドウが一度も表示されなかった)。
  *
+ * `new Database()`(コンストラクタ)自体は成功したが、続く`database.initialize()`
+ * (`CREATE TABLE`等)が失敗するケースもあり得るため、その場合は開いたSQLite接続を
+ * `close()`してからエラー状態を返す(レビュー結果報告書 v0.2 No.13: ハンドルリーク修正)。
+ *
  * 参照元: 詳細設計書4.1章手順1・2・5、8章(エラーハンドリング設計)
  */
 export function initializeStartup(dbFilePath: string): StartupResult {
+  let database: Database | null = null
   try {
-    const database = new Database(dbFilePath)
+    database = new Database(dbFilePath)
     database.initialize()
     return { status: { ok: true }, database }
   } catch (error) {
     console.error('データベース初期化に失敗しました', error)
+    database?.close()
     return { status: { ok: false, message: STARTUP_MESSAGES.databaseError }, database: null }
   }
 }
