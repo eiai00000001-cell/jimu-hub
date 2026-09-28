@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 見積書PDFレイアウト(モックアップ v1.1)</title>
+<style>
+    /*
+      PDF専用のモノクロレイアウト。画面側の6色パレットとは独立した配色とし、
+      白黒印刷でも視認性を保つため黒系文字・グレー系罫線のみで構成する
+      (webContents.printToPDF()でこのHTML/CSSをそのままA4 PDF化する想定。基本設計書4.15章)。
+    */
+    :root {
+      --pdf-black: #1A1A1A;
+      --pdf-gray-text: #4D4D4D;
+      --pdf-line-strong: #1A1A1A;
+      --pdf-line: #999999;
+      --pdf-line-light: #CCCCCC;
+      --pdf-bg-tint: #F2F2F2;
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実際のPDFには存在しない) */
+      font-family: var(--font-family);
+      color: var(--pdf-black);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page-frame-label { width: 794px; margin: 24px auto 8px; font-size: 12px; color: #3A3A3C; }
+    .page {
+      width: 794px; /* A4縦 210mm相当(96dpi換算) */
+      min-height: 1123px; /* 297mm相当 */
+      margin: 0 auto 32px;
+      background: #FFFFFF;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      padding: 56px 64px 48px;
+      font-size: 12px;
+      line-height: 1.6;
+      position: relative;
+    }
+    .doc-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .doc-meta-left { font-size: 12px; color: var(--pdf-gray-text); }
+    .doc-meta-right { text-align: right; font-size: 12px; color: var(--pdf-gray-text); }
+    .doc-title { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: 0.3em; margin: 8px 0 32px; color: var(--pdf-black); }
+
+    .top-block { display: flex; justify-content: space-between; margin-bottom: 28px; }
+    .addressee { font-size: 15px; }
+    .addressee .name { font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--pdf-line-strong); padding-bottom: 6px; display: inline-block; min-width: 260px; }
+    .issuer { text-align: right; font-size: 11px; color: var(--pdf-black); line-height: 1.8; }
+    .issuer .issuer-name { font-size: 13px; font-weight: 700; }
+
+    .total-emphasis { border: 2px solid var(--pdf-line-strong); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+    .total-emphasis .label { font-size: 13px; font-weight: 700; }
+    .total-emphasis .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .sub-info-row { display: flex; gap: 40px; margin-bottom: 20px; font-size: 11px; color: var(--pdf-gray-text); }
+
+    table.items { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    table.items th { border-top: 2px solid var(--pdf-line-strong); border-bottom: 1px solid var(--pdf-line-strong); background: var(--pdf-bg-tint); padding: 6px 8px; font-size: 10.5px; font-weight: 700; text-align: left; }
+    table.items td { border-bottom: 1px solid var(--pdf-line-light); padding: 6px 8px; font-size: 11px; }
+    table.items td.num, table.items th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.items tbody tr:last-child td { border-bottom: 1px solid var(--pdf-line-strong); }
+
+    .tax-summary { width: 320px; margin-left: auto; margin-top: 12px; }
+    .tax-summary .row { display: flex; justify-content: space-between; padding: 4px 8px; font-size: 11px; border-bottom: 1px solid var(--pdf-line-light); }
+    .tax-summary .row.grand { border-bottom: none; border-top: 1px solid var(--pdf-line-strong); font-weight: 700; font-size: 12.5px; padding-top: 8px; }
+
+    .remarks-block { margin-top: 32px; }
+    .remarks-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid var(--pdf-line); padding-bottom: 4px; }
+    .remarks-body { font-size: 11px; color: var(--pdf-black); white-space: pre-line; }
+
+    .page-footer { position: absolute; left: 64px; right: 64px; bottom: 28px; display: flex; justify-content: space-between; font-size: 9.5px; color: var(--pdf-gray-text); border-top: 1px solid var(--pdf-line-light); padding-top: 8px; }
+
+    .page2-header { font-size: 9.5px; color: var(--pdf-gray-text); border-bottom: 1px solid var(--pdf-line-light); padding-bottom: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; }
+
+    .reference-note { width: 794px; margin: 0 auto 40px; font-size: 12px; color: #3A3A3C; line-height: 1.8; }
+    .reference-note b { color: #3A3A3C; }
+</style>
+</head>
+<body>
+  <div class="page-frame-label">1ページ目(見積書テンプレート・記載サンプル)</div>
+  <div class="page">
+    <div class="doc-meta">
+      <div class="doc-meta-left"></div>
+      <div class="doc-meta-right">
+        発行日: 2026年9月20日<br>
+        見積書番号: 2026-008
+      </div>
+    </div>
+    <div class="doc-title">御 見 積 書</div>
+
+    <div class="top-block">
+      <div class="addressee">
+        <div class="name">サンプル商事株式会社 御中</div>
+      </div>
+      <div class="issuer">
+        <div class="issuer-name">サンプル商店 山田太郎</div>
+        東京都千代田区千代田1-1-1<br>
+        登録番号: T1234567890123
+      </div>
+    </div>
+
+    <div class="total-emphasis">
+      <span class="label">御見積金額(税込)</span>
+      <span class="value">&yen; 363,000</span>
+    </div>
+
+    <div class="sub-info-row">
+      <div>有効期限: 2026年10月20日</div>
+    </div>
+
+    <table class="items">
+      <thead>
+        <tr>
+          <th style="width:38%;">品名</th>
+          <th class="num" style="width:10%;">数量</th>
+          <th style="width:8%;">単位</th>
+          <th class="num" style="width:15%;">単価</th>
+          <th class="num" style="width:9%;">税率</th>
+          <th class="num" style="width:20%;">金額</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Webサイト制作一式</td>
+          <td class="num">1</td>
+          <td>式</td>
+          <td class="num">300,000</td>
+          <td class="num">10%</td>
+          <td class="num">300,000</td>
+        </tr>
+        <tr>
+          <td>サーバー保守(月額)</td>
+          <td class="num">1</td>
+          <td>式</td>
+          <td class="num">30,000</td>
+          <td class="num">10%</td>
+          <td class="num">30,000</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tax-summary">
+      <div class="row"><span>10%対象 小計</span><span>&yen; 330,000</span></div>
+      <div class="row"><span>10%対象 消費税額</span><span>&yen; 33,000</span></div>
+      <div class="row"><span>8%対象 小計</span><span>&yen; 0</span></div>
+      <div class="row"><span>8%対象 消費税額</span><span>&yen; 0</span></div>
+      <div class="row grand"><span>合計金額</span><span>&yen; 363,000</span></div>
+    </div>
+
+    <div class="remarks-block">
+      <div class="remarks-title">備考</div>
+      <div class="remarks-body">初回打ち合わせ内容に基づく概算見積です。内容確定後、正式な発注書をお送りください。</div>
+    </div>
+
+    <div class="page-footer">
+      <span>見積書番号: 2026-008 / サンプル商事株式会社 御中</span>
+      <span>1 / 1 ページ</span>
+    </div>
+  </div>
+
+  <div class="reference-note">
+    <b>参考: 明細行数が多く2ページ目以降に分割される場合</b><br>
+    2ページ目以降の先頭にも書類番号・取引先名を繰り返しヘッダー表示する(基本設計書4.15章)。下記はその2ページ目冒頭部分のみの参考表示。
+  </div>
+  <div class="page" style="min-height:auto; padding-bottom:56px;">
+    <div class="page2-header">
+      <span>見積書番号: 2026-008 / サンプル商事株式会社 御中(続き)</span>
+      <span>2 / 2 ページ</span>
+    </div>
+    <table class="items">
+      <thead>
+        <tr>
+          <th style="width:38%;">品名</th>
+          <th class="num" style="width:10%;">数量</th>
+          <th style="width:8%;">単位</th>
+          <th class="num" style="width:15%;">単価</th>
+          <th class="num" style="width:9%;">税率</th>
+          <th class="num" style="width:20%;">金額</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>(2ページ目以降も同じ表形式で明細行が続く)</td>
+          <td class="num">-</td>
+          <td>-</td>
+          <td class="num">-</td>
+          <td class="num">-</td>
+          <td class="num">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="reference-note">
+    <b>参考: 記載形式の自動切替(基本設計書4.15章)</b><br>
+    自社のインボイス登録番号を設定している場合は上記のように「登録番号: T〜」を表示する(適格請求書等保存方式)。未設定の場合は登録番号欄自体を表示しない(区分記載請求書等)。いずれの形式でも、この明細・税率区分ごとの内訳・合計金額の構成は共通とする。
+  </div>
+</body>
+</html>

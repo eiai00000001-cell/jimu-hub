@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>事務HUB - 取引先一覧(モックアップ v0.9)</title>
+<title>事務HUB - 取引先一覧(モックアップ v1.1)</title>
 <style>
     :root {
       --color-white: #FFFFFF;
@@ -131,6 +131,8 @@
     .table tr:last-child td { border-bottom: none; }
     /* 利用停止行の淡色化は新しい色を作らず、既存の背景グレー・補助グレー文字で表す */
     .table tr.inactive td { color: var(--color-text-secondary); background: var(--color-bg); }
+    .furigana-empty { color: var(--color-text-secondary); }
+    .table-note { font-size: 11px; color: var(--color-text-secondary); margin: 10px 0 0; line-height: 1.6; }
 
     /* バッジ(表示だけの物): 丸型(例外) */
     .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
@@ -177,7 +179,7 @@
           <li class="sidebar-item"><span>ホーム</span></li>
           <li class="sidebar-item active"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
-          <li class="sidebar-item disabled"><span>見積書・請求書</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>見積書・請求書</span></li>
           <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
@@ -196,6 +198,7 @@
           <div class="toolbar">
             <input type="text" placeholder="取引先名で検索">
             <select>
+              <option selected>フリガナ昇順</option>
               <option>名称昇順</option>
               <option>名称降順</option>
               <option>登録日新しい順</option>
@@ -212,6 +215,7 @@
             <thead>
               <tr>
                 <th>名称</th>
+                <th>フリガナ</th>
                 <th>敬称</th>
                 <th>担当者名</th>
                 <th>電話番号</th>
@@ -221,6 +225,7 @@
             <tbody>
               <tr>
                 <td>アルファ商事株式会社</td>
+                <td>アルファショウジカブシキガイシャ</td>
                 <td>御中</td>
                 <td>サンプル 太郎</td>
                 <td>03-1111-2222</td>
@@ -228,6 +233,7 @@
               </tr>
               <tr>
                 <td>オレンジ物産株式会社</td>
+                <td>オレンジブッサンカブシキガイシャ</td>
                 <td>様</td>
                 <td>サンプル 花子</td>
                 <td>03-2222-3333</td>
@@ -235,6 +241,7 @@
               </tr>
               <tr>
                 <td>サンプル商事株式会社</td>
+                <td>サンプルショウジカブシキガイシャ</td>
                 <td>御中</td>
                 <td>サンプル 次郎</td>
                 <td>03-3333-4444</td>
@@ -242,6 +249,7 @@
               </tr>
               <tr>
                 <td>サンプルデザイン合同会社</td>
+                <td>サンプルデザインゴウドウガイシャ</td>
                 <td>(なし)</td>
                 <td>サンプル 三郎</td>
                 <td>03-4444-5555</td>
@@ -249,6 +257,7 @@
               </tr>
               <tr class="inactive">
                 <td>有限会社テスト工業</td>
+                <td>テストコウギョウ</td>
                 <td>御中</td>
                 <td>サンプル 四郎</td>
                 <td>03-5555-6666</td>
@@ -256,13 +265,23 @@
               </tr>
               <tr>
                 <td>わかば商会</td>
+                <td>ワカバショウカイ</td>
                 <td>様</td>
                 <td>サンプル 五郎</td>
                 <td>03-6666-7777</td>
                 <td><span class="badge badge-active">利用中</span></td>
               </tr>
+              <tr>
+                <td>合同会社ミライ工房</td>
+                <td class="furigana-empty">(未入力)</td>
+                <td>御中</td>
+                <td>サンプル 六郎</td>
+                <td>03-7777-8888</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
             </tbody>
           </table>
+          <p class="table-note">フリガナ昇順で並べ替えた場合、フリガナが未入力の取引先は五十音順対象から外し、一覧の末尾にまとめて表示します(上記「合同会社ミライ工房」参照)。</p>
         </div>
       </div>
     </div>

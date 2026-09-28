@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>事務HUB - ホーム(モックアップ v0.9)</title>
+<title>事務HUB - ホーム(モックアップ v1.1)</title>
 <style>
     :root {
       --color-white: #FFFFFF;
@@ -130,7 +130,8 @@
     .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
 
     /* 入れ物(パネル・カード): 角丸なし、影なし */
-    .summary-card { width: 280px; background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; text-align: center; }
+    .summary-row { display: flex; flex-wrap: wrap; gap: 16px; }
+    .summary-card { width: 220px; background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; text-align: center; }
     .summary-value { font-size: 32px; font-weight: 700; color: var(--color-text); }
     .summary-label { font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; }
     .section-note { font-size: 12px; color: var(--color-text-secondary); margin-top: 24px; max-width: 480px; line-height: 1.7; }
@@ -155,7 +156,7 @@
           <li class="sidebar-item active"><span>ホーム</span></li>
           <li class="sidebar-item"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
-          <li class="sidebar-item disabled"><span>見積書・請求書</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>見積書・請求書</span></li>
           <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
@@ -167,12 +168,27 @@
             <span class="data-menu-label">データ管理</span>
             <button class="btn btn-secondary">データをエクスポート</button>
             <button class="btn btn-secondary">データを復元</button>
+            <button class="btn btn-secondary">自社情報・振込先の設定</button>
           </div>
         </div>
         <div class="page-content">
-          <div class="summary-card">
-            <div class="summary-value">12件</div>
-            <div class="summary-label">取引先登録件数(利用中)</div>
+          <div class="summary-row">
+            <div class="summary-card">
+              <div class="summary-value">12件</div>
+              <div class="summary-label">取引先登録件数(利用中)</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">8件</div>
+              <div class="summary-label">見積書件数</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">15件</div>
+              <div class="summary-label">請求書件数</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">4件</div>
+              <div class="summary-label">未収の請求書件数</div>
+            </div>
           </div>
           <p class="section-note">
             左のサイドメニューから機能を選択してください。「準備中」の項目は、以降のアップデートで順次利用可能になります。
