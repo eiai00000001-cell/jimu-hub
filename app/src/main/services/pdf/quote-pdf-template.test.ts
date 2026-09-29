@@ -101,6 +101,40 @@ describe('buildQuotePdfHtml', () => {
     expect(html).not.toContain('class="remarks-block"')
   })
 
+  it('8%対象の明細が無い場合、8%対象の小計・消費税額の行を表示しない', () => {
+    const html = buildQuotePdfHtml(sampleQuote, sampleCompanyProfile)
+    expect(html).toContain('10%対象 小計')
+    expect(html).not.toContain('8%対象 小計')
+    expect(html).not.toContain('8%対象 消費税額')
+  })
+
+  it('10%・8%両方の明細がある場合、両方の内訳行を表示する', () => {
+    const html = buildQuotePdfHtml(
+      {
+        ...sampleQuote,
+        subtotal8: 2000,
+        taxAmount8: 160,
+        lineItems: [
+          ...sampleQuote.lineItems,
+          {
+            id: 3,
+            lineNo: 3,
+            name: '軽減税率対象品',
+            quantity: 1,
+            unit: '個',
+            unitPrice: 2000,
+            taxRate: 8,
+            amount: 2000
+          }
+        ]
+      },
+      sampleCompanyProfile
+    )
+    expect(html).toContain('10%対象 小計')
+    expect(html).toContain('8%対象 小計')
+    expect(html).toContain('8%対象 消費税額')
+  })
+
   it('取引先名称・品名に含まれるHTML特殊文字をエスケープする(タグ注入対策)', () => {
     const html = buildQuotePdfHtml(
       {

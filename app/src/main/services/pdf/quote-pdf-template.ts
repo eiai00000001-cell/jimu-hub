@@ -2,6 +2,7 @@ import type { Quote } from '@shared/types/quote'
 import type { CompanyProfile } from '@shared/types/company-profile'
 import { PDF_STYLES } from './pdf-styles'
 import { escapeHtml, formatDateJapanese, formatQuantity, formatYen } from './format'
+import { collectPresentTaxRates, renderTaxSummaryRows } from './tax-summary'
 
 function renderAddressee(quote: Quote): string {
   const suffix = quote.clientHonorific === '(なし)' ? '' : ` ${escapeHtml(quote.clientHonorific)}`
@@ -107,10 +108,7 @@ export function buildQuotePdfHtml(quote: Quote, companyProfile: CompanyProfile):
     </table>
 
     <div class="tax-summary">
-      <div class="row"><span>10%対象 小計</span><span>${formatYen(quote.subtotal10)}</span></div>
-      <div class="row"><span>10%対象 消費税額</span><span>${formatYen(quote.taxAmount10)}</span></div>
-      <div class="row"><span>8%対象 小計</span><span>${formatYen(quote.subtotal8)}</span></div>
-      <div class="row"><span>8%対象 消費税額</span><span>${formatYen(quote.taxAmount8)}</span></div>
+      ${renderTaxSummaryRows(quote, collectPresentTaxRates(quote.lineItems))}
       <div class="row grand"><span>合計金額</span><span>${formatYen(quote.totalAmount)}</span></div>
     </div>
 

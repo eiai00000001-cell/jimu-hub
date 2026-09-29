@@ -80,13 +80,17 @@ export class PdfService {
     try {
       await window.loadFile(tempFilePath)
       const footerText = `${escapeHtml(documentNumber)} / ${escapeHtml(clientName)}`
+      // ChromiumのprintToPDFヘッダー/フッターテンプレートは既定でセリフ体(明朝系)のフォントが
+      // 適用されるため、本文と同じゴシック体(ヒラギノ角ゴ等)を明示的に指定する(ユーザー指摘によりT-20で修正)。
+      const footerFontFamily =
+        '-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif'
       return await window.webContents.printToPDF({
         pageSize: 'A4',
         printBackground: true,
         margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 },
         displayHeaderFooter: true,
         headerTemplate: '<span></span>',
-        footerTemplate: `<div style="font-size:8px; width:100%; text-align:center; color:#666666; margin: 0 24px;">${footerText}&nbsp;&nbsp;<span class="pageNumber"></span> / <span class="totalPages"></span> ページ</div>`
+        footerTemplate: `<div style="font-family: ${footerFontFamily}; font-size:8px; width:100%; text-align:center; color:#666666; margin: 0 24px;">${footerText}&nbsp;&nbsp;<span class="pageNumber"></span> / <span class="totalPages"></span> ページ</div>`
       })
     } finally {
       window.destroy()

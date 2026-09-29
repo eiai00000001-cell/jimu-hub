@@ -110,6 +110,14 @@ describe('PdfService', () => {
     expect(destroy).toHaveBeenCalledTimes(1)
   })
 
+  it('フッターに本文と同じゴシック体フォントを指定する(既定のセリフ体を上書き。ユーザー指摘によりT-20で修正)', async () => {
+    await service.generateQuotePdf(sampleQuote, sampleCompanyProfile)
+
+    const options = printToPDF.mock.calls[0]?.[0]
+    expect(options.footerTemplate).toContain('Hiragino Sans')
+    expect(options.footerTemplate).toContain('font-family')
+  })
+
   it('取引先名にスラッシュを含む場合、ファイル名では置換される', async () => {
     const result = await service.generateQuotePdf(
       { ...sampleQuote, clientName: 'サンプル/商事' },
