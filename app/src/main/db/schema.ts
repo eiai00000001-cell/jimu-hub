@@ -26,3 +26,16 @@ export const appMeta = sqliteTable('app_meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull()
 })
+
+export const companyProfile = sqliteTable('company_profile', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+  address: text('address').notNull(),
+  invoiceRegistrationNumber: text('invoice_registration_number'),
+  bankName: text('bank_name'),
+  bankBranch: text('bank_branch'),
+  accountType: text('account_type'),
+  accountNumber: text('account_number'),
+  accountHolder: text('account_holder'),
+  updatedAt: text('updated_at').notNull()
+})

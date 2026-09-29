@@ -12,7 +12,7 @@ describe('Database', () => {
     db = undefined
   })
 
-  it('初期化するとclientsテーブルとapp_metaテーブルが作成される', () => {
+  it('初期化するとclients・app_meta・イテレーション1で追加したテーブルが作成される', () => {
     db = new Database(':memory:')
     db.initialize()
 
@@ -23,6 +23,24 @@ describe('Database', () => {
 
     expect(tableNames).toContain('clients')
     expect(tableNames).toContain('app_meta')
+    expect(tableNames).toContain('company_profile')
+    expect(tableNames).toContain('document_number_sequences')
+    expect(tableNames).toContain('quotes')
+    expect(tableNames).toContain('quote_line_items')
+    expect(tableNames).toContain('invoices')
+    expect(tableNames).toContain('invoice_line_items')
+  })
+
+  it('clientsテーブルにfurigana列が含まれる(詳細設計書6.1章)', () => {
+    db = new Database(':memory:')
+    db.initialize()
+
+    const columns = db.sqlite
+      .prepare('PRAGMA table_info(clients)')
+      .all()
+      .map((row) => (row as { name: string }).name)
+
+    expect(columns).toContain('furigana')
   })
 
   it('初期化を複数回実行してもエラーにならない(冪等)', () => {
@@ -38,7 +56,7 @@ describe('Database', () => {
     db.initialize()
 
     const row = db.sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-    expect(row).toEqual({ value: '1' })
+    expect(row).toEqual({ value: '3' })
   })
 
   it('transactionは正常終了時にコミットする', () => {
