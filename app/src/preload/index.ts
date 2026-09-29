@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc/channels'
 import type { JimuhubApi } from '@shared/ipc/api'
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
+import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
 
 /**
  * contextBridgeでRendererに安全なAPIのみを公開するPreloadスクリプト。
@@ -17,7 +18,10 @@ const jimuhubApi: JimuhubApi = {
     ipcRenderer.invoke(IPC_CHANNELS.clientsUpdate, id, input),
   deactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsDeactivate, id),
   exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
-  importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport)
+  importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
+  getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
+  saveCompanyProfile: (input: CompanyProfileInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.companySave, input)
 }
 
 contextBridge.exposeInMainWorld('jimuhubApi', jimuhubApi)

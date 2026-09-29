@@ -5,9 +5,12 @@ import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
 import { BackupService } from './services/backup.service'
 import { MigrationService } from './services/migration.service'
+import { CompanyProfileRepository } from './repositories/company-profile.repository'
+import { CompanyService } from './services/company.service'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
+import { CompanyIpcHandler } from './ipc/company.ipc-handler'
 import { initializeStartup } from './startup'
 import { applyWindowSecurity, denyAllPermissionRequests, readDevOnlyEnv } from './app-security'
 
@@ -84,8 +87,11 @@ app.whenReady().then(() => {
       appVersion: app.getVersion()
     })
 
+    const companyService = new CompanyService(new CompanyProfileRepository(database))
+
     new ClientIpcHandler(clientService).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
+    new CompanyIpcHandler(companyService).registerHandlers()
   }
 
   createMainWindow()

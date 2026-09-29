@@ -1,5 +1,7 @@
 import type { Client, ClientListFilter } from '../types/client'
 import type { ClientInput } from '../schemas/client.schema'
+import type { CompanyProfile } from '../types/company-profile'
+import type { CompanyProfileInput } from '../schemas/company-profile.schema'
 
 /**
  * Renderer-Main間のIPCリクエスト/レスポンス型。
@@ -41,6 +43,10 @@ export interface StartupStatus {
   message?: string
 }
 
+export interface SaveCompanyProfileResult {
+  success: true
+}
+
 /**
  * PreloadがcontextBridgeで公開するAPIの型(window.jimuhubApi)。
  * Renderer側はこの型を通じてのみMainプロセスとやり取りする。
@@ -55,4 +61,6 @@ export interface JimuhubApi {
   deactivateClient(id: number): Promise<DeactivateClientResult>
   exportData(): Promise<ExportDataResult>
   importData(): Promise<ImportDataResult>
+  getCompanyProfile(): Promise<CompanyProfile | null>
+  saveCompanyProfile(input: CompanyProfileInput): Promise<SaveCompanyProfileResult>
 }
