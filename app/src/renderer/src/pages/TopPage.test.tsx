@@ -29,6 +29,7 @@ describe('TopPage', () => {
         onNavigateClients={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -47,6 +48,7 @@ describe('TopPage', () => {
         onNavigateClients={onNavigateClients}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -60,6 +62,7 @@ describe('TopPage', () => {
         onNavigateClients={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -74,6 +77,7 @@ describe('TopPage', () => {
         onNavigateClients={vi.fn()}
         onOpenExportDialog={onOpenExportDialog}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -88,10 +92,26 @@ describe('TopPage', () => {
         onNavigateClients={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={onOpenImportDialog}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
     await userEvent.click(screen.getByText('データを復元'))
     expect(onOpenImportDialog).toHaveBeenCalled()
+  })
+
+  it('「自社情報・振込先の設定」押下で設定画面への遷移を要求する(詳細設計書3.1章)', async () => {
+    const onNavigateCompanyProfile = vi.fn()
+    render(
+      <TopPage
+        onNavigateClients={vi.fn()}
+        onOpenExportDialog={vi.fn()}
+        onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={onNavigateCompanyProfile}
+      />
+    )
+
+    await userEvent.click(screen.getByText('自社情報・振込先の設定'))
+    expect(onNavigateCompanyProfile).toHaveBeenCalled()
   })
 })

@@ -6,6 +6,7 @@ interface TopPageProps {
   onNavigateClients: () => void
   onOpenExportDialog: () => void
   onOpenImportDialog: () => void
+  onNavigateCompanyProfile: () => void
 }
 
 /**
@@ -15,7 +16,8 @@ interface TopPageProps {
 export function TopPage({
   onNavigateClients,
   onOpenExportDialog,
-  onOpenImportDialog
+  onOpenImportDialog,
+  onNavigateCompanyProfile
 }: TopPageProps): ReactElement {
   const [activeClientCount, setActiveClientCount] = useState<number | null>(null)
   const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
@@ -42,6 +44,7 @@ export function TopPage({
           <span className="data-menu-label">データ管理</span>
           <Button onClick={onOpenExportDialog}>データをエクスポート</Button>
           <Button onClick={onOpenImportDialog}>データを復元</Button>
+          <Button onClick={onNavigateCompanyProfile}>自社情報・振込先の設定</Button>
         </div>
       }
       onNavigateHome={() => {}}

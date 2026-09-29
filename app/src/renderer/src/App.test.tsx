@@ -30,7 +30,9 @@ function setupApi(): void {
     updateClient: vi.fn().mockResolvedValue({ success: true }),
     deactivateClient: vi.fn().mockResolvedValue({ success: true }),
     exportData: vi.fn(),
-    importData: vi.fn()
+    importData: vi.fn(),
+    getCompanyProfile: vi.fn().mockResolvedValue(null),
+    saveCompanyProfile: vi.fn().mockResolvedValue({ success: true })
   } as unknown as Window['jimuhubApi']
 }
 
@@ -70,6 +72,23 @@ describe('App', () => {
     await userEvent.click(screen.getByText('登録'))
 
     expect(await screen.findByText('取引先を登録しました')).toBeInTheDocument()
+  })
+
+  it('ホーム→自社情報・振込先の設定→保存→ホームへ戻ると設定が反映されている', async () => {
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('自社情報・振込先の設定'))
+    await userEvent.type(screen.getByLabelText('氏名・屋号'), 'サンプル商店 山田太郎')
+    await userEvent.type(screen.getByLabelText('住所'), '東京都千代田区1-1-1')
+    await userEvent.click(screen.getByText('保存'))
+
+    expect(await screen.findByText('自社情報を保存しました')).toBeInTheDocument()
+    expect(window.jimuhubApi.saveCompanyProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'サンプル商店 山田太郎' })
+    )
+
+    await userEvent.click(screen.getByText('ホーム'))
+    expect(await screen.findByText('取引先登録件数(利用中)')).toBeInTheDocument()
   })
 
   it('ホームでエクスポートダイアログを開閉できる', async () => {

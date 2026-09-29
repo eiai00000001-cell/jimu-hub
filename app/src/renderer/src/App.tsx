@@ -3,6 +3,7 @@ import { TopPage } from './pages/TopPage'
 import { ClientListPage } from './pages/ClientListPage'
 import { ClientFormPage } from './pages/ClientFormPage'
 import { ClientDetailPage } from './pages/ClientDetailPage'
+import { CompanyProfilePage } from './pages/CompanyProfilePage'
 import { ExportDialog } from './components/ExportDialog'
 import { ImportDialog } from './components/ImportDialog'
 import { CLIENT_MESSAGES } from '@shared/messages/messages'
@@ -14,6 +15,7 @@ type Route =
   | { name: 'clientNew' }
   | { name: 'clientDetail'; id: number; flashMessage?: string }
   | { name: 'clientEdit'; id: number }
+  | { name: 'companyProfile' }
 
 type DataDialog = 'none' | 'export' | 'import'
 
@@ -68,6 +70,7 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onOpenExportDialog={() => setDialog('export')}
             onOpenImportDialog={() => setDialog('import')}
+            onNavigateCompanyProfile={() => setRoute({ name: 'companyProfile' })}
           />
         )
       case 'clientList':
@@ -120,12 +123,20 @@ export function App(): ReactElement {
             onCancel={() => setRoute({ name: 'clientDetail', id: route.id })}
           />
         )
+      case 'companyProfile':
+        return (
+          <CompanyProfilePage
+            onNavigateHome={() => setRoute({ name: 'top' })}
+            onNavigateClients={() => setRoute({ name: 'clientList' })}
+          />
+        )
       default:
         return (
           <TopPage
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onOpenExportDialog={() => setDialog('export')}
             onOpenImportDialog={() => setDialog('import')}
+            onNavigateCompanyProfile={() => setRoute({ name: 'companyProfile' })}
           />
         )
     }
