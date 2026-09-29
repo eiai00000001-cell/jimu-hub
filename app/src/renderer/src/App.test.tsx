@@ -8,6 +8,7 @@ import type { Client } from '@shared/types/client'
 const sampleClient: Client = {
   id: 1,
   name: 'アルファ商事株式会社',
+  furigana: 'アルファショウジカブシキガイシャ',
   honorific: '御中',
   contactPerson: null,
   postalCode: null,

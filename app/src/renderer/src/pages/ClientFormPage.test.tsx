@@ -8,6 +8,7 @@ import type { Client } from '@shared/types/client'
 const existingClient: Client = {
   id: 5,
   name: '既存商事株式会社',
+  furigana: 'キゾンショウジカブシキガイシャ',
   honorific: '様',
   contactPerson: '既存太郎',
   postalCode: '100-0001',
@@ -75,6 +76,31 @@ describe('ClientFormPage(新規登録)', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(10))
   })
 
+  it('フリガナはひらがな入力を全角カタカナへ自動変換して表示する(コーディング規約7.2章)', async () => {
+    setupApi()
+    render(<ClientFormPage mode="new" onCreated={vi.fn()} onUpdated={vi.fn()} onCancel={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText('フリガナ'), 'さんぷる')
+    expect(screen.getByLabelText('フリガナ')).toHaveValue('サンプル')
+  })
+
+  it('フリガナに全角カタカナ以外の文字が残っている場合はエラーを表示する', async () => {
+    const { createClient } = setupApi()
+    render(<ClientFormPage mode="new" onCreated={vi.fn()} onUpdated={vi.fn()} onCancel={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText('取引先名称'), '新規商事株式会社')
+    // 半角カナはUI側の自動変換対象外のため、そのまま残りバリデーションエラーとなる
+    await userEvent.type(screen.getByLabelText('フリガナ'), 'ｻﾝﾌﾟﾙ')
+    await userEvent.click(screen.getByText('登録'))
+
+    expect(
+      await screen.findByText(
+        'フリガナは全角カタカナで入力してください(ひらがなは自動的に変換されます)'
+      )
+    ).toBeInTheDocument()
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('メールアドレスの形式が不正な場合はエラーを表示する', async () => {
     setupApi()
     render(<ClientFormPage mode="new" onCreated={vi.fn()} onUpdated={vi.fn()} onCancel={vi.fn()} />)
@@ -116,6 +142,7 @@ describe('ClientFormPage(編集)', () => {
     )
 
     expect(await screen.findByDisplayValue('既存商事株式会社')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('キゾンショウジカブシキガイシャ')).toBeInTheDocument()
   })
 
   it('保存するとupdateClientを呼び出しonUpdatedへ結果を渡す(idは維持される)', async () => {

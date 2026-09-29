@@ -118,6 +118,8 @@ export function ClientDetailPage({
               <dd>{client.id}</dd>
               <dt>取引先名称</dt>
               <dd>{client.name}</dd>
+              <dt>フリガナ</dt>
+              <dd>{client.furigana}</dd>
               <dt>敬称</dt>
               <dd>{client.honorific}</dd>
               <dt>担当者名</dt>
