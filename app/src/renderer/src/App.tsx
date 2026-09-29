@@ -4,10 +4,16 @@ import { ClientListPage } from './pages/ClientListPage'
 import { ClientFormPage } from './pages/ClientFormPage'
 import { ClientDetailPage } from './pages/ClientDetailPage'
 import { CompanyProfilePage } from './pages/CompanyProfilePage'
+import { DocumentListPage } from './pages/DocumentListPage'
+import { QuoteFormPage } from './pages/QuoteFormPage'
+import { QuoteDetailPage } from './pages/QuoteDetailPage'
 import { ExportDialog } from './components/ExportDialog'
 import { ImportDialog } from './components/ImportDialog'
-import { CLIENT_MESSAGES } from '@shared/messages/messages'
+import { CLIENT_MESSAGES, COMPANY_MESSAGES, QUOTE_MESSAGES } from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
+
+/** 自社情報・振込先設定画面(companyProfile)への遷移元。保存完了後にこの画面へ戻る(詳細設計書4.10章手順6) */
+type CompanyProfileReturnTo = { name: 'quoteNew' } | { name: 'quoteEdit'; id: number }
 
 type Route =
   | { name: 'top' }
@@ -15,7 +21,11 @@ type Route =
   | { name: 'clientNew' }
   | { name: 'clientDetail'; id: number; flashMessage?: string }
   | { name: 'clientEdit'; id: number }
-  | { name: 'companyProfile' }
+  | { name: 'companyProfile'; returnTo?: CompanyProfileReturnTo }
+  | { name: 'documentList' }
+  | { name: 'quoteNew'; flashMessage?: string }
+  | { name: 'quoteEdit'; id: number; flashMessage?: string }
+  | { name: 'quoteDetail'; id: number; flashMessage?: string }
 
 type DataDialog = 'none' | 'export' | 'import'
 
@@ -68,6 +78,7 @@ export function App(): ReactElement {
           <TopPage
             key={homeRefreshKey}
             onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onNavigateDocuments={() => setRoute({ name: 'documentList' })}
             onOpenExportDialog={() => setDialog('export')}
             onOpenImportDialog={() => setDialog('import')}
             onNavigateCompanyProfile={() => setRoute({ name: 'companyProfile' })}
@@ -78,6 +89,7 @@ export function App(): ReactElement {
           <ClientListPage
             flashMessage={route.flashMessage}
             onNavigateHome={() => setRoute({ name: 'top' })}
+            onNavigateDocuments={() => setRoute({ name: 'documentList' })}
             onNewClient={() => setRoute({ name: 'clientNew' })}
             onSelectClient={(id) => setRoute({ name: 'clientDetail', id })}
           />
@@ -123,17 +135,82 @@ export function App(): ReactElement {
             onCancel={() => setRoute({ name: 'clientDetail', id: route.id })}
           />
         )
-      case 'companyProfile':
+      case 'companyProfile': {
+        const returnTo = route.returnTo
         return (
           <CompanyProfilePage
             onNavigateHome={() => setRoute({ name: 'top' })}
             onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onNavigateDocuments={() => setRoute({ name: 'documentList' })}
+            onSaved={
+              returnTo
+                ? () => setRoute({ ...returnTo, flashMessage: COMPANY_MESSAGES.saveSuccess })
+                : undefined
+            }
+          />
+        )
+      }
+      case 'documentList':
+        return (
+          <DocumentListPage
+            onNavigateHome={() => setRoute({ name: 'top' })}
+            onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onNewQuote={() => setRoute({ name: 'quoteNew' })}
+            onSelectQuote={(id) => setRoute({ name: 'quoteDetail', id })}
+          />
+        )
+      case 'quoteNew':
+        return (
+          <QuoteFormPage
+            mode="new"
+            flashMessage={route.flashMessage}
+            onSavedDraft={(id) =>
+              setRoute({ name: 'quoteDetail', id, flashMessage: QUOTE_MESSAGES.draftSaveSuccess })
+            }
+            onFinalized={(id) =>
+              setRoute({ name: 'quoteDetail', id, flashMessage: QUOTE_MESSAGES.finalizeSuccess })
+            }
+            onCancel={() => setRoute({ name: 'documentList' })}
+            onNavigateCompanyProfile={() =>
+              setRoute({ name: 'companyProfile', returnTo: { name: 'quoteNew' } })
+            }
+          />
+        )
+      case 'quoteEdit':
+        return (
+          <QuoteFormPage
+            mode="edit"
+            quoteId={route.id}
+            flashMessage={route.flashMessage}
+            onSavedDraft={(id) =>
+              setRoute({ name: 'quoteDetail', id, flashMessage: QUOTE_MESSAGES.draftSaveSuccess })
+            }
+            onFinalized={(id) =>
+              setRoute({ name: 'quoteDetail', id, flashMessage: QUOTE_MESSAGES.finalizeSuccess })
+            }
+            onCancel={() => setRoute({ name: 'quoteDetail', id: route.id })}
+            onNavigateCompanyProfile={() =>
+              setRoute({ name: 'companyProfile', returnTo: { name: 'quoteEdit', id: route.id } })
+            }
+          />
+        )
+      case 'quoteDetail':
+        return (
+          <QuoteDetailPage
+            key={route.id}
+            quoteId={route.id}
+            flashMessage={route.flashMessage}
+            onNavigateHome={() => setRoute({ name: 'top' })}
+            onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onBackToList={() => setRoute({ name: 'documentList' })}
+            onEdit={(id) => setRoute({ name: 'quoteEdit', id })}
           />
         )
       default:
         return (
           <TopPage
             onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onNavigateDocuments={() => setRoute({ name: 'documentList' })}
             onOpenExportDialog={() => setDialog('export')}
             onOpenImportDialog={() => setDialog('import')}
             onNavigateCompanyProfile={() => setRoute({ name: 'companyProfile' })}

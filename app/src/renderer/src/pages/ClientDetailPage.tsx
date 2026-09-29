@@ -99,6 +99,7 @@ export function ClientDetailPage({
       }
       onNavigateHome={onNavigateHome}
       onNavigateClients={() => {}}
+      onNavigateDocuments={() => {}}
       onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}

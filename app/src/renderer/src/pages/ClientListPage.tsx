@@ -17,6 +17,7 @@ const SORT_OPTIONS: Array<{ value: ClientSortKey; label: string }> = [
 interface ClientListPageProps {
   flashMessage?: string
   onNavigateHome: () => void
+  onNavigateDocuments: () => void
   onNewClient: () => void
   onSelectClient: (id: number) => void
 }
@@ -28,6 +29,7 @@ interface ClientListPageProps {
 export function ClientListPage({
   flashMessage,
   onNavigateHome,
+  onNavigateDocuments,
   onNewClient,
   onSelectClient
 }: ClientListPageProps): ReactElement {
@@ -63,6 +65,7 @@ export function ClientListPage({
       }
       onNavigateHome={onNavigateHome}
       onNavigateClients={() => {}}
+      onNavigateDocuments={onNavigateDocuments}
       onComingSoon={(label) => setComingSoonLabel(label)}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}

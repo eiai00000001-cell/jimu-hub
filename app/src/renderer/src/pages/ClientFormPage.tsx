@@ -114,6 +114,7 @@ export function ClientFormPage({
       pageTitle={pageTitle}
       onNavigateHome={() => {}}
       onNavigateClients={() => {}}
+      onNavigateDocuments={() => {}}
       onComingSoon={() => {}}
     >
       {loadError ? (

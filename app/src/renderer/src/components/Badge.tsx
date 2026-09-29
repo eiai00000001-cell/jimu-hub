@@ -1,11 +1,14 @@
 import type { ReactElement } from 'react'
 
-type Variant = 'active' | 'inactive' | 'soon'
+type Variant = 'active' | 'inactive' | 'soon' | 'draft' | 'finalized' | 'warning'
 
 const LABELS: Record<Variant, string> = {
   active: '利用中',
   inactive: '利用停止',
-  soon: '準備中'
+  soon: '準備中',
+  draft: '下書き',
+  finalized: 'PDF保存済み',
+  warning: 'PDFファイルの改変が疑われます'
 }
 
 interface BadgeProps {

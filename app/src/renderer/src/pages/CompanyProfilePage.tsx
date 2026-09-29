@@ -31,18 +31,24 @@ type FieldErrors = Partial<Record<keyof CompanyProfileInput, string>>
 interface CompanyProfilePageProps {
   onNavigateHome: () => void
   onNavigateClients: () => void
+  onNavigateDocuments: () => void
+  /**
+   * 見積書・請求書作成画面からの遷移であった場合にApp.tsxから渡される、保存完了後のコールバック。
+   * 指定されている場合、保存成功時は本画面上に留まらず遷移元へ戻る(詳細設計書4.10章手順6)。
+   * 未指定(トップ画面からの通常遷移)の場合は、従来どおり本画面上に完了メッセージを表示する。
+   */
+  onSaved?: () => void
 }
 
 /**
  * 自社情報・振込先設定画面[F-10]
  * 参照元: 基本設計書4.9章、詳細設計書3.9章・4.10章、5章(クラス設計 `CompanyProfilePage`)
- *
- * 保存後は画面遷移せず、本画面上に完了メッセージを表示する(詳細設計書4.10章手順6)。
- * 見積書・請求書作成画面からの遷移時に遷移元へ戻る導線は、当該画面(T-19・T-20)実装時に追加する。
  */
 export function CompanyProfilePage({
   onNavigateHome,
-  onNavigateClients
+  onNavigateClients,
+  onNavigateDocuments,
+  onSaved
 }: CompanyProfilePageProps): ReactElement {
   const [form, setForm] = useState<CompanyProfileInput>(EMPTY_FORM)
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -94,7 +100,11 @@ export function CompanyProfilePage({
     setSubmitting(true)
     try {
       await window.jimuhubApi.saveCompanyProfile(result.data)
-      setSaved(true)
+      if (onSaved) {
+        onSaved()
+      } else {
+        setSaved(true)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -107,6 +117,7 @@ export function CompanyProfilePage({
       pageTitle="自社情報・振込先の設定"
       onNavigateHome={onNavigateHome}
       onNavigateClients={onNavigateClients}
+      onNavigateDocuments={onNavigateDocuments}
       onComingSoon={(label) => setComingSoonLabel(label)}
     >
       {saved ? <Message variant="success">{COMPANY_MESSAGES.saveSuccess}</Message> : null}

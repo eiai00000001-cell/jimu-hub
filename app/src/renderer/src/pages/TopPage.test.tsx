@@ -14,6 +14,7 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): void {
     deactivateClient: vi.fn(),
     exportData: vi.fn(),
     importData: vi.fn(),
+    listQuotes: vi.fn().mockResolvedValue([]),
     ...overrides
   } as unknown as Window['jimuhubApi']
 }
@@ -27,6 +28,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
         onNavigateCompanyProfile={vi.fn()}
@@ -46,6 +48,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={onNavigateClients}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
         onNavigateCompanyProfile={vi.fn()}
@@ -60,6 +63,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
         onNavigateCompanyProfile={vi.fn()}
@@ -75,6 +79,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={onOpenExportDialog}
         onOpenImportDialog={vi.fn()}
         onNavigateCompanyProfile={vi.fn()}
@@ -90,6 +95,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={onOpenImportDialog}
         onNavigateCompanyProfile={vi.fn()}
@@ -105,6 +111,7 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
         onNavigateCompanyProfile={onNavigateCompanyProfile}

@@ -9,6 +9,7 @@ interface AppShellProps {
   headerActions?: ReactNode
   onNavigateHome: () => void
   onNavigateClients: () => void
+  onNavigateDocuments: () => void
   onComingSoon: (label: string) => void
   children: ReactNode
 }
@@ -27,6 +28,7 @@ export function AppShell({
   headerActions,
   onNavigateHome,
   onNavigateClients,
+  onNavigateDocuments,
   onComingSoon,
   children
 }: AppShellProps): ReactElement {
@@ -40,6 +42,7 @@ export function AppShell({
           active={activeMenu}
           onNavigateHome={onNavigateHome}
           onNavigateClients={onNavigateClients}
+          onNavigateDocuments={onNavigateDocuments}
           onComingSoon={onComingSoon}
         />
         <div className="main">
