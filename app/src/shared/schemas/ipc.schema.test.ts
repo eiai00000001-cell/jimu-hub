@@ -29,6 +29,10 @@ describe('ClientListFilterSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('sort=furigana_asc(既定値)を受け入れる', () => {
+    expect(ClientListFilterSchema.safeParse({ sort: 'furigana_asc' }).success).toBe(true)
+  })
+
   it('列挙値以外のsortは拒否する', () => {
     expect(ClientListFilterSchema.safeParse({ sort: 'unknown_sort' }).success).toBe(false)
   })

@@ -10,6 +10,7 @@ export const VALIDATION_MESSAGES = {
   postalCodeFormat: '郵便番号は半角数字とハイフンで入力してください(例: 123-4567)',
   phoneFormat: '電話番号は半角数字・ハイフン・括弧で入力してください',
   emailFormat: 'メールアドレスの形式が正しくありません',
+  furiganaFormat: 'フリガナは全角カタカナで入力してください(ひらがなは自動的に変換されます)',
   companyNameRequired: '氏名・屋号を入力してください',
   companyAddressRequired: '住所を入力してください'
 } as const

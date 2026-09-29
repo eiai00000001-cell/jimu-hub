@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { HONORIFICS } from '../types/client'
 import { VALIDATION_MESSAGES } from '../messages/messages'
+import { convertHiraganaToKatakana, isValidFurigana } from '../text/furigana'
 
 /**
  * 取引先の入力バリデーションスキーマ。
@@ -21,6 +22,19 @@ export const ClientInputSchema = z.object({
     .trim()
     .min(1, VALIDATION_MESSAGES.nameRequired)
     .max(100, VALIDATION_MESSAGES.maxLength('取引先名称', 100)),
+  // ひらがな入力は全角カタカナへ自動変換した上で、全角カタカナのみを許容する
+  // (コーディング規約.md 7.2章。詳細設計書v1.3からの追加制約)
+  furigana: z
+    .string()
+    .trim()
+    .transform(convertHiraganaToKatakana)
+    .pipe(
+      z
+        .string()
+        .max(100, VALIDATION_MESSAGES.maxLength('フリガナ', 100))
+        .refine(isValidFurigana, VALIDATION_MESSAGES.furiganaFormat)
+    )
+    .default(''),
   honorific: z.enum(HONORIFICS).default('(なし)'),
   contactPerson: optionalText('担当者名', 50).default(''),
   postalCode: optionalText('郵便番号', 8)

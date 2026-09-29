@@ -10,6 +10,7 @@ export const CLIENT_STATUSES = ['active', 'inactive'] as const
 export type ClientStatus = (typeof CLIENT_STATUSES)[number]
 
 export const CLIENT_SORT_KEYS = [
+  'furigana_asc',
   'name_asc',
   'name_desc',
   'created_at_desc',
@@ -24,6 +25,7 @@ export type ClientStatusFilter = (typeof CLIENT_STATUS_FILTERS)[number]
 export interface Client {
   id: number
   name: string
+  furigana: string | null
   honorific: Honorific
   contactPerson: string | null
   postalCode: string | null
