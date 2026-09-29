@@ -51,3 +51,21 @@ export function calculateTaxBreakdown(lines: LineItemForTaxCalculation[]): TaxBr
 
   return { subtotal10, taxAmount10, subtotal8, taxAmount8, totalAmount }
 }
+
+const WITHHOLDING_THRESHOLD = 1_000_000
+const WITHHOLDING_RATE_UNDER_THRESHOLD = 0.1021
+const WITHHOLDING_RATE_OVER_THRESHOLD = 0.2042
+
+/**
+ * 明細行(税抜金額)ごとの源泉徴収税額を算出する(詳細設計書4.16章、要件定義書10.2章R-11)。
+ * 円未満切り捨てで、行ごとに計算する(基本設計書2.2章)。
+ */
+export function calculateWithholdingTax(amount: number): number {
+  if (amount <= WITHHOLDING_THRESHOLD) {
+    return Math.floor(amount * WITHHOLDING_RATE_UNDER_THRESHOLD)
+  }
+  return Math.floor(
+    WITHHOLDING_THRESHOLD * WITHHOLDING_RATE_UNDER_THRESHOLD +
+      (amount - WITHHOLDING_THRESHOLD) * WITHHOLDING_RATE_OVER_THRESHOLD
+  )
+}

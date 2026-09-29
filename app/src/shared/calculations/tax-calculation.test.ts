@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { calculateLineAmount, calculateTaxBreakdown } from './tax-calculation'
+import {
+  calculateLineAmount,
+  calculateTaxBreakdown,
+  calculateWithholdingTax
+} from './tax-calculation'
 
 describe('calculateLineAmount', () => {
   it('数量×単価を算出する', () => {
@@ -63,5 +67,25 @@ describe('calculateTaxBreakdown', () => {
       taxAmount8: 0,
       totalAmount: 0
     })
+  })
+})
+
+describe('calculateWithholdingTax', () => {
+  it('100万円以下の場合は floor(金額 × 0.1021) を返す(詳細設計書4.16章)', () => {
+    expect(calculateWithholdingTax(300000)).toBe(30630)
+    expect(calculateWithholdingTax(0)).toBe(0)
+  })
+
+  it('境界値(ちょうど100万円)は100万円以下の式で計算する', () => {
+    expect(calculateWithholdingTax(1000000)).toBe(102100)
+  })
+
+  it('100万円を超える場合は floor(100万円×0.1021 + (金額-100万円)×0.2042) を返す', () => {
+    expect(calculateWithholdingTax(1100000)).toBe(122520)
+  })
+
+  it('端数は切り捨てる', () => {
+    // 999 × 0.1021 = 101.9979 → 101円
+    expect(calculateWithholdingTax(999)).toBe(101)
   })
 })
