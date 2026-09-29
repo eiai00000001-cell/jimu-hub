@@ -1,0 +1,27 @@
+import { z } from 'zod'
+import { VALIDATION_MESSAGES } from '../messages/messages'
+import { LineItemInputSchema } from './quote.schema'
+
+/**
+ * 請求書の入力バリデーションスキーマ。
+ * 参照元: 詳細設計書 4.14章(基本構成は見積書作成画面3.11章に準ずる。差分のみ記載)
+ */
+
+const optionalText = (label: string, max: number): z.ZodString =>
+  z.string().max(max, VALIDATION_MESSAGES.maxLength(label, max))
+
+/** 見積書の明細行スキーマ(LineItemInputSchema)に「源泉徴収対象」チェックを追加したもの(F-16) */
+export const InvoiceLineItemInputSchema = LineItemInputSchema.extend({
+  withholdingTarget: z.boolean().default(false)
+})
+export type InvoiceLineItemInput = z.infer<typeof InvoiceLineItemInputSchema>
+
+export const InvoiceInputSchema = z.object({
+  // 未選択は0で表す(取引先idは1始まりの自動採番のため、0は「未選択」を表す番兵値として扱う)
+  clientId: z.number().int().min(1, VALIDATION_MESSAGES.quoteClientRequired),
+  issueDate: z.string().trim().min(1, VALIDATION_MESSAGES.issueDateRequired),
+  dueDate: z.string().trim().default(''),
+  remarks: optionalText('備考', 500).default(''),
+  lineItems: z.array(InvoiceLineItemInputSchema).min(1, VALIDATION_MESSAGES.lineItemsRequired)
+})
+export type InvoiceInput = z.infer<typeof InvoiceInputSchema>

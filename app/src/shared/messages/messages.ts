@@ -63,6 +63,18 @@ export const QUOTE_MESSAGES = {
   hashMismatchWarning: 'PDFファイルの改変が疑われます'
 } as const
 
+export const INVOICE_MESSAGES = {
+  draftSaveSuccess: '請求書を下書き保存しました',
+  finalizeSuccess: 'PDFとして保存しました',
+  companyProfileNotSet: '自社情報が未設定です。先に自社情報を設定してください',
+  pdfSaveFailure: 'PDFの保存に失敗しました',
+  numberingFailure: '番号の採番に失敗しました。もう一度お試しください',
+  notFound: '対象の請求書が見つかりません',
+  finalizedNotEditable: 'PDF保存済みの請求書は編集できません',
+  emptyList: '該当する請求書がありません',
+  hashMismatchWarning: 'PDFファイルの改変が疑われます'
+} as const
+
 export const STARTUP_MESSAGES = {
   databaseError:
     'データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください'
