@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
-import type { JimuhubApi } from '@shared/ipc/api'
+import type { JimuhubApi, SaveQuoteDraftRequest, FinalizeQuoteRequest } from '@shared/ipc/api'
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
+import type { QuoteListFilter } from '@shared/types/quote'
 
 /**
  * contextBridgeでRendererに安全なAPIのみを公開するPreloadスクリプト。
@@ -21,7 +22,15 @@ const jimuhubApi: JimuhubApi = {
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
   saveCompanyProfile: (input: CompanyProfileInput) =>
-    ipcRenderer.invoke(IPC_CHANNELS.companySave, input)
+    ipcRenderer.invoke(IPC_CHANNELS.companySave, input),
+  listQuotes: (filter?: QuoteListFilter) => ipcRenderer.invoke(IPC_CHANNELS.quotesList, filter),
+  getQuote: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesGet, id),
+  saveQuoteDraft: (request: SaveQuoteDraftRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.quotesSaveDraft, request),
+  finalizeQuote: (request: FinalizeQuoteRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.quotesFinalize, request),
+  openQuotePdf: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesOpenPdf, id),
+  showQuotePdfInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesShowPdfInFolder, id)
 }
 
 contextBridge.exposeInMainWorld('jimuhubApi', jimuhubApi)

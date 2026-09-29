@@ -2,6 +2,8 @@ import type { Client, ClientListFilter } from '../types/client'
 import type { ClientInput } from '../schemas/client.schema'
 import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
+import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
+import type { QuoteInput } from '../schemas/quote.schema'
 
 /**
  * Renderer-Main間のIPCリクエスト/レスポンス型。
@@ -47,6 +49,23 @@ export interface SaveCompanyProfileResult {
   success: true
 }
 
+export type SaveQuoteDraftRequest = { id?: number } & QuoteInput
+export type FinalizeQuoteRequest = { id?: number } & QuoteInput
+
+export interface SaveQuoteDraftResult {
+  id: number
+}
+
+export interface FinalizeQuoteResult {
+  id: number
+  quoteNumber: string
+  pdfPath: string
+}
+
+export interface OpenPdfResult {
+  success: true
+}
+
 /**
  * PreloadがcontextBridgeで公開するAPIの型(window.jimuhubApi)。
  * Renderer側はこの型を通じてのみMainプロセスとやり取りする。
@@ -63,4 +82,11 @@ export interface JimuhubApi {
   importData(): Promise<ImportDataResult>
   getCompanyProfile(): Promise<CompanyProfile | null>
   saveCompanyProfile(input: CompanyProfileInput): Promise<SaveCompanyProfileResult>
+  listQuotes(filter?: QuoteListFilter): Promise<QuoteSummary[]>
+  /** 対象が存在しない場合はPromiseがreject(例外)される(QuoteService.getQuote()参照) */
+  getQuote(id: number): Promise<Quote>
+  saveQuoteDraft(request: SaveQuoteDraftRequest): Promise<SaveQuoteDraftResult>
+  finalizeQuote(request: FinalizeQuoteRequest): Promise<FinalizeQuoteResult>
+  openQuotePdf(id: number): Promise<OpenPdfResult>
+  showQuotePdfInFolder(id: number): Promise<OpenPdfResult>
 }

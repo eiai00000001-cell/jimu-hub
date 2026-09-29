@@ -16,5 +16,11 @@ export const IPC_CHANNELS = {
   dataImport: 'data:import',
   appStartupStatus: 'app:startup-status',
   companyGet: 'company:get',
-  companySave: 'company:save'
+  companySave: 'company:save',
+  quotesList: 'quotes:list',
+  quotesGet: 'quotes:get',
+  quotesSaveDraft: 'quotes:saveDraft',
+  quotesFinalize: 'quotes:finalize',
+  quotesOpenPdf: 'quotes:openPdf',
+  quotesShowPdfInFolder: 'quotes:showPdfInFolder'
 } as const
