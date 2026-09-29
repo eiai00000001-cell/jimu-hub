@@ -12,7 +12,14 @@ export const VALIDATION_MESSAGES = {
   emailFormat: 'メールアドレスの形式が正しくありません',
   furiganaFormat: 'フリガナは全角カタカナで入力してください(ひらがなは自動的に変換されます)',
   companyNameRequired: '氏名・屋号を入力してください',
-  companyAddressRequired: '住所を入力してください'
+  companyAddressRequired: '住所を入力してください',
+  quoteClientRequired: '取引先を選択してください',
+  issueDateRequired: '発行日を入力してください',
+  lineItemsRequired: '明細行を1行以上入力してください',
+  lineItemNameRequired: '品名を入力してください',
+  lineItemQuantityInvalid: '数量は0より大きい数値を、小数第2位までで入力してください',
+  lineItemUnitPriceInvalid: '単価は0以上の整数で入力してください',
+  validUntilBeforeIssueDate: '発行日より前の日付が入力されています(保存は可能です)'
 } as const
 
 export const CLIENT_MESSAGES = {
@@ -42,6 +49,18 @@ export const BACKUP_MESSAGES = {
 
 export const COMPANY_MESSAGES = {
   saveSuccess: '自社情報を保存しました'
+} as const
+
+export const QUOTE_MESSAGES = {
+  draftSaveSuccess: '見積書を下書き保存しました',
+  finalizeSuccess: 'PDFとして保存しました',
+  companyProfileNotSet: '自社情報が未設定です。先に自社情報を設定してください',
+  pdfSaveFailure: 'PDFの保存に失敗しました',
+  numberingFailure: '番号の採番に失敗しました。もう一度お試しください',
+  notFound: '対象の見積書が見つかりません',
+  finalizedNotEditable: 'PDF保存済みの見積書は編集できません',
+  emptyList: '該当する見積書がありません',
+  hashMismatchWarning: 'PDFファイルの改変が疑われます'
 } as const
 
 export const STARTUP_MESSAGES = {
