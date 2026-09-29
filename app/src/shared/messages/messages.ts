@@ -9,7 +9,9 @@ export const VALIDATION_MESSAGES = {
   maxLength: (label: string, max: number): string => `${label}は${max}文字以内で入力してください`,
   postalCodeFormat: '郵便番号は半角数字とハイフンで入力してください(例: 123-4567)',
   phoneFormat: '電話番号は半角数字・ハイフン・括弧で入力してください',
-  emailFormat: 'メールアドレスの形式が正しくありません'
+  emailFormat: 'メールアドレスの形式が正しくありません',
+  companyNameRequired: '氏名・屋号を入力してください',
+  companyAddressRequired: '住所を入力してください'
 } as const
 
 export const CLIENT_MESSAGES = {
@@ -35,6 +37,10 @@ export const BACKUP_MESSAGES = {
   importTransactionFailure: '復元に失敗しました。データは復元前の状態に戻しました',
   importSafeguardRestoreFailure:
     '復元に失敗した上、退避データへの復旧にも失敗しました。データが破損している可能性があります。エクスポートファイルからの復元をお試しいただくか、サポートにご連絡ください'
+} as const
+
+export const COMPANY_MESSAGES = {
+  saveSuccess: '自社情報を保存しました'
 } as const
 
 export const STARTUP_MESSAGES = {
