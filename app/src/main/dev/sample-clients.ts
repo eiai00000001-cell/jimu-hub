@@ -8,6 +8,7 @@ import type { ClientInput } from '@shared/schemas/client.schema'
 export const SAMPLE_CLIENTS: ClientInput[] = [
   {
     name: 'あおぞらデザイン合同会社',
+    furigana: 'アオゾラデザインゴウドウガイシャ',
     honorific: '御中',
     contactPerson: '青山葵',
     postalCode: '150-0001',
@@ -19,6 +20,7 @@ export const SAMPLE_CLIENTS: ClientInput[] = [
   },
   {
     name: 'かがやき工業株式会社',
+    furigana: 'カガヤキコウギョウカブシキガイシャ',
     honorific: '様',
     contactPerson: '川田一輝',
     postalCode: '541-0041',
@@ -30,6 +32,7 @@ export const SAMPLE_CLIENTS: ClientInput[] = [
   },
   {
     name: 'さくら商事株式会社',
+    furigana: 'サクラショウジカブシキガイシャ',
     honorific: '(なし)',
     contactPerson: '佐々木さくら',
     postalCode: '060-0001',
@@ -41,6 +44,7 @@ export const SAMPLE_CLIENTS: ClientInput[] = [
   },
   {
     name: 'たいよう建築事務所',
+    furigana: 'タイヨウケンチクジムショ',
     honorific: '御中',
     contactPerson: '田中太陽',
     postalCode: '460-0002',
@@ -52,6 +56,7 @@ export const SAMPLE_CLIENTS: ClientInput[] = [
   },
   {
     name: 'なかよし文具株式会社',
+    furigana: 'ナカヨシブングカブシキガイシャ',
     honorific: '様',
     contactPerson: '中村よし子',
     postalCode: '810-0001',

@@ -10,6 +10,9 @@ export const CURRENT_SCHEMA_VERSION = 1
 export const BackupClientRecordSchema = z.object({
   id: z.number().int(),
   name: z.string(),
+  // schemaVersion1のエクスポートファイル(furiganaを持たない)との後方互換のため、
+  // 省略可能(未指定時はnull)とする(T-26でclientsにfurigana列を追加)
+  furigana: z.string().nullable().optional(),
   honorific: z.string(),
   contactPerson: z.string().nullable(),
   postalCode: z.string().nullable(),

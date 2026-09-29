@@ -9,6 +9,7 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 export const clients = sqliteTable('clients', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  furigana: text('furigana'),
   honorific: text('honorific').notNull().default('(なし)'),
   contactPerson: text('contact_person'),
   postalCode: text('postal_code'),

@@ -21,6 +21,7 @@ import type { ClientInput } from '@shared/schemas/client.schema'
 
 const baseInput: ClientInput = {
   name: '株式会社サンプル',
+  furigana: 'カブシキガイシャサンプル',
   honorific: '御中',
   contactPerson: '',
   postalCode: '',
