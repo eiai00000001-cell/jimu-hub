@@ -83,3 +83,43 @@ export const quoteLineItems = sqliteTable('quote_line_items', {
   taxRate: integer('tax_rate').notNull(),
   amount: integer('amount').notNull().default(0)
 })
+
+export const invoices = sqliteTable('invoices', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  invoiceNumber: text('invoice_number'),
+  clientId: integer('client_id').notNull(),
+  sourceQuoteId: integer('source_quote_id'),
+  issueDate: text('issue_date').notNull(),
+  dueDate: text('due_date'),
+  remarks: text('remarks'),
+  subtotal10: integer('subtotal_10').notNull().default(0),
+  taxAmount10: integer('tax_amount_10').notNull().default(0),
+  subtotal8: integer('subtotal_8').notNull().default(0),
+  taxAmount8: integer('tax_amount_8').notNull().default(0),
+  totalAmount: integer('total_amount').notNull().default(0),
+  withholdingTaxAmount: integer('withholding_tax_amount').notNull().default(0),
+  billingAmount: integer('billing_amount').notNull().default(0),
+  invoiceFormat: text('invoice_format'),
+  status: text('status').notNull().default('draft'),
+  paymentStatus: text('payment_status').notNull().default('unpaid'),
+  paymentDate: text('payment_date'),
+  pdfPath: text('pdf_path'),
+  pdfHash: text('pdf_hash'),
+  pdfHashMismatch: integer('pdf_hash_mismatch').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+})
+
+export const invoiceLineItems = sqliteTable('invoice_line_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  invoiceId: integer('invoice_id').notNull(),
+  lineNo: integer('line_no').notNull(),
+  name: text('name').notNull(),
+  quantity: real('quantity').notNull().default(1),
+  unit: text('unit'),
+  unitPrice: integer('unit_price').notNull().default(0),
+  taxRate: integer('tax_rate').notNull(),
+  amount: integer('amount').notNull().default(0),
+  withholdingTarget: integer('withholding_target').notNull().default(0),
+  withholdingAmount: integer('withholding_amount').notNull().default(0)
+})
