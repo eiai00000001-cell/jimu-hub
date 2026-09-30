@@ -221,8 +221,7 @@ describe('App', () => {
           unitPrice: 1000,
           taxRate: 10,
           amount: 1000,
-          withholdingTarget: false,
-          withholdingAmount: 0
+          withholdingTarget: false
         }
       ],
       createdAt: '',

@@ -133,7 +133,6 @@ export function InvoiceDetailPage({
                   <th>単位</th>
                   <th>単価</th>
                   <th>税率</th>
-                  <th className="amount">源泉徴収税額</th>
                   <th className="amount">金額</th>
                 </tr>
               </thead>
@@ -145,7 +144,6 @@ export function InvoiceDetailPage({
                     <td>{line.unit}</td>
                     <td>{formatYen(line.unitPrice)}</td>
                     <td>{line.taxRate}%</td>
-                    <td className="amount">{formatYen(line.withholdingAmount)}</td>
                     <td className="amount">{formatYen(line.amount)}</td>
                   </tr>
                 ))}

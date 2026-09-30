@@ -52,13 +52,28 @@ export function calculateTaxBreakdown(lines: LineItemForTaxCalculation[]): TaxBr
   return { subtotal10, taxAmount10, subtotal8, taxAmount8, totalAmount }
 }
 
+export interface LineItemForWithholding {
+  quantity: number
+  unitPrice: number
+  withholdingTarget: boolean
+}
+
+/** 源泉徴収対象行(withholdingTarget=true)の税抜金額の合計に対して、段階計算を1回適用する */
+export function calculateInvoiceWithholdingTax(lines: LineItemForWithholding[]): number {
+  const targetTotal = lines
+    .filter((line) => line.withholdingTarget)
+    .reduce((sum, line) => sum + calculateLineAmount(line.quantity, line.unitPrice), 0)
+  return calculateWithholdingTax(targetTotal)
+}
+
 const WITHHOLDING_THRESHOLD = 1_000_000
 const WITHHOLDING_RATE_UNDER_THRESHOLD = 0.1021
 const WITHHOLDING_RATE_OVER_THRESHOLD = 0.2042
 
 /**
- * 明細行(税抜金額)ごとの源泉徴収税額を算出する(詳細設計書4.16章、要件定義書10.2章R-11)。
- * 円未満切り捨てで、行ごとに計算する(基本設計書2.2章)。
+ * 源泉徴収税額(段階計算)を算出する。円未満切り捨て。
+ * 100万円の基準は1回の支払金額単位のため、請求書では「源泉徴収対象行の税抜金額の合計」に
+ * 対して1回だけ適用する(`calculateInvoiceWithholdingTax`参照。詳細設計書4.16章からの変更)。
  */
 export function calculateWithholdingTax(amount: number): number {
   if (amount <= WITHHOLDING_THRESHOLD) {

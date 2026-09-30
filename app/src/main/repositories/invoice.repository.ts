@@ -4,7 +4,7 @@ import { clients, invoices, invoiceLineItems } from '../db/schema'
 import {
   calculateLineAmount,
   calculateTaxBreakdown,
-  calculateWithholdingTax
+  calculateInvoiceWithholdingTax
 } from '@shared/calculations/tax-calculation'
 import type {
   Invoice,
@@ -32,27 +32,25 @@ function mapLineItemRow(row: typeof invoiceLineItems.$inferSelect): InvoiceLineI
     unitPrice: row.unitPrice,
     taxRate: row.taxRate as InvoiceLineItem['taxRate'],
     amount: row.amount,
-    withholdingTarget: row.withholdingTarget === 1,
-    withholdingAmount: row.withholdingAmount
+    withholdingTarget: row.withholdingTarget === 1
   }
 }
 
-/** 明細行ごとの金額・源泉徴収税額と、請求書全体の税額・源泉徴収税額合計・請求金額を算出する(詳細設計書4.14・4.16章) */
+/**
+ * 明細行ごとの金額と、請求書全体の税額・源泉徴収税額・請求金額を算出する(詳細設計書4.14・4.16章)。
+ * 源泉徴収税額は、対象行の税抜金額の合計に段階計算を1回適用する(行ごとには算出しない)。
+ */
 function calculateTotals(input: InvoiceInput): {
-  lines: Array<{ amount: number; withholdingAmount: number }>
+  lines: Array<{ amount: number }>
   breakdown: ReturnType<typeof calculateTaxBreakdown>
   withholdingTaxAmount: number
   billingAmount: number
 } {
-  const lines = input.lineItems.map((line) => {
-    const amount = calculateLineAmount(line.quantity, line.unitPrice)
-    return {
-      amount,
-      withholdingAmount: line.withholdingTarget ? calculateWithholdingTax(amount) : 0
-    }
-  })
+  const lines = input.lineItems.map((line) => ({
+    amount: calculateLineAmount(line.quantity, line.unitPrice)
+  }))
   const breakdown = calculateTaxBreakdown(input.lineItems)
-  const withholdingTaxAmount = lines.reduce((sum, line) => sum + line.withholdingAmount, 0)
+  const withholdingTaxAmount = calculateInvoiceWithholdingTax(input.lineItems)
   return {
     lines,
     breakdown,
@@ -243,7 +241,7 @@ export class InvoiceRepository {
   private insertLineItems(
     invoiceId: number,
     input: InvoiceInput,
-    computed: Array<{ amount: number; withholdingAmount: number }>
+    computed: Array<{ amount: number }>
   ): void {
     input.lineItems.forEach((line, index) => {
       const calc = computed[index]
@@ -259,7 +257,8 @@ export class InvoiceRepository {
           taxRate: line.taxRate,
           amount: calc?.amount ?? 0,
           withholdingTarget: line.withholdingTarget ? 1 : 0,
-          withholdingAmount: calc?.withholdingAmount ?? 0
+          // 行ごとの源泉徴収税額は算出しない(常に0。列はスキーマ変更回避のため残置)
+          withholdingAmount: 0
         })
         .run()
     })

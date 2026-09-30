@@ -37,8 +37,7 @@ const sampleInvoice: Invoice = {
       unitPrice: 300000,
       taxRate: 10,
       amount: 300000,
-      withholdingTarget: true,
-      withholdingAmount: 30630
+      withholdingTarget: true
     },
     {
       id: 2,
@@ -49,8 +48,7 @@ const sampleInvoice: Invoice = {
       unitPrice: 30000,
       taxRate: 10,
       amount: 30000,
-      withholdingTarget: false,
-      withholdingAmount: 0
+      withholdingTarget: false
     }
   ],
   createdAt: '2026-09-22T00:00:00.000Z',
@@ -85,9 +83,9 @@ describe('buildInvoicePdfHtml', () => {
     expect(html).toContain('登録番号: T1234567890123')
   })
 
-  it('源泉徴収対象行がある場合、源泉徴収税額の列・内訳行を表示する', () => {
+  it('源泉徴収対象行がある場合、内訳行に源泉徴収税額(合計)のみ表示する(行ごとの列は設けない)', () => {
     const html = buildInvoicePdfHtml(sampleInvoice, company)
-    expect(html).toContain('源泉徴収税額</th>')
+    expect(html).not.toContain('源泉徴収税額</th>') // 行ごとの列は設けない
     expect(html).toContain('源泉徴収税額(合計)')
     expect(html).toContain('−¥30,630')
     expect(html).toContain('合計金額(税込)')
@@ -101,8 +99,7 @@ describe('buildInvoicePdfHtml', () => {
         billingAmount: 363000,
         lineItems: sampleInvoice.lineItems.map((l) => ({
           ...l,
-          withholdingTarget: false,
-          withholdingAmount: 0
+          withholdingTarget: false
         }))
       },
       company

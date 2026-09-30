@@ -72,8 +72,60 @@ describe('InvoiceRepository', () => {
     expect(found?.withholdingTaxAmount).toBe(30630)
     expect(found?.billingAmount).toBe(332370)
     expect(found?.lineItems[0]?.withholdingTarget).toBe(true)
-    expect(found?.lineItems[0]?.withholdingAmount).toBe(30630)
-    expect(found?.lineItems[1]?.withholdingAmount).toBe(0)
+  })
+
+  it('源泉徴収税額は対象行の税抜金額合計に段階計算を1回適用する(80万+80万 → 224,620円)', () => {
+    const line = (name: string, unitPrice: number) => ({
+      name,
+      quantity: 1,
+      unit: '式',
+      unitPrice,
+      taxRate: 10 as const,
+      withholdingTarget: true
+    })
+    const { id } = repository.insert({
+      ...baseInput,
+      clientId,
+      lineItems: [line('A', 800000), line('B', 800000)]
+    })
+    const found = repository.findById(id)
+    // floor(1,000,000 x 0.1021 + 600,000 x 0.2042) = 102,100 + 122,520
+    expect(found?.withholdingTaxAmount).toBe(224620)
+    expect(found?.billingAmount).toBe(found!.totalAmount - 224620)
+  })
+
+  it('源泉徴収対象でない行は源泉徴収の対象合計に含めない', () => {
+    const { id } = repository.insert({
+      ...baseInput,
+      clientId,
+      lineItems: [
+        {
+          name: '対象',
+          quantity: 1,
+          unit: '',
+          unitPrice: 300000,
+          taxRate: 10,
+          withholdingTarget: true
+        },
+        {
+          name: '対象外',
+          quantity: 1,
+          unit: '',
+          unitPrice: 900000,
+          taxRate: 10,
+          withholdingTarget: false
+        }
+      ]
+    })
+    expect(repository.findById(id)?.withholdingTaxAmount).toBe(30630)
+  })
+
+  it('行ごとの源泉徴収税額(withholding_amount列)は使わず0のまま保存する', () => {
+    const { id } = repository.insert({ ...baseInput, clientId })
+    const row = db.sqlite
+      .prepare('SELECT withholding_amount FROM invoice_line_items WHERE invoice_id = ?')
+      .all(id) as Array<{ withholding_amount: number }>
+    expect(row.every((r) => r.withholding_amount === 0)).toBe(true)
   })
 
   it('源泉徴収対象行がない場合、源泉徴収税額は0で請求金額=合計金額', () => {

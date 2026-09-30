@@ -39,8 +39,7 @@ const draft: Invoice = {
       unitPrice: 88000,
       taxRate: 10,
       amount: 88000,
-      withholdingTarget: false,
-      withholdingAmount: 0
+      withholdingTarget: false
     }
   ],
   createdAt: '',
@@ -57,7 +56,7 @@ const finalized: Invoice = {
   withholdingTaxAmount: 8980,
   billingAmount: 87820,
   pdfPath: '/tmp/a.pdf',
-  lineItems: [{ ...draft.lineItems[0]!, withholdingTarget: true, withholdingAmount: 8980 }]
+  lineItems: [{ ...draft.lineItems[0]!, withholdingTarget: true }]
 }
 
 function setup(getInvoice: unknown) {

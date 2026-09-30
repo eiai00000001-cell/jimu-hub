@@ -671,11 +671,6 @@ button {
   width: 10%;
   text-align: center;
 }
-.line-table td.col-whamt {
-  width: 10%;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
 .line-table td.col-amount {
   width: 13%;
   text-align: right;

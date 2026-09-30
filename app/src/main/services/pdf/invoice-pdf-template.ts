@@ -71,11 +71,8 @@ export function buildInvoicePdfHtml(invoice: Invoice, companyProfile: CompanyPro
     ? `<div class="sub-info-row"><div>支払期限: ${formatDateJapanese(invoice.dueDate)}</div></div>`
     : ''
 
-  const withholdingHeader = hasWithholding
-    ? '<th class="num" style="width:15%;">源泉徴収税額</th>'
-    : ''
-  const nameWidth = hasWithholding ? 32 : 38
-  const amountWidth = hasWithholding ? 17 : 20
+  const nameWidth = 38
+  const amountWidth = 20
 
   const rows = invoice.lineItems
     .map(
@@ -86,7 +83,6 @@ export function buildInvoicePdfHtml(invoice: Invoice, companyProfile: CompanyPro
           <td>${escapeHtml(line.unit ?? '')}</td>
           <td class="num">${formatQuantity(line.unitPrice)}</td>
           <td class="num">${line.taxRate}%</td>
-          ${hasWithholding ? `<td class="num">${formatQuantity(line.withholdingAmount)}</td>` : ''}
           <td class="num">${formatQuantity(line.amount)}</td>
         </tr>
       `
@@ -141,7 +137,6 @@ export function buildInvoicePdfHtml(invoice: Invoice, companyProfile: CompanyPro
           <th style="width:7%;">単位</th>
           <th class="num" style="width:13%;">単価</th>
           <th class="num" style="width:8%;">税率</th>
-          ${withholdingHeader}
           <th class="num" style="width:${amountWidth}%;">金額</th>
         </tr>
       </thead>

@@ -12,7 +12,7 @@ import {
 import {
   calculateLineAmount,
   calculateTaxBreakdown,
-  calculateWithholdingTax
+  calculateInvoiceWithholdingTax
 } from '@shared/calculations/tax-calculation'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 import type { CompanyProfile } from '@shared/types/company-profile'
@@ -245,10 +245,8 @@ export function InvoiceFormPage({
   const lineAmounts = rows.map((row) =>
     calculateLineAmount(Number(row.quantity) || 0, Number(row.unitPrice) || 0)
   )
-  const withholdingAmounts = rows.map((row, i) =>
-    row.withholdingTarget ? calculateWithholdingTax(lineAmounts[i] ?? 0) : 0
-  )
-  const withholdingTotal = withholdingAmounts.reduce((sum, value) => sum + value, 0)
+  // 源泉徴収税額は対象行の税抜金額合計に対して1回だけ段階計算する(行ごとには算出しない)
+  const withholdingTotal = calculateInvoiceWithholdingTax(lineItemInputs)
   const billingAmount = breakdown.totalAmount - withholdingTotal
   const dueDateWarning =
     dueDate !== '' && issueDate !== '' && dueDate < issueDate
@@ -394,7 +392,6 @@ export function InvoiceFormPage({
             <th>単価</th>
             <th>税率</th>
             <th style={{ textAlign: 'center' }}>源泉徴収対象</th>
-            <th style={{ textAlign: 'right' }}>源泉徴収税額</th>
             <th style={{ textAlign: 'right' }}>金額</th>
             <th></th>
           </tr>
@@ -461,9 +458,6 @@ export function InvoiceFormPage({
                     checked={row.withholdingTarget}
                     onChange={(e) => updateRow(index, 'withholdingTarget', e.target.checked)}
                   />
-                </td>
-                <td className="col-whamt">
-                  {`¥${(withholdingAmounts[index] ?? 0).toLocaleString('ja-JP')}`}
                 </td>
                 <td className="col-amount">{`¥${amount.toLocaleString('ja-JP')}`}</td>
                 <td className="col-del">

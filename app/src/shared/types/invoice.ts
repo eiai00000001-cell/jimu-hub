@@ -29,7 +29,6 @@ export interface InvoiceLineItem {
   taxRate: TaxRate
   amount: number
   withholdingTarget: boolean
-  withholdingAmount: number
 }
 
 /** 請求書の1レコード(詳細取得時の形。明細行・取引先名を含む) */

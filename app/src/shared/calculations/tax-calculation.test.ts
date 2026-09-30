@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateLineAmount,
   calculateTaxBreakdown,
-  calculateWithholdingTax
+  calculateWithholdingTax,
+  calculateInvoiceWithholdingTax
 } from './tax-calculation'
 
 describe('calculateLineAmount', () => {
@@ -87,5 +88,37 @@ describe('calculateWithholdingTax', () => {
   it('端数は切り捨てる', () => {
     // 999 × 0.1021 = 101.9979 → 101円
     expect(calculateWithholdingTax(999)).toBe(101)
+  })
+})
+
+describe('calculateInvoiceWithholdingTax(対象行の合計に1回だけ段階計算)', () => {
+  const target = (unitPrice: number, withholdingTarget = true, quantity = 1) => ({
+    quantity,
+    unitPrice,
+    withholdingTarget
+  })
+
+  it('対象合計がちょうど100万円の場合は100万円以下の式で計算する', () => {
+    expect(calculateInvoiceWithholdingTax([target(500000), target(500000)])).toBe(102100)
+  })
+
+  it('対象合計が100万円+1円の場合は超過分に0.2042を適用する', () => {
+    expect(calculateInvoiceWithholdingTax([target(500000), target(500001)])).toBe(102100)
+    // floor(102,100 + 1 x 0.2042) = 102,100(端数切り捨て)
+    expect(calculateInvoiceWithholdingTax([target(1000010)])).toBe(102102)
+  })
+
+  it('複数行で合計が100万円超の場合、行ごとではなく合計に段階計算する(80万+80万 → 224,620円)', () => {
+    expect(calculateInvoiceWithholdingTax([target(800000), target(800000)])).toBe(224620)
+    // 行ごとに計算すると 81,680 x 2 = 163,360 となり異なる
+  })
+
+  it('対象外の行は合計に含めない', () => {
+    expect(calculateInvoiceWithholdingTax([target(300000), target(900000, false)])).toBe(30630)
+  })
+
+  it('対象行がない場合は0', () => {
+    expect(calculateInvoiceWithholdingTax([target(300000, false)])).toBe(0)
+    expect(calculateInvoiceWithholdingTax([])).toBe(0)
   })
 })

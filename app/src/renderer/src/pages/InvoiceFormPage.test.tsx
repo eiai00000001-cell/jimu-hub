@@ -53,8 +53,7 @@ const draftInvoice: Invoice = {
       unitPrice: 10000,
       taxRate: 10,
       amount: 10000,
-      withholdingTarget: true,
-      withholdingAmount: 1021
+      withholdingTarget: true
     }
   ],
   createdAt: '',
@@ -129,7 +128,7 @@ describe('InvoiceFormPage', () => {
     await waitFor(() => expect(onSavedDraft).toHaveBeenCalledWith(10))
   })
 
-  it('源泉徴収対象にすると行ごとの源泉徴収税額・源泉徴収合計・請求金額が再計算される', async () => {
+  it('源泉徴収対象にすると源泉徴収合計・請求金額が再計算される', async () => {
     setupApi()
     renderNew()
     await screen.findByText('サンプル商事株式会社')
@@ -140,8 +139,7 @@ describe('InvoiceFormPage', () => {
     await userEvent.click(screen.getByLabelText('源泉徴収対象1'))
 
     // 300,000 x 0.1021 = 30,630 / 合計330,000円(税込) - 30,630 = 299,370
-    await waitFor(() => expect(screen.getAllByText('¥30,630').length).toBeGreaterThan(0))
-    expect(screen.getByText('-¥30,630')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('-¥30,630')).toBeInTheDocument())
     expect(screen.getByText('¥299,370')).toBeInTheDocument()
   })
 
