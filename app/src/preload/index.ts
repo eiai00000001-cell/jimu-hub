@@ -1,10 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
-import type { JimuhubApi, SaveQuoteDraftRequest, FinalizeQuoteRequest } from '@shared/ipc/api'
+import type {
+  JimuhubApi,
+  SaveQuoteDraftRequest,
+  FinalizeQuoteRequest,
+  SaveInvoiceDraftRequest,
+  FinalizeInvoiceRequest
+} from '@shared/ipc/api'
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
 import type { QuoteListFilter } from '@shared/types/quote'
+import type { InvoiceListFilter } from '@shared/types/invoice'
 
 /**
  * contextBridgeでRendererに安全なAPIのみを公開するPreloadスクリプト。
@@ -30,7 +37,17 @@ const jimuhubApi: JimuhubApi = {
   finalizeQuote: (request: FinalizeQuoteRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.quotesFinalize, request),
   openQuotePdf: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesOpenPdf, id),
-  showQuotePdfInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesShowPdfInFolder, id)
+  showQuotePdfInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesShowPdfInFolder, id),
+  listInvoices: (filter?: InvoiceListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.invoicesList, filter),
+  getInvoice: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesGet, id),
+  saveInvoiceDraft: (request: SaveInvoiceDraftRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.invoicesSaveDraft, request),
+  finalizeInvoice: (request: FinalizeInvoiceRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.invoicesFinalize, request),
+  openInvoicePdf: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesOpenPdf, id),
+  showInvoicePdfInFolder: (id: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.invoicesShowPdfInFolder, id)
 }
 
 contextBridge.exposeInMainWorld('jimuhubApi', jimuhubApi)

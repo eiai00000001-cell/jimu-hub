@@ -9,6 +9,8 @@ import { CompanyProfileRepository } from './repositories/company-profile.reposit
 import { CompanyService } from './services/company.service'
 import { DocumentNumberSequenceRepository } from './repositories/document-number-sequence.repository'
 import { QuoteRepository } from './repositories/quote.repository'
+import { InvoiceRepository } from './repositories/invoice.repository'
+import { InvoiceService } from './services/invoice.service'
 import { NumberingService } from './services/numbering.service'
 import { PdfService } from './services/pdf.service'
 import { QuoteService } from './services/quote.service'
@@ -17,6 +19,7 @@ import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
 import { QuotesIpcHandler } from './ipc/quotes.ipc-handler'
+import { InvoicesIpcHandler } from './ipc/invoices.ipc-handler'
 import { initializeStartup } from './startup'
 import { applyWindowSecurity, denyAllPermissionRequests, readDevOnlyEnv } from './app-security'
 
@@ -108,10 +111,19 @@ app.whenReady().then(() => {
       pdfService
     })
 
+    const invoiceService = new InvoiceService({
+      database,
+      repository: new InvoiceRepository(database),
+      companyProfileRepository,
+      numberingService,
+      pdfService
+    })
+
     new ClientIpcHandler(clientService).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
     new QuotesIpcHandler(quoteService).registerHandlers()
+    new InvoicesIpcHandler(invoiceService).registerHandlers()
   }
 
   createMainWindow()

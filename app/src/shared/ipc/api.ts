@@ -4,6 +4,8 @@ import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
 import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
 import type { QuoteInput } from '../schemas/quote.schema'
+import type { Invoice, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
+import type { InvoiceInput } from '../schemas/invoice.schema'
 
 /**
  * Renderer-Main間のIPCリクエスト/レスポンス型。
@@ -62,6 +64,19 @@ export interface FinalizeQuoteResult {
   pdfPath: string
 }
 
+export type SaveInvoiceDraftRequest = { id?: number } & InvoiceInput
+export type FinalizeInvoiceRequest = { id?: number } & InvoiceInput
+
+export interface SaveInvoiceDraftResult {
+  id: number
+}
+
+export interface FinalizeInvoiceResult {
+  id: number
+  invoiceNumber: string
+  pdfPath: string
+}
+
 export interface OpenPdfResult {
   success: true
 }
@@ -89,4 +104,11 @@ export interface JimuhubApi {
   finalizeQuote(request: FinalizeQuoteRequest): Promise<FinalizeQuoteResult>
   openQuotePdf(id: number): Promise<OpenPdfResult>
   showQuotePdfInFolder(id: number): Promise<OpenPdfResult>
+  listInvoices(filter?: InvoiceListFilter): Promise<InvoiceSummary[]>
+  /** 対象が存在しない場合はPromiseがreject(例外)される(InvoiceService.getInvoice()参照) */
+  getInvoice(id: number): Promise<Invoice>
+  saveInvoiceDraft(request: SaveInvoiceDraftRequest): Promise<SaveInvoiceDraftResult>
+  finalizeInvoice(request: FinalizeInvoiceRequest): Promise<FinalizeInvoiceResult>
+  openInvoicePdf(id: number): Promise<OpenPdfResult>
+  showInvoicePdfInFolder(id: number): Promise<OpenPdfResult>
 }
