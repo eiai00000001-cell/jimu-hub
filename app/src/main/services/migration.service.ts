@@ -6,19 +6,32 @@ import type { Database } from '../db/db'
  * データベース・エクスポートデータのスキーマバージョン差異を吸収するApplication Service層。
  * 参照元: 詳細設計書 4.1章手順2、4.3章手順4、5章(クラス設計 `MigrationService`)、6章
  *
- * `migrate()`はエクスポートファイル(JSON)のマイグレーションを、`applyMigrations()`は
+ * `migrateExportData()`はエクスポートファイル(JSON)のマイグレーションを、`applyMigrations()`は
  * データベース自体のマイグレーション(既存インストールへの`ALTER TABLE`適用)を担う。
- * 現時点ではエクスポートファイル側のスキーマバージョンは1のみ存在するため`migrate()`は恒等関数だが、
- * DB側は本イテレーションでバージョン3まで進んでいるため`applyMigrations()`を新設した
- * (T-34でエクスポートファイル側もバージョン3に対応する際、`migrate()`にも変換処理を追加する)。
  */
 export class MigrationService {
-  migrate(data: BackupFile, fromVersion: number): BackupFile {
-    if (fromVersion === CURRENT_SCHEMA_VERSION) {
+  /**
+   * エクスポートファイルのデータを、現行スキーマバージョンの構造へ変換する(詳細設計書4.3章手順4)。
+   * 省略可能なテーブル(自社情報・見積書・請求書等)はスキーマ検証時に空/なしで補われているため、
+   * ここでは旧バージョンに存在しない項目(schemaVersion 2以前のpdfHashMismatch)を既定値で補う。
+   * schemaVersion 1のファイルは取引先のみを持ち、furiganaは省略(null扱い)される。
+   */
+  migrateExportData(data: BackupFile, fromVersion: number): BackupFile {
+    if (fromVersion >= CURRENT_SCHEMA_VERSION) {
       return data
     }
-    // 将来的にfromVersion < CURRENT_SCHEMA_VERSIONの変換ステップをここに追加する。
-    return data
+    const withMismatchDefault = (
+      rows: BackupFile['data']['quotes']
+    ): BackupFile['data']['quotes'] => rows.map((row) => ({ pdfHashMismatch: false, ...row }))
+    return {
+      ...data,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      data: {
+        ...data.data,
+        quotes: withMismatchDefault(data.data.quotes),
+        invoices: withMismatchDefault(data.data.invoices)
+      }
+    }
   }
 
   /**

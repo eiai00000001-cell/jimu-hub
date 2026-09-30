@@ -38,6 +38,7 @@ export interface ExportDataResult {
 export interface ImportDataResult {
   success: boolean
   importedCount?: number
+  pdfHashMismatchCount?: number
   error?: string
 }
 

@@ -24,7 +24,12 @@ const sampleData: BackupFile = {
         createdAt: '2026-09-26T12:00:00.000Z',
         updatedAt: '2026-09-26T12:00:00.000Z'
       }
-    ]
+    ],
+    companyProfile: null,
+    quotes: [],
+    quoteLineItems: [],
+    invoices: [],
+    invoiceLineItems: []
   }
 }
 
@@ -56,8 +61,32 @@ CREATE TABLE app_meta (
 describe('MigrationService', () => {
   it('現行バージョンと一致する場合はそのまま返す', () => {
     const service = new MigrationService()
-    const result = service.migrate(sampleData, CURRENT_SCHEMA_VERSION)
+    const result = service.migrateExportData(sampleData, CURRENT_SCHEMA_VERSION)
     expect(result).toEqual(sampleData)
+  })
+
+  it('旧バージョン(schemaVersion 2)のデータは現行バージョンへ変換し、pdfHashMismatchをfalseで補う', () => {
+    const service = new MigrationService()
+    const old: BackupFile = {
+      ...sampleData,
+      schemaVersion: 2,
+      data: { ...sampleData.data, quotes: [{ id: 1, quoteNumber: '2026-001' }] }
+    }
+    const result = service.migrateExportData(old, 2)
+    expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(result.data.quotes[0]).toEqual({
+      id: 1,
+      quoteNumber: '2026-001',
+      pdfHashMismatch: false
+    })
+  })
+
+  it('schemaVersion 1(取引先のみ)のデータも現行構造へ変換できる', () => {
+    const service = new MigrationService()
+    const result = service.migrateExportData({ ...sampleData, schemaVersion: 1 }, 1)
+    expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(result.data.quotes).toEqual([])
+    expect(result.data.companyProfile).toBeNull()
   })
 
   describe('applyMigrations(既存インストールのDBスキーマ移行)', () => {

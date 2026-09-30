@@ -94,6 +94,7 @@ app.whenReady().then(() => {
       migrationService: new MigrationService(),
       dbFilePath,
       backupsDir,
+      documentsDir,
       appVersion: app.getVersion()
     })
 

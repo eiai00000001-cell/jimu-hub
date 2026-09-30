@@ -1,10 +1,15 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import * as fsModule from 'node:fs'
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import AdmZip from 'adm-zip'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
+import { QuoteRepository } from '../repositories/quote.repository'
+import { InvoiceRepository } from '../repositories/invoice.repository'
+import { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import { MigrationService } from './migration.service'
 import { BackupService } from './backup.service'
 import { CURRENT_SCHEMA_VERSION, type BackupFile } from '@shared/backup/backup-file'
@@ -43,6 +48,11 @@ function buildBrokenPayload(): BackupFile {
     appVersion: '0.1.0',
     exportedAt: '2026-09-26T12:00:00.000Z',
     data: {
+      companyProfile: null,
+      quotes: [],
+      quoteLineItems: [],
+      invoices: [],
+      invoiceLineItems: [],
       clients: [
         {
           id: 999,
@@ -69,6 +79,7 @@ describe('BackupService', () => {
   let dbFilePath: string
   let backupsDir: string
   let exportPath: string
+  let documentsDir: string
   let db: Database
   let repository: ClientRepository
   let service: BackupService
@@ -77,7 +88,8 @@ describe('BackupService', () => {
     dir = mkdtempSync(join(tmpdir(), 'jimuhub-backup-test-'))
     dbFilePath = join(dir, 'data.sqlite')
     backupsDir = join(dir, 'backups')
-    exportPath = join(dir, 'export.json')
+    exportPath = join(dir, 'export.zip')
+    documentsDir = join(dir, 'documents')
 
     db = new Database(dbFilePath)
     db.initialize()
@@ -88,6 +100,7 @@ describe('BackupService', () => {
       migrationService: new MigrationService(),
       dbFilePath,
       backupsDir,
+      documentsDir,
       appVersion: '0.1.0'
     })
   })
@@ -97,21 +110,23 @@ describe('BackupService', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
-  it('exportDataで全データを含むJSONファイルを書き出す', () => {
+  it('exportDataで全データを含むZIPファイル(data.json)を書き出す', () => {
     repository.insert(baseInput)
     repository.insert({ ...baseInput, name: '2件目' })
 
     const result = service.exportData(exportPath)
 
     expect(result.success).toBe(true)
-    const written = JSON.parse(readFileSync(exportPath, 'utf-8'))
+    const written = JSON.parse(
+      new AdmZip(exportPath).getEntry('data.json')!.getData().toString('utf-8')
+    )
     expect(written.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     expect(written.appVersion).toBe('0.1.0')
     expect(written.data.clients).toHaveLength(2)
   })
 
   it('exportDataは書き込み失敗時にsuccess:falseを返す', () => {
-    const invalidPath = join(dir, 'no-such-directory', 'export.json')
+    const invalidPath = join(dir, 'no-such-directory', 'export.zip')
     const result = service.exportData(invalidPath)
     expect(result.success).toBe(false)
     expect(result.error).toBeTruthy()
@@ -187,7 +202,8 @@ describe('BackupService', () => {
     }
 
     const files = readdirSync(backupsDir)
-    expect(files.length).toBe(3)
+    expect(files.filter((f) => f.endsWith('.sqlite')).length).toBe(3)
+    expect(files.filter((f) => f.startsWith('documents_')).length).toBe(3)
   })
 
   it('復元処理中に例外が発生した場合は、ロールバックし退避コピーから復旧する(詳細設計書4.3章手順8)', () => {
@@ -233,4 +249,254 @@ describe('BackupService', () => {
     expect(result.success).toBe(false)
     expect(result.error).toBe(BACKUP_MESSAGES.importSafeguardRestoreFailure)
   })
+
+  describe('見積書・請求書・PDFを含むバックアップ(F-02/F-03、T-34)', () => {
+    function seedDocuments(): { quoteId: number; invoiceId: number; pdfPath: string } {
+      const clientId = repository.insert(baseInput).id
+      new CompanyProfileRepository(db).upsert({
+        name: 'サンプル商店',
+        address: '東京都',
+        invoiceRegistrationNumber: 'T1234567890123',
+        bankName: '',
+        bankBranch: '',
+        accountType: '',
+        accountNumber: '',
+        accountHolder: ''
+      })
+      const line = {
+        name: '品目',
+        quantity: 1,
+        unit: '式',
+        unitPrice: 300000,
+        taxRate: 10 as const
+      }
+      const quoteRepo = new QuoteRepository(db)
+      const quoteId = quoteRepo.insert({
+        clientId,
+        issueDate: '2026-09-20',
+        validUntil: '',
+        remarks: '',
+        lineItems: [line]
+      }).id
+      quoteRepo.finalize(quoteId, { quoteNumber: '2026-003', invoiceFormat: 'qualified' })
+      const pdfPath = join(documentsDir, 'quotes', '2026', '2026-003_株式会社サンプル.pdf')
+      mkdirSync(join(documentsDir, 'quotes', '2026'), { recursive: true })
+      const pdf = Buffer.from('%PDF quote')
+      writeFileSync(pdfPath, pdf)
+      quoteRepo.updatePdfInfo(quoteId, {
+        pdfPath,
+        pdfHash: createHash('sha256').update(pdf).digest('hex')
+      })
+      const invoiceRepo = new InvoiceRepository(db)
+      const invoiceId = invoiceRepo.insert({
+        clientId,
+        issueDate: '2026-09-22',
+        dueDate: '',
+        remarks: '',
+        lineItems: [{ ...line, withholdingTarget: true }]
+      }).id
+      invoiceRepo.finalize(invoiceId, { invoiceNumber: '2026-007', invoiceFormat: 'qualified' })
+      return { quoteId, invoiceId, pdfPath }
+    }
+
+    it('exportDataはPDFをdocuments/配下の相対パスでZIPへ同梱し、data.jsonのpdfPathも相対パスにする', () => {
+      const { pdfPath } = seedDocuments()
+      service.exportData(exportPath)
+
+      const zip = new AdmZip(exportPath)
+      expect(zip.getEntry('documents/quotes/2026/2026-003_株式会社サンプル.pdf')).not.toBeNull()
+      const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
+      expect(data.data.quotes[0].pdfPath).toBe(
+        'documents/quotes/2026/2026-003_株式会社サンプル.pdf'
+      )
+      expect(data.data.quotes[0].pdfPath).not.toContain(dir)
+      expect(data.data.invoices).toHaveLength(1)
+      expect(data.data.companyProfile.name).toBe('サンプル商店')
+      expect(existsSync(pdfPath)).toBe(true)
+    })
+
+    it('往復すると全データ・PDF・採番シーケンスが復元され、ハッシュ不一致は0件', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+
+      // 現状を壊してから復元する(PDF削除・データ全削除)
+      rmSync(documentsDir, { recursive: true, force: true })
+      db.sqlite.prepare('DELETE FROM invoice_line_items').run()
+      db.sqlite.prepare('DELETE FROM invoices').run()
+      db.sqlite.prepare('DELETE FROM quote_line_items').run()
+      db.sqlite.prepare('DELETE FROM quotes').run()
+
+      const result = service.importData(exportPath)
+
+      expect(result).toEqual({ success: true, importedCount: 3, pdfHashMismatchCount: 0 })
+      const quote = new QuoteRepository(db).findById(quoteId)
+      expect(quote?.quoteNumber).toBe('2026-003')
+      expect(quote?.lineItems).toHaveLength(1)
+      expect(quote?.pdfHashMismatch).toBe(false)
+      expect(existsSync(quote!.pdfPath!)).toBe(true)
+      expect(quote!.pdfPath).toBe(
+        join(documentsDir, 'quotes', '2026', '2026-003_株式会社サンプル.pdf')
+      )
+      expect(new CompanyProfileRepository(db).get()?.name).toBe('サンプル商店')
+      const seq = db.sqlite
+        .prepare(
+          'SELECT doc_type, year, last_number FROM document_number_sequences ORDER BY doc_type'
+        )
+        .all()
+      expect(seq).toEqual([
+        { doc_type: 'invoice', year: 2026, last_number: 7 },
+        { doc_type: 'quote', year: 2026, last_number: 3 }
+      ])
+      const invoice = new InvoiceRepository(db).findAll()[0]
+      expect(invoice?.invoiceNumber).toBe('2026-007')
+    })
+
+    it('PDFのハッシュが記録値と一致しない書類のみ個別に警告フラグを立て、復元自体は成功する', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+
+      // ZIP内のPDFを改変する
+      const zip = new AdmZip(exportPath)
+      zip.updateFile(
+        'documents/quotes/2026/2026-003_株式会社サンプル.pdf',
+        Buffer.from('%PDF tampered')
+      )
+      zip.writeZip(exportPath)
+
+      const result = service.importData(exportPath)
+
+      expect(result.success).toBe(true)
+      expect(result.pdfHashMismatchCount).toBe(1)
+      expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(true)
+      expect(result.success && BACKUP_MESSAGES.importSuccess(3, 1)).toContain('1件')
+    })
+
+    it('ZIP内にPDFが存在しない書類も不一致として扱う', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+      const zip = new AdmZip(exportPath)
+      zip.deleteFile('documents/quotes/2026/2026-003_株式会社サンプル.pdf')
+      zip.writeZip(exportPath)
+
+      const result = service.importData(exportPath)
+      expect(result.pdfHashMismatchCount).toBe(1)
+      expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(true)
+    })
+
+    it('ZIP形式の復元ではdocumentsフォルダを全置換し、孤立したPDFを残さない', () => {
+      seedDocuments()
+      service.exportData(exportPath)
+      const orphan = join(documentsDir, 'quotes', '2026', 'orphan.pdf')
+      writeFileSync(orphan, 'x')
+
+      service.importData(exportPath)
+      expect(existsSync(orphan)).toBe(false)
+    })
+
+    it('旧JSON形式(schemaVersion1・取引先のみ)も復元でき、documentsフォルダには手を加えない', () => {
+      const { pdfPath } = seedDocuments()
+      const legacy = {
+        schemaVersion: 1,
+        appVersion: '0.1.0',
+        exportedAt: '2026-09-26T12:00:00.000Z',
+        data: {
+          clients: [
+            {
+              id: 50,
+              name: '旧形式の取引先',
+              honorific: '様',
+              contactPerson: null,
+              postalCode: null,
+              address: null,
+              phone: null,
+              email: null,
+              invoiceRegistrationNumber: null,
+              memo: null,
+              status: 'active',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z'
+            }
+          ]
+        }
+      }
+      const jsonPath = join(dir, 'legacy.json')
+      writeFileSync(jsonPath, JSON.stringify(legacy), 'utf-8')
+
+      const result = service.importData(jsonPath)
+
+      expect(result).toEqual({ success: true, importedCount: 1 })
+      expect(repository.findById(50)?.furigana).toBeNull()
+      expect(existsSync(pdfPath)).toBe(true)
+      expect(new QuoteRepository(db).findAll()).toHaveLength(0)
+    })
+
+    it('旧JSON形式(schemaVersion2・PDFパスのみ記録)でも見積書・請求書を復元し、ハッシュ照合は行わない', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+      const data = JSON.parse(
+        new AdmZip(exportPath).getEntry('data.json')!.getData().toString('utf-8')
+      )
+      data.schemaVersion = 2
+      for (const q of data.data.quotes) delete q.pdfHashMismatch
+      const jsonPath = join(dir, 'v2.json')
+      writeFileSync(jsonPath, JSON.stringify(data), 'utf-8')
+
+      const result = service.importData(jsonPath)
+
+      expect(result.success).toBe(true)
+      expect(result.pdfHashMismatchCount).toBeUndefined()
+      expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(false)
+    })
+
+    it('ZIPにdata.jsonが無い場合・壊れたZIPの場合は解析エラーを返す', () => {
+      const noData = new AdmZip()
+      noData.addFile('documents/a.pdf', Buffer.from('x'))
+      noData.writeZip(join(dir, 'nodata.zip'))
+      expect(service.importData(join(dir, 'nodata.zip')).error).toBe(
+        BACKUP_MESSAGES.importParseFailure
+      )
+
+      const broken = Buffer.concat([Buffer.from('PK'), Buffer.from('壊れたZIP')])
+      writeFileSync(join(dir, 'broken.zip'), broken)
+      expect(service.importData(join(dir, 'broken.zip')).error).toBe(
+        BACKUP_MESSAGES.importParseFailure
+      )
+    })
+
+    it('ZIP内の親ディレクトリ参照を含むエントリは書き出さない(ZIPスリップ対策)', () => {
+      const evil = new AdmZip()
+      evil.addFile('data.json', Buffer.from(JSON.stringify(buildBrokenPayloadOk())))
+      evil.addFile('documents/../../evil.txt', Buffer.from('x'))
+      evil.writeZip(join(dir, 'evil.zip'))
+
+      service.importData(join(dir, 'evil.zip'))
+      expect(existsSync(join(dir, '..', 'evil.txt'))).toBe(false)
+      expect(existsSync(join(dir, 'evil.txt'))).toBe(false)
+    })
+
+    it('ZIP形式の復元に失敗した場合、documentsフォルダも復元前の状態へ戻す', () => {
+      const { pdfPath } = seedDocuments()
+      const zip = new AdmZip()
+      zip.addFile('data.json', Buffer.from(JSON.stringify(buildBrokenPayload())))
+      zip.addFile('documents/new.pdf', Buffer.from('new'))
+      zip.writeZip(join(dir, 'broken-data.zip'))
+
+      const result = service.importData(join(dir, 'broken-data.zip'))
+
+      expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
+      expect(existsSync(pdfPath)).toBe(true)
+      expect(existsSync(join(documentsDir, 'new.pdf'))).toBe(false)
+    })
+
+    it('detectFormatはPKシグネチャでZIP/JSONを判定する', () => {
+      expect(service.detectFormat(Buffer.from('PK\u0003\u0004xxxx'))).toBe('zip')
+      expect(service.detectFormat(Buffer.from('{"a":1}'))).toBe('json')
+    })
+  })
 })
+
+function buildBrokenPayloadOk(): BackupFile {
+  const payload = buildBrokenPayload()
+  payload.data.clients = []
+  return payload
+}

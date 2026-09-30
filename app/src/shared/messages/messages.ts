@@ -37,7 +37,10 @@ export const BACKUP_MESSAGES = {
   importIntro:
     '選択したファイルの内容で、現在のデータを復元します。復元するファイルはこの後の画面で選択できます。',
   importWarning: '現在のデータがエクスポートファイルの内容で置き換わります。よろしいですか',
-  importSuccess: (count: number): string => `復元が完了しました(${count}件)`,
+  importSuccess: (count: number, pdfHashMismatchCount = 0): string =>
+    pdfHashMismatchCount > 0
+      ? `復元が完了しました(${count}件)。PDFファイルの改変が疑われる書類が${pdfHashMismatchCount}件あります。該当の見積書・請求書の詳細画面でご確認ください`
+      : `復元が完了しました(${count}件)`,
   importParseFailure:
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
   importVersionTooNew:
