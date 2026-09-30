@@ -4,8 +4,10 @@ import { createHash, randomBytes } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Quote } from '@shared/types/quote'
+import type { Invoice } from '@shared/types/invoice'
 import type { CompanyProfile } from '@shared/types/company-profile'
 import { buildQuotePdfHtml } from './pdf/quote-pdf-template'
+import { buildInvoicePdfHtml } from './pdf/invoice-pdf-template'
 import { escapeHtml, sanitizeFileNamePart } from './pdf/format'
 
 export interface GeneratedPdfInfo {
@@ -36,6 +38,22 @@ export class PdfService {
     const html = buildQuotePdfHtml(quote, companyProfile)
     const buffer = await this.renderHtmlToPdf(html, quote.quoteNumber ?? '', quote.clientName)
     return this.writePdfFile(buffer, 'quotes', quote.issueDate, quote.quoteNumber, quote.clientName)
+  }
+
+  /** 請求書PDFを生成し、ファイルへ書き込んだ上で保存先パス・SHA-256ハッシュ値を返す */
+  async generateInvoicePdf(
+    invoice: Invoice,
+    companyProfile: CompanyProfile
+  ): Promise<GeneratedPdfInfo> {
+    const html = buildInvoicePdfHtml(invoice, companyProfile)
+    const buffer = await this.renderHtmlToPdf(html, invoice.invoiceNumber ?? '', invoice.clientName)
+    return this.writePdfFile(
+      buffer,
+      'invoices',
+      invoice.issueDate,
+      invoice.invoiceNumber,
+      invoice.clientName
+    )
   }
 
   /** PDFファイルを書き込み、保存先パス・SHA-256ハッシュ値を返す(共通処理。請求書PDFからも利用する想定) */

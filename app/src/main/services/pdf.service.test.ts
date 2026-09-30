@@ -22,6 +22,7 @@ vi.mock('electron', () => ({
 
 import { PdfService } from './pdf.service'
 import type { Quote } from '@shared/types/quote'
+import type { Invoice } from '@shared/types/invoice'
 import type { CompanyProfile } from '@shared/types/company-profile'
 
 const sampleQuote: Quote = {
@@ -133,5 +134,41 @@ describe('PdfService', () => {
       '印刷に失敗しました'
     )
     expect(destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('請求書PDFを documents/invoices/<年>/<番号>_<取引先名>.pdf へ保存する', async () => {
+    const invoice: Invoice = {
+      id: 1,
+      invoiceNumber: '2026-012',
+      clientId: 1,
+      clientName: 'サンプル商事株式会社',
+      clientHonorific: '御中',
+      sourceQuoteId: null,
+      issueDate: '2026-09-22',
+      dueDate: null,
+      remarks: null,
+      subtotal10: 0,
+      taxAmount10: 0,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 0,
+      withholdingTaxAmount: 0,
+      billingAmount: 0,
+      invoiceFormat: 'qualified',
+      status: 'finalized',
+      paymentStatus: 'unpaid',
+      paymentDate: null,
+      pdfPath: null,
+      pdfHash: null,
+      pdfHashMismatch: false,
+      lineItems: [],
+      createdAt: '',
+      updatedAt: ''
+    }
+    const result = await service.generateInvoicePdf(invoice, sampleCompanyProfile)
+    expect(result.pdfPath).toBe(
+      join(documentsDir, 'invoices', '2026', '2026-012_サンプル商事株式会社.pdf')
+    )
+    expect(existsSync(result.pdfPath)).toBe(true)
   })
 })

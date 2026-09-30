@@ -36,7 +36,11 @@ export const PDF_STYLES = `
   .remarks-block { margin-top: 32px; }
   .remarks-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid #999999; padding-bottom: 4px; }
   .remarks-body { font-size: 11px; color: #1A1A1A; white-space: pre-line; }
+  .bottom-columns { display: flex; gap: 40px; margin-top: 32px; }
+  .bottom-columns .bank-block { flex: 1; }
+  .bottom-columns .remarks-block { flex: 1; margin-top: 0; }
   .bank-block { margin-top: 24px; }
   .bank-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid #999999; padding-bottom: 4px; }
-  .bank-body { font-size: 11px; color: #1A1A1A; }
+  .bank-body { font-size: 11px; color: #1A1A1A; line-height: 1.9; }
+  table.items tr { page-break-inside: avoid; }
 `
