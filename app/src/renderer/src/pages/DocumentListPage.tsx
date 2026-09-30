@@ -2,10 +2,10 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
-import { Message } from '../components/Message'
 import type { Client } from '@shared/types/client'
 import type { QuoteSummary } from '@shared/types/quote'
-import { QUOTE_MESSAGES } from '@shared/messages/messages'
+import type { InvoiceSummary, PaymentStatusFilter } from '@shared/types/invoice'
+import { QUOTE_MESSAGES, INVOICE_MESSAGES } from '@shared/messages/messages'
 
 type Tab = 'quote' | 'invoice'
 
@@ -14,19 +14,22 @@ interface DocumentListPageProps {
   onNavigateClients: () => void
   onNewQuote: () => void
   onSelectQuote: (id: number) => void
+  onNewInvoice: () => void
+  onSelectInvoice: (id: number) => void
 }
 
 /**
  * 見積書・請求書一覧画面[F-12・F-14]
  * 参照元: 基本設計書4.10章、詳細設計書3.10章・4.12・4.14章、5章(クラス設計 `DocumentListPage`)
- *
- * 請求書タブは請求書機能(T-20)実装まで「準備中」表示とする(サイドメニューの他「準備中」項目と同じ扱い)。
+
  */
 export function DocumentListPage({
   onNavigateHome,
   onNavigateClients,
   onNewQuote,
-  onSelectQuote
+  onSelectQuote,
+  onNewInvoice,
+  onSelectInvoice
 }: DocumentListPageProps): ReactElement {
   const [tab, setTab] = useState<Tab>('quote')
   const [dateFrom, setDateFrom] = useState('')
@@ -35,34 +38,36 @@ export function DocumentListPage({
   const [amountMin, setAmountMin] = useState('')
   const [amountMax, setAmountMax] = useState('')
   const [clients, setClients] = useState<Client[]>([])
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusFilter>('all')
   const [quotes, setQuotes] = useState<QuoteSummary[] | null>(null)
+  const [invoices, setInvoices] = useState<InvoiceSummary[] | null>(null)
 
   useEffect(() => {
     window.jimuhubApi.listClients({ statusFilter: 'active' }).then(setClients)
   }, [])
 
   useEffect(() => {
-    if (tab !== 'quote') {
-      return
-    }
     let cancelled = false
-    window.jimuhubApi
-      .listQuotes({
-        clientId: clientId === '' ? undefined : clientId,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        amountMin: amountMin === '' ? undefined : Number(amountMin),
-        amountMax: amountMax === '' ? undefined : Number(amountMax)
+    const common = {
+      clientId: clientId === '' ? undefined : clientId,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      amountMin: amountMin === '' ? undefined : Number(amountMin),
+      amountMax: amountMax === '' ? undefined : Number(amountMax)
+    }
+    if (tab === 'quote') {
+      window.jimuhubApi.listQuotes(common).then((result) => {
+        if (!cancelled) setQuotes(result)
       })
-      .then((result) => {
-        if (!cancelled) {
-          setQuotes(result)
-        }
+    } else {
+      window.jimuhubApi.listInvoices({ ...common, paymentStatus }).then((result) => {
+        if (!cancelled) setInvoices(result)
       })
+    }
     return () => {
       cancelled = true
     }
-  }, [tab, clientId, dateFrom, dateTo, amountMin, amountMax])
+  }, [tab, clientId, dateFrom, dateTo, amountMin, amountMax, paymentStatus])
 
   return (
     <AppShell
@@ -75,7 +80,7 @@ export function DocumentListPage({
             + 見積書を新規作成
           </Button>
         ) : (
-          <Button variant="primary" disabled>
+          <Button variant="primary" onClick={onNewInvoice}>
             + 請求書を新規作成
           </Button>
         )
@@ -102,9 +107,7 @@ export function DocumentListPage({
         </button>
       </div>
 
-      {tab === 'invoice' ? (
-        <Message variant="warning">「請求書」は以降のイテレーションで実装予定です。</Message>
-      ) : (
+      {
         <>
           <div className="filter-bar">
             <div className="filter-field">
@@ -163,9 +166,60 @@ export function DocumentListPage({
                 />
               </div>
             </div>
+            {tab === 'invoice' ? (
+              <div className="filter-field">
+                <label htmlFor="doc-list-payment-status">入金ステータス</label>
+                <select
+                  id="doc-list-payment-status"
+                  value={paymentStatus}
+                  onChange={(e) => setPaymentStatus(e.target.value as PaymentStatusFilter)}
+                >
+                  <option value="all">すべて</option>
+                  <option value="unpaid">未収</option>
+                  <option value="paid">入金済み</option>
+                </select>
+              </div>
+            ) : null}
           </div>
 
-          {quotes === null ? null : quotes.length === 0 ? (
+          {tab === 'invoice' ? (
+            invoices === null ? null : invoices.length === 0 ? (
+              <div className="empty-state">{INVOICE_MESSAGES.emptyList}</div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>書類番号</th>
+                    <th>取引先</th>
+                    <th>発行日</th>
+                    <th className="amount">合計金額</th>
+                    <th>状態</th>
+                    <th>入金ステータス</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
+                    <tr
+                      key={invoice.id}
+                      className="clickable"
+                      onClick={() => onSelectInvoice(invoice.id)}
+                    >
+                      <td>{invoice.invoiceNumber ?? '(未採番)'}</td>
+                      <td>{invoice.clientName}</td>
+                      <td>{invoice.issueDate}</td>
+                      <td className="amount">{`¥${invoice.totalAmount.toLocaleString('ja-JP')}`}</td>
+                      <td>
+                        <Badge variant={invoice.status === 'finalized' ? 'finalized' : 'draft'} />
+                      </td>
+                      <td>
+                        <Badge variant={invoice.paymentStatus === 'paid' ? 'paid' : 'unpaid'} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : quotes === null ? null : quotes.length === 0 ? (
             <div className="empty-state">{QUOTE_MESSAGES.emptyList}</div>
           ) : (
             <table className="table">
@@ -194,7 +248,7 @@ export function DocumentListPage({
             </table>
           )}
         </>
-      )}
+      }
     </AppShell>
   )
 }

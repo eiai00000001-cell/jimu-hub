@@ -31,6 +31,7 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): {
     getCompanyProfile: vi.fn(),
     saveCompanyProfile: vi.fn(),
     listQuotes,
+    listInvoices: vi.fn().mockResolvedValue([]),
     getQuote: vi.fn(),
     saveQuoteDraft: vi.fn(),
     finalizeQuote: vi.fn(),
@@ -54,6 +55,8 @@ describe('DocumentListPage', () => {
         onNavigateClients={vi.fn()}
         onNewQuote={vi.fn()}
         onSelectQuote={vi.fn()}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={vi.fn()}
       />
     )
 
@@ -70,26 +73,74 @@ describe('DocumentListPage', () => {
         onNavigateClients={vi.fn()}
         onNewQuote={vi.fn()}
         onSelectQuote={vi.fn()}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={vi.fn()}
       />
     )
 
     expect(await screen.findByText('該当する見積書がありません')).toBeInTheDocument()
   })
 
-  it('請求書タブへ切り替えると準備中の案内を表示する', async () => {
-    setupApi()
+  it('請求書タブへ切り替えると請求書一覧(入金ステータス列)を表示する', async () => {
+    const listInvoices = vi.fn().mockResolvedValue([
+      {
+        id: 4,
+        invoiceNumber: '2026-012',
+        clientId: 1,
+        clientName: 'サンプル商事株式会社',
+        issueDate: '2026-09-22',
+        totalAmount: 363000,
+        status: 'finalized',
+        paymentStatus: 'unpaid'
+      }
+    ])
+    setupApi({ listInvoices })
+    const onSelectInvoice = vi.fn()
     render(
       <DocumentListPage
         onNavigateHome={vi.fn()}
         onNavigateClients={vi.fn()}
         onNewQuote={vi.fn()}
         onSelectQuote={vi.fn()}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={onSelectInvoice}
       />
     )
     await screen.findByText('2026-008')
 
     await userEvent.click(screen.getByText('請求書'))
-    expect(await screen.findByText(/実装予定です/)).toBeInTheDocument()
+    expect(await screen.findByText('2026-012')).toBeInTheDocument()
+    expect(screen.getByText('未収', { selector: 'span' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByText('2026-012'))
+    expect(onSelectInvoice).toHaveBeenCalledWith(4)
+
+    await userEvent.selectOptions(screen.getByLabelText('入金ステータス'), 'paid')
+    await waitFor(() =>
+      expect(listInvoices).toHaveBeenLastCalledWith(
+        expect.objectContaining({ paymentStatus: 'paid' })
+      )
+    )
+  })
+
+  it('請求書0件の場合は案内文言を表示し、「請求書を新規作成」でonNewInvoiceを呼ぶ', async () => {
+    setupApi()
+    const onNewInvoice = vi.fn()
+    render(
+      <DocumentListPage
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onNewQuote={vi.fn()}
+        onSelectQuote={vi.fn()}
+        onNewInvoice={onNewInvoice}
+        onSelectInvoice={vi.fn()}
+      />
+    )
+    await screen.findByText('2026-008')
+    await userEvent.click(screen.getByText('請求書'))
+    expect(await screen.findByText('該当する請求書がありません')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('+ 請求書を新規作成'))
+    expect(onNewInvoice).toHaveBeenCalled()
   })
 
   it('「見積書を新規作成」ボタン押下でonNewQuoteを呼び出す', async () => {
@@ -101,6 +152,8 @@ describe('DocumentListPage', () => {
         onNavigateClients={vi.fn()}
         onNewQuote={onNewQuote}
         onSelectQuote={vi.fn()}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={vi.fn()}
       />
     )
 
@@ -117,6 +170,8 @@ describe('DocumentListPage', () => {
         onNavigateClients={vi.fn()}
         onNewQuote={vi.fn()}
         onSelectQuote={onSelectQuote}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={vi.fn()}
       />
     )
 
@@ -150,6 +205,8 @@ describe('DocumentListPage', () => {
         onNavigateClients={vi.fn()}
         onNewQuote={vi.fn()}
         onSelectQuote={vi.fn()}
+        onNewInvoice={vi.fn()}
+        onSelectInvoice={vi.fn()}
       />
     )
     await screen.findByText('2026-008')

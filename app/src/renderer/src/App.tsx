@@ -7,13 +7,24 @@ import { CompanyProfilePage } from './pages/CompanyProfilePage'
 import { DocumentListPage } from './pages/DocumentListPage'
 import { QuoteFormPage } from './pages/QuoteFormPage'
 import { QuoteDetailPage } from './pages/QuoteDetailPage'
+import { InvoiceFormPage } from './pages/InvoiceFormPage'
+import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { ExportDialog } from './components/ExportDialog'
 import { ImportDialog } from './components/ImportDialog'
-import { CLIENT_MESSAGES, COMPANY_MESSAGES, QUOTE_MESSAGES } from '@shared/messages/messages'
+import {
+  CLIENT_MESSAGES,
+  COMPANY_MESSAGES,
+  QUOTE_MESSAGES,
+  INVOICE_MESSAGES
+} from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
 
 /** 自社情報・振込先設定画面(companyProfile)への遷移元。保存完了後にこの画面へ戻る(詳細設計書4.10章手順6) */
-type CompanyProfileReturnTo = { name: 'quoteNew' } | { name: 'quoteEdit'; id: number }
+type CompanyProfileReturnTo =
+  | { name: 'quoteNew' }
+  | { name: 'quoteEdit'; id: number }
+  | { name: 'invoiceNew' }
+  | { name: 'invoiceEdit'; id: number }
 
 type Route =
   | { name: 'top' }
@@ -26,6 +37,9 @@ type Route =
   | { name: 'quoteNew'; flashMessage?: string }
   | { name: 'quoteEdit'; id: number; flashMessage?: string }
   | { name: 'quoteDetail'; id: number; flashMessage?: string }
+  | { name: 'invoiceNew'; flashMessage?: string }
+  | { name: 'invoiceEdit'; id: number; flashMessage?: string }
+  | { name: 'invoiceDetail'; id: number; flashMessage?: string }
 
 type DataDialog = 'none' | 'export' | 'import'
 
@@ -157,6 +171,8 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onNewQuote={() => setRoute({ name: 'quoteNew' })}
             onSelectQuote={(id) => setRoute({ name: 'quoteDetail', id })}
+            onNewInvoice={() => setRoute({ name: 'invoiceNew' })}
+            onSelectInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
           />
         )
       case 'quoteNew':
@@ -204,6 +220,69 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onBackToList={() => setRoute({ name: 'documentList' })}
             onEdit={(id) => setRoute({ name: 'quoteEdit', id })}
+          />
+        )
+      case 'invoiceNew':
+        return (
+          <InvoiceFormPage
+            mode="new"
+            flashMessage={route.flashMessage}
+            onSavedDraft={(id) =>
+              setRoute({
+                name: 'invoiceDetail',
+                id,
+                flashMessage: INVOICE_MESSAGES.draftSaveSuccess
+              })
+            }
+            onFinalized={(id) =>
+              setRoute({
+                name: 'invoiceDetail',
+                id,
+                flashMessage: INVOICE_MESSAGES.finalizeSuccess
+              })
+            }
+            onCancel={() => setRoute({ name: 'documentList' })}
+            onNavigateCompanyProfile={() =>
+              setRoute({ name: 'companyProfile', returnTo: { name: 'invoiceNew' } })
+            }
+          />
+        )
+      case 'invoiceEdit':
+        return (
+          <InvoiceFormPage
+            mode="edit"
+            invoiceId={route.id}
+            flashMessage={route.flashMessage}
+            onSavedDraft={(id) =>
+              setRoute({
+                name: 'invoiceDetail',
+                id,
+                flashMessage: INVOICE_MESSAGES.draftSaveSuccess
+              })
+            }
+            onFinalized={(id) =>
+              setRoute({
+                name: 'invoiceDetail',
+                id,
+                flashMessage: INVOICE_MESSAGES.finalizeSuccess
+              })
+            }
+            onCancel={() => setRoute({ name: 'invoiceDetail', id: route.id })}
+            onNavigateCompanyProfile={() =>
+              setRoute({ name: 'companyProfile', returnTo: { name: 'invoiceEdit', id: route.id } })
+            }
+          />
+        )
+      case 'invoiceDetail':
+        return (
+          <InvoiceDetailPage
+            key={route.id}
+            invoiceId={route.id}
+            flashMessage={route.flashMessage}
+            onNavigateHome={() => setRoute({ name: 'top' })}
+            onNavigateClients={() => setRoute({ name: 'clientList' })}
+            onBackToList={() => setRoute({ name: 'documentList' })}
+            onEdit={(id) => setRoute({ name: 'invoiceEdit', id })}
           />
         )
       default:
