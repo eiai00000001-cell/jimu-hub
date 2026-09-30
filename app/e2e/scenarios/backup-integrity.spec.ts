@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import AdmZip from 'adm-zip'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
@@ -66,7 +67,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
   })
 
   test('エクスポート内容が詳細設計書4.2章の構造と一致し、復元が全置換(既存データの上書きではなく完全な置き換え)になる(TC-05・TC-07)', async () => {
-    const filePath = join(workDir, 'roundtrip.json')
+    const filePath = join(workDir, 'roundtrip.zip')
     launched = await launchApp({
       JIMUHUB_E2E_EXPORT_PATH: filePath,
       JIMUHUB_E2E_IMPORT_PATH: filePath
@@ -87,8 +88,11 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await window.getByLabel('閉じる').click()
 
     // TC-05: エクスポートされたファイルの構造を直接確認する(詳細設計書4.2章)
-    const exported = JSON.parse(readFileSync(filePath, 'utf-8'))
-    expect(exported.schemaVersion).toBe(1)
+    // T-34以降のエクスポートはZIP形式(data.json+PDF)。schemaVersionは3
+    const exported = JSON.parse(
+      new AdmZip(filePath).getEntry('data.json')!.getData().toString('utf-8')
+    )
+    expect(exported.schemaVersion).toBe(3)
     expect(typeof exported.appVersion).toBe('string')
     expect(typeof exported.exportedAt).toBe('string')
     expect(Array.isArray(exported.data.clients)).toBe(true)

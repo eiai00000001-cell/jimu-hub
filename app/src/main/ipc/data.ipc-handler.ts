@@ -9,7 +9,7 @@ function defaultExportFileName(): string {
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(
     now.getHours()
   )}${pad(now.getMinutes())}`
-  return `事務HUB_backup_${stamp}.json`
+  return `事務HUB_backup_${stamp}.zip`
 }
 
 /**
@@ -37,7 +37,7 @@ export class DataIpcHandler {
     const focusedWindow = BrowserWindow.getFocusedWindow()
     const options = {
       defaultPath: `${app.getPath('documents')}/${defaultExportFileName()}`,
-      filters: [{ name: 'JSON', extensions: ['json'] }]
+      filters: [{ name: 'ZIP', extensions: ['zip'] }]
     }
     const result = focusedWindow
       ? await dialog.showSaveDialog(focusedWindow, options)
@@ -59,8 +59,9 @@ export class DataIpcHandler {
 
     const focusedWindow = BrowserWindow.getFocusedWindow()
     const options = {
+      // 新形式(ZIP)に加え、旧形式(JSON単体)のエクスポートファイルも選択できる(詳細設計書4.3章手順2)
       properties: ['openFile' as const],
-      filters: [{ name: 'JSON', extensions: ['json'] }]
+      filters: [{ name: 'バックアップファイル', extensions: ['zip', 'json'] }]
     }
     const result = focusedWindow
       ? await dialog.showOpenDialog(focusedWindow, options)

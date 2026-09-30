@@ -7,6 +7,7 @@ import { ImportDialog } from './ImportDialog'
 function setupApi(result: {
   success: boolean
   importedCount?: number
+  pdfHashMismatchCount?: number
   error?: string
 }): ReturnType<typeof vi.fn> {
   const importData = vi.fn().mockResolvedValue(result)
@@ -89,6 +90,16 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
 
     expect(await screen.findByText('復元が完了しました(12件)')).toBeInTheDocument()
     expect(onImported).toHaveBeenCalledWith(12)
+  })
+
+  it('PDFのハッシュ不一致がある場合は、件数を含む警告付きの完了メッセージを表示する', async () => {
+    setupApi({ success: true, importedCount: 5, pdfHashMismatchCount: 2 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText(/改変が疑われる書類が2件/)).toBeInTheDocument()
   })
 
   it('復元失敗時はエラーメッセージを表示する', async () => {

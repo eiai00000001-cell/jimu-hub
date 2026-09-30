@@ -33,7 +33,10 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
       if (response.success && response.importedCount !== undefined) {
         setResult({
           success: true,
-          message: BACKUP_MESSAGES.importSuccess(response.importedCount)
+          message: BACKUP_MESSAGES.importSuccess(
+            response.importedCount,
+            response.pdfHashMismatchCount
+          )
         })
         onImported(response.importedCount)
       } else if (!response.success && response.error) {
