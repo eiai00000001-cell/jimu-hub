@@ -848,3 +848,45 @@ button {
 .source-note .link {
   margin-left: 8px;
 }
+
+/* 起動エラー画面(F-09): サイドバー・通常メニューを持たず、単一の中央カードで構成する */
+.error-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.error-card {
+  width: 480px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 40px 36px;
+  text-align: center;
+}
+.error-card .message {
+  text-align: left;
+}
+.error-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--color-text);
+}
+.error-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  margin: 0 0 28px;
+}
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.support-note {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}

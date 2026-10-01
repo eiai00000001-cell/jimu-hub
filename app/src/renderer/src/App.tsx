@@ -8,6 +8,7 @@ import { DocumentListPage } from './pages/DocumentListPage'
 import { QuoteFormPage } from './pages/QuoteFormPage'
 import { QuoteDetailPage } from './pages/QuoteDetailPage'
 import { InvoiceFormPage } from './pages/InvoiceFormPage'
+import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { ExportDialog } from './components/ExportDialog'
 import { ImportDialog } from './components/ImportDialog'
@@ -62,7 +63,7 @@ export function App(): ReactElement {
   }
 
   if (!startupStatus.ok) {
-    return <div className="startup-error">{startupStatus.message}</div>
+    return <StartupErrorPage message={startupStatus.message} />
   }
 
   return (
