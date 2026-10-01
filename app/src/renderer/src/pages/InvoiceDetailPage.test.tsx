@@ -63,12 +63,14 @@ const finalized: Invoice = {
 function setup(getInvoice: unknown) {
   const openInvoicePdf = vi.fn().mockResolvedValue({ success: true })
   const showInvoicePdfInFolder = vi.fn().mockResolvedValue({ success: true })
+  const updateInvoicePaymentStatus = vi.fn().mockResolvedValue({ success: true })
   window.jimuhubApi = {
     getInvoice,
+    updateInvoicePaymentStatus,
     openInvoicePdf,
     showInvoicePdfInFolder
   } as unknown as Window['jimuhubApi']
-  return { openInvoicePdf, showInvoicePdfInFolder }
+  return { openInvoicePdf, showInvoicePdfInFolder, updateInvoicePaymentStatus }
 }
 
 function renderPage(id: number, extra: Partial<Parameters<typeof InvoiceDetailPage>[0]> = {}) {
@@ -116,11 +118,73 @@ describe('InvoiceDetailPage', () => {
     await waitFor(() => expect(showInvoicePdfInFolder).toHaveBeenCalledWith(8))
   })
 
-  it('入金ステータスの変更ボタンは準備中の案内を表示する(T-22で実装予定)', async () => {
-    setup(vi.fn().mockResolvedValue(finalized))
+  it('「入金済みにする」→入金日を入力して確定すると入金済みへ更新し表示を最新化する', async () => {
+    const getInvoice = vi
+      .fn()
+      .mockResolvedValueOnce(finalized)
+      .mockResolvedValueOnce({ ...finalized, paymentStatus: 'paid', paymentDate: '2026-09-30' })
+    const { updateInvoicePaymentStatus } = setup(getInvoice)
+    renderPage(8)
+
+    await userEvent.click(await screen.findByText('入金済みにする'))
+    const dateInput = screen.getByLabelText('入金日')
+    await userEvent.clear(dateInput)
+    await userEvent.type(dateInput, '2026-09-30')
+    await userEvent.click(screen.getByText('確定'))
+
+    await waitFor(() =>
+      expect(updateInvoicePaymentStatus).toHaveBeenCalledWith(8, {
+        paymentStatus: 'paid',
+        paymentDate: '2026-09-30'
+      })
+    )
+    expect(await screen.findByText('入金日: 2026-09-30')).toBeInTheDocument()
+    expect(screen.getByText('入金済みにしました')).toBeInTheDocument()
+    expect(screen.getByText('未収に戻す')).toBeInTheDocument()
+  })
+
+  it('入金日が空欄の場合はエラーを表示し更新しない', async () => {
+    const { updateInvoicePaymentStatus } = setup(vi.fn().mockResolvedValue(finalized))
     renderPage(8)
     await userEvent.click(await screen.findByText('入金済みにする'))
-    expect(await screen.findByText(/実装予定です/)).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('入金日'))
+    await userEvent.click(screen.getByText('確定'))
+
+    expect(await screen.findByText('入金日を入力してください')).toBeInTheDocument()
+    expect(updateInvoicePaymentStatus).not.toHaveBeenCalled()
+  })
+
+  it('「未収に戻す」は確認ダイアログで「はい」を選んだ場合のみ未収へ更新する', async () => {
+    const paid = { ...finalized, paymentStatus: 'paid', paymentDate: '2026-09-30' }
+    const getInvoice = vi.fn().mockResolvedValueOnce(paid).mockResolvedValueOnce(finalized)
+    const { updateInvoicePaymentStatus } = setup(getInvoice)
+    renderPage(8)
+
+    await userEvent.click(await screen.findByText('未収に戻す'))
+    expect(await screen.findByText('未収に戻しますか')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('いいえ'))
+    expect(updateInvoicePaymentStatus).not.toHaveBeenCalled()
+    expect(screen.queryByText('未収に戻しますか')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByText('未収に戻す'))
+    await userEvent.click(screen.getByText('はい'))
+    await waitFor(() =>
+      expect(updateInvoicePaymentStatus).toHaveBeenCalledWith(8, {
+        paymentStatus: 'unpaid',
+        paymentDate: null
+      })
+    )
+    expect(await screen.findByText('未収に戻しました')).toBeInTheDocument()
+    expect(screen.queryByText(/入金日:/)).not.toBeInTheDocument()
+  })
+
+  it('更新に失敗した場合はエラーを表示する', async () => {
+    const { updateInvoicePaymentStatus } = setup(vi.fn().mockResolvedValue(finalized))
+    updateInvoicePaymentStatus.mockRejectedValue(new Error('更新できません'))
+    renderPage(8)
+    await userEvent.click(await screen.findByText('入金済みにする'))
+    await userEvent.click(screen.getByText('確定'))
+    expect(await screen.findByText('更新できません')).toBeInTheDocument()
   })
 
   it('入金済みの場合は入金日と「未収に戻す」を表示する', async () => {

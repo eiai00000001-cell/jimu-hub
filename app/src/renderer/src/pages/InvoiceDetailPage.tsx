@@ -4,7 +4,13 @@ import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import type { Invoice } from '@shared/types/invoice'
-import { INVOICE_MESSAGES } from '@shared/messages/messages'
+import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
+
+function todayIsoDate(): string {
+  const now = new Date()
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`
@@ -25,8 +31,7 @@ interface InvoiceDetailPageProps {
  * 請求書詳細画面[F-14・F-15]
  * 参照元: 基本設計書4.14章、詳細設計書3.14章・4.14・4.15章、5章(クラス設計 `InvoiceDetailPage`)
  *
- * 入金ステータスは現在の状態を表示する。「入金済みにする」等の変更操作(T-22)は
- * 実装まで「準備中」表示とする。
+ * 入金ステータス(未収/入金済み)の変更は、「入金済みにする」(入金日必須)・「未収に戻す」(確認ダイアログ)で行う(F-15)。
  */
 export function InvoiceDetailPage({
   invoiceId,
@@ -39,7 +44,10 @@ export function InvoiceDetailPage({
 }: InvoiceDetailPageProps): ReactElement {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [comingSoon, setComingSoon] = useState(false)
+  const [paymentMode, setPaymentMode] = useState<'view' | 'enterDate' | 'confirmUnpaid'>('view')
+  const [paymentDate, setPaymentDate] = useState(todayIsoDate())
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +65,33 @@ export function InvoiceDetailPage({
       cancelled = true
     }
   }, [invoiceId])
+
+  async function updatePayment(
+    paymentStatus: 'paid' | 'unpaid',
+    date: string | null,
+    notice: string
+  ): Promise<void> {
+    setPaymentError(null)
+    try {
+      await window.jimuhubApi.updateInvoicePaymentStatus(invoiceId, {
+        paymentStatus,
+        paymentDate: date
+      })
+      setInvoice(await window.jimuhubApi.getInvoice(invoiceId))
+      setPaymentMode('view')
+      setPaymentNotice(notice)
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : INVOICE_MESSAGES.notFound)
+    }
+  }
+
+  function handleConfirmPaid(): void {
+    if (paymentDate.trim() === '') {
+      setPaymentError(VALIDATION_MESSAGES.paymentDateRequired)
+      return
+    }
+    void updatePayment('paid', paymentDate, INVOICE_MESSAGES.markAsPaidSuccess)
+  }
 
   const hasWithholding = invoice?.lineItems.some((line) => line.withholdingTarget) ?? false
 
@@ -98,11 +133,7 @@ export function InvoiceDetailPage({
       onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
-      {comingSoon ? (
-        <Message variant="warning">
-          「入金ステータスの変更」は以降のイテレーションで実装予定です。
-        </Message>
-      ) : null}
+      {paymentNotice ? <Message variant="success">{paymentNotice}</Message> : null}
 
       {loadError ? (
         <>
@@ -208,19 +239,80 @@ export function InvoiceDetailPage({
             <div className="payment-block">
               <span className="payment-label">入金ステータス</span>
               <Badge variant={invoice.paymentStatus === 'paid' ? 'paid' : 'unpaid'} />
-              {invoice.paymentStatus === 'paid' && invoice.paymentDate ? (
-                <span className="payment-label">入金日: {invoice.paymentDate}</span>
-              ) : null}
-              <Button style={{ marginLeft: 'auto' }} onClick={() => setComingSoon(true)}>
-                {invoice.paymentStatus === 'paid' ? '未収に戻す' : '入金済みにする'}
-              </Button>
+              {invoice.paymentStatus === 'paid' ? (
+                <>
+                  {invoice.paymentDate ? (
+                    <span className="payment-label">入金日: {invoice.paymentDate}</span>
+                  ) : null}
+                  <Button
+                    style={{ marginLeft: 'auto' }}
+                    onClick={() => setPaymentMode('confirmUnpaid')}
+                  >
+                    未収に戻す
+                  </Button>
+                </>
+              ) : paymentMode === 'enterDate' ? (
+                <>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label htmlFor="payment-date">
+                      入金日<span className="required">必須</span>
+                    </label>
+                    <input
+                      id="payment-date"
+                      type="date"
+                      aria-label="入金日"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    style={{ marginLeft: 'auto' }}
+                    onClick={handleConfirmPaid}
+                  >
+                    確定
+                  </Button>
+                  <Button onClick={() => setPaymentMode('view')}>キャンセル</Button>
+                </>
+              ) : (
+                <Button
+                  style={{ marginLeft: 'auto' }}
+                  onClick={() => {
+                    setPaymentError(null)
+                    setPaymentNotice(null)
+                    setPaymentMode('enterDate')
+                  }}
+                >
+                  入金済みにする
+                </Button>
+              )}
             </div>
           ) : null}
+          {paymentError ? <Message variant="error">{paymentError}</Message> : null}
 
           <div className="back-link">
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>
         </>
+      ) : null}
+      {paymentMode === 'confirmUnpaid' ? (
+        <div className="overlay">
+          <div className="modal">
+            <h2>{INVOICE_MESSAGES.markAsUnpaidTitle}</h2>
+            <p>{INVOICE_MESSAGES.markAsUnpaidDescription}</p>
+            <div className="modal-actions">
+              <Button onClick={() => setPaymentMode('view')}>いいえ</Button>
+              <Button
+                variant="primary"
+                onClick={() =>
+                  void updatePayment('unpaid', null, INVOICE_MESSAGES.markAsUnpaidSuccess)
+                }
+              >
+                はい
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </AppShell>
   )
