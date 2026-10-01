@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, like, lte, type SQL } from 'drizzle-orm'
 import type { Database } from '../db/db'
-import { clients, invoices, invoiceLineItems } from '../db/schema'
+import { clients, invoices, invoiceLineItems, quotes } from '../db/schema'
 import {
   calculateLineAmount,
   calculateTaxBreakdown,
@@ -134,6 +134,15 @@ export class InvoiceRepository {
     }
     const inv = row.invoice
 
+    const sourceQuote =
+      inv.sourceQuoteId === null
+        ? undefined
+        : this.database.orm
+            .select({ quoteNumber: quotes.quoteNumber })
+            .from(quotes)
+            .where(eq(quotes.id, inv.sourceQuoteId))
+            .get()
+
     const lineItemRows = this.database.orm
       .select()
       .from(invoiceLineItems)
@@ -148,6 +157,7 @@ export class InvoiceRepository {
       clientName: row.clientName ?? '',
       clientHonorific: (row.clientHonorific ?? '(なし)') as Invoice['clientHonorific'],
       sourceQuoteId: inv.sourceQuoteId,
+      sourceQuoteNumber: sourceQuote?.quoteNumber ?? null,
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
       remarks: inv.remarks,

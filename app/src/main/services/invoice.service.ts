@@ -3,11 +3,12 @@ import { INVOICE_MESSAGES } from '@shared/messages/messages'
 import type { Invoice, InvoiceListFilter, InvoiceSummary } from '@shared/types/invoice'
 import type { InvoiceFormat } from '@shared/types/quote'
 import type { Database } from '../db/db'
+import type { QuoteRepository } from '../repositories/quote.repository'
 import type { InvoiceRepository } from '../repositories/invoice.repository'
 import type { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import type { NumberingService } from './numbering.service'
 import type { PdfService } from './pdf.service'
-import { CompanyProfileNotSetError, PdfSaveError } from './quote.service'
+import { CompanyProfileNotSetError, PdfSaveError, QuoteNotFoundError } from './quote.service'
 
 export class InvoiceNotFoundError extends Error {
   constructor() {
@@ -40,6 +41,7 @@ export interface FinalizeInvoiceResult {
 export interface InvoiceServiceDeps {
   database: Database
   repository: InvoiceRepository
+  quoteRepository: QuoteRepository
   companyProfileRepository: CompanyProfileRepository
   numberingService: NumberingService
   pdfService: PdfService
@@ -113,6 +115,44 @@ export class InvoiceService {
       this.deps.repository.revertToDraft(invoiceId)
       throw new PdfSaveError()
     }
+  }
+
+  /**
+   * 見積書の内容を引き継いだ請求書(下書き)を新規作成する(詳細設計書4.13章)。
+   * 取引先・備考・明細行(品名/数量/単位/単価/税率)をコピーし、発行日は本日、支払期限は空欄、
+   * 明細行の源泉徴収対象は既定でfalse、source_quote_idに変換元を設定する。
+   * 取引先が利用停止でも制限せず、同一見積書から複数回変換した場合も都度新規作成する。
+   */
+  convertFromQuote(quoteId: number): { invoiceId: number } {
+    const quote = this.deps.quoteRepository.findById(quoteId)
+    if (!quote) {
+      throw new QuoteNotFoundError()
+    }
+    if (quote.status !== 'finalized') {
+      throw new Error(INVOICE_MESSAGES.convertRequiresFinalized)
+    }
+    const now = new Date()
+    const pad = (n: number): string => String(n).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+
+    const { id } = this.deps.repository.insert(
+      {
+        clientId: quote.clientId,
+        issueDate: today,
+        dueDate: '',
+        remarks: quote.remarks ?? '',
+        lineItems: quote.lineItems.map((line) => ({
+          name: line.name,
+          quantity: line.quantity,
+          unit: line.unit ?? '',
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate,
+          withholdingTarget: false
+        }))
+      },
+      quote.id
+    )
+    return { invoiceId: id }
   }
 
   private assertEditable(id: number): void {

@@ -26,6 +26,8 @@ import { DocumentNumberSequenceRepository } from '../repositories/document-numbe
 import { QuoteRepository } from '../repositories/quote.repository'
 import { NumberingService } from '../services/numbering.service'
 import { QuoteService } from '../services/quote.service'
+import { InvoiceService } from '../services/invoice.service'
+import { InvoiceRepository } from '../repositories/invoice.repository'
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
 import type { QuoteInput } from '@shared/schemas/quote.schema'
@@ -94,7 +96,17 @@ describe('QuotesIpcHandler', () => {
       pdfService
     })
 
-    new QuotesIpcHandler(service).registerHandlers()
+    const invoiceService = new InvoiceService({
+      database: db,
+      repository: new InvoiceRepository(db),
+      quoteRepository,
+      companyProfileRepository,
+      numberingService,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pdfService: {} as any
+    })
+
+    new QuotesIpcHandler(service, invoiceService).registerHandlers()
   })
 
   it('全チャンネルを登録する', () => {
@@ -104,6 +116,29 @@ describe('QuotesIpcHandler', () => {
     expect(handlers.has(IPC_CHANNELS.quotesFinalize)).toBe(true)
     expect(handlers.has(IPC_CHANNELS.quotesOpenPdf)).toBe(true)
     expect(handlers.has(IPC_CHANNELS.quotesShowPdfInFolder)).toBe(true)
+    expect(handlers.has(IPC_CHANNELS.quotesConvertToInvoice)).toBe(true)
+  })
+
+  it('quotes:convertToInvoiceはPDF保存済み見積書から請求書(下書き)を作成しinvoiceIdを返す', async () => {
+    const finalized = (await handlers.get(IPC_CHANNELS.quotesFinalize)!(
+      {},
+      { ...baseInput, clientId }
+    )) as { id: number }
+    const result = (await handlers.get(IPC_CHANNELS.quotesConvertToInvoice)!({}, finalized.id)) as {
+      invoiceId: number
+    }
+    expect(result.invoiceId).toEqual(expect.any(Number))
+  })
+
+  it('quotes:convertToInvoiceは不正なid・下書きの見積書・存在しない見積書を拒否する', async () => {
+    const convert = handlers.get(IPC_CHANNELS.quotesConvertToInvoice)!
+    await expect(convert({}, 'abc')).rejects.toThrow()
+    await expect(convert({}, 9999)).rejects.toThrow('対象の見積書が見つかりません')
+    const draft = (await handlers.get(IPC_CHANNELS.quotesSaveDraft)!(
+      {},
+      { ...baseInput, clientId }
+    )) as { id: number }
+    await expect(convert({}, draft.id)).rejects.toThrow('PDF保存済み')
   })
 
   it('quotes:saveDraftはQuoteServiceへ委譲し登録結果を返す', async () => {

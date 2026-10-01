@@ -26,6 +26,7 @@ const draftInvoice: Invoice = {
   clientName: 'サンプル商事株式会社',
   clientHonorific: '御中',
   sourceQuoteId: null,
+  sourceQuoteNumber: null,
   issueDate: '2026-09-01',
   dueDate: '2026-10-31',
   remarks: '既存の備考',

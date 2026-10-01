@@ -75,7 +75,9 @@ export const INVOICE_MESSAGES = {
   notFound: '対象の請求書が見つかりません',
   finalizedNotEditable: 'PDF保存済みの請求書は編集できません',
   emptyList: '該当する請求書がありません',
-  hashMismatchWarning: 'PDFファイルの改変が疑われます'
+  hashMismatchWarning: 'PDFファイルの改変が疑われます',
+  convertSuccess: '見積書から請求書(下書き)を作成しました',
+  convertRequiresFinalized: 'PDF保存済みの見積書のみ請求書に変換できます'
 } as const
 
 export const STARTUP_MESSAGES = {

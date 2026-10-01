@@ -38,6 +38,8 @@ const jimuhubApi: JimuhubApi = {
     ipcRenderer.invoke(IPC_CHANNELS.quotesFinalize, request),
   openQuotePdf: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesOpenPdf, id),
   showQuotePdfInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesShowPdfInFolder, id),
+  convertQuoteToInvoice: (quoteId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.quotesConvertToInvoice, quoteId),
   listInvoices: (filter?: InvoiceListFilter) =>
     ipcRenderer.invoke(IPC_CHANNELS.invoicesList, filter),
   getInvoice: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesGet, id),

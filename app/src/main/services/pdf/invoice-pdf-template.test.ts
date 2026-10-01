@@ -10,6 +10,7 @@ const sampleInvoice: Invoice = {
   clientName: 'サンプル商事株式会社',
   clientHonorific: '御中',
   sourceQuoteId: null,
+  sourceQuoteNumber: null,
   issueDate: '2026-09-22',
   dueDate: '2026-10-31',
   remarks: 'お振込手数料は貴社にてご負担いただけますと幸いです。',

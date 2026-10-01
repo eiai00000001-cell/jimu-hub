@@ -24,6 +24,7 @@ import { ClientRepository } from '../repositories/client.repository'
 import { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import { DocumentNumberSequenceRepository } from '../repositories/document-number-sequence.repository'
 import { InvoiceRepository } from '../repositories/invoice.repository'
+import { QuoteRepository } from '../repositories/quote.repository'
 import { NumberingService } from '../services/numbering.service'
 import { InvoiceService } from '../services/invoice.service'
 
@@ -77,6 +78,7 @@ describe('InvoicesIpcHandler', () => {
     const service = new InvoiceService({
       database: db,
       repository: new InvoiceRepository(db),
+      quoteRepository: new QuoteRepository(db),
       companyProfileRepository,
       numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
       pdfService: {

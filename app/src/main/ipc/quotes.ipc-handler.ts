@@ -1,6 +1,7 @@
 import { ipcMain, shell } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import {
+  ConvertQuoteIdSchema,
   QuoteIdSchema,
   OptionalQuoteIdSchema,
   QuoteListFilterSchema
@@ -8,6 +9,7 @@ import {
 import type { QuoteListFilter } from '@shared/types/quote'
 import type { SaveQuoteDraftRequest, FinalizeQuoteRequest, OpenPdfResult } from '@shared/ipc/api'
 import type { QuoteService } from '../services/quote.service'
+import type { InvoiceService } from '../services/invoice.service'
 
 function parseId(id: unknown): number {
   return QuoteIdSchema.parse(id)
@@ -24,7 +26,10 @@ function parseFilter(filter: unknown): QuoteListFilter {
  * 参照元: 詳細設計書 4.12・4.13章、5章(クラス設計 `QuoteIpcHandler`)、7章(API/インターフェース設計)
  */
 export class QuotesIpcHandler {
-  constructor(private readonly service: QuoteService) {}
+  constructor(
+    private readonly service: QuoteService,
+    private readonly invoiceService: InvoiceService
+  ) {}
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.quotesList, async (_event, filter?: unknown) =>
@@ -43,6 +48,9 @@ export class QuotesIpcHandler {
     })
     ipcMain.handle(IPC_CHANNELS.quotesOpenPdf, async (_event, id: unknown) =>
       this.openPdf(parseId(id))
+    )
+    ipcMain.handle(IPC_CHANNELS.quotesConvertToInvoice, async (_event, quoteId: unknown) =>
+      this.invoiceService.convertFromQuote(ConvertQuoteIdSchema.parse(quoteId))
     )
     ipcMain.handle(IPC_CHANNELS.quotesShowPdfInFolder, async (_event, id: unknown) =>
       this.showPdfInFolder(parseId(id))

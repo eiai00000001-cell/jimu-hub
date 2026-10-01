@@ -78,6 +78,10 @@ export interface FinalizeInvoiceResult {
   pdfPath: string
 }
 
+export interface ConvertQuoteToInvoiceResult {
+  invoiceId: number
+}
+
 export interface OpenPdfResult {
   success: true
 }
@@ -105,6 +109,8 @@ export interface JimuhubApi {
   finalizeQuote(request: FinalizeQuoteRequest): Promise<FinalizeQuoteResult>
   openQuotePdf(id: number): Promise<OpenPdfResult>
   showQuotePdfInFolder(id: number): Promise<OpenPdfResult>
+  /** PDF保存済みの見積書から請求書(下書き)を新規作成する(F-13) */
+  convertQuoteToInvoice(quoteId: number): Promise<ConvertQuoteToInvoiceResult>
   listInvoices(filter?: InvoiceListFilter): Promise<InvoiceSummary[]>
   /** 対象が存在しない場合はPromiseがreject(例外)される(InvoiceService.getInvoice()参照) */
   getInvoice(id: number): Promise<Invoice>

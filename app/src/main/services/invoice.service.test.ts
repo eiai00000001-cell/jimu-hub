@@ -4,6 +4,7 @@ import { ClientRepository } from '../repositories/client.repository'
 import { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import { DocumentNumberSequenceRepository } from '../repositories/document-number-sequence.repository'
 import { InvoiceRepository } from '../repositories/invoice.repository'
+import { QuoteRepository } from '../repositories/quote.repository'
 import { NumberingService } from './numbering.service'
 import { InvoiceService, InvoiceNotFoundError, InvoiceFinalizedError } from './invoice.service'
 import { CompanyProfileNotSetError, PdfSaveError } from './quote.service'
@@ -66,6 +67,7 @@ describe('InvoiceService', () => {
     const service = new InvoiceService({
       database: db,
       repository: new InvoiceRepository(db),
+      quoteRepository: new QuoteRepository(db),
       companyProfileRepository: companyRepo,
       numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,5 +128,77 @@ describe('InvoiceService', () => {
     const list = service.listInvoices()
     expect(list[0]?.status).toBe('draft')
     expect(list[0]?.invoiceNumber).toBeNull()
+  })
+
+  describe('convertFromQuote(F-13)', () => {
+    async function finalizedQuote(overrides: Record<string, unknown> = {}): Promise<number> {
+      companyRepo.upsert(company)
+      const quoteRepo = new QuoteRepository(db)
+      const { id } = quoteRepo.insert({
+        clientId,
+        issueDate: '2026-09-01',
+        validUntil: '',
+        remarks: '見積の備考',
+        lineItems: [
+          { name: '品目A', quantity: 2, unit: '個', unitPrice: 1000, taxRate: 10 },
+          { name: '品目B', quantity: 1, unit: '', unitPrice: 500, taxRate: 8 }
+        ],
+        ...overrides
+      })
+      quoteRepo.finalize(id, { quoteNumber: '2026-008', invoiceFormat: 'qualified' })
+      return id
+    }
+
+    it('取引先・備考・明細行を引き継いだ請求書(下書き)を作成し、変換元を保持する', async () => {
+      const quoteId = await finalizedQuote()
+      const { service } = create()
+      const { invoiceId } = service.convertFromQuote(quoteId)
+
+      const invoice = service.getInvoice(invoiceId)
+      expect(invoice.status).toBe('draft')
+      expect(invoice.clientId).toBe(clientId)
+      expect(invoice.remarks).toBe('見積の備考')
+      expect(invoice.dueDate).toBeNull()
+      expect(invoice.sourceQuoteId).toBe(quoteId)
+      expect(invoice.sourceQuoteNumber).toBe('2026-008')
+      expect(invoice.invoiceNumber).toBeNull()
+      expect(invoice.issueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(invoice.lineItems.map((l) => [l.name, l.quantity, l.unitPrice, l.taxRate])).toEqual([
+        ['品目A', 2, 1000, 10],
+        ['品目B', 1, 500, 8]
+      ])
+      expect(invoice.lineItems.every((l) => l.withholdingTarget === false)).toBe(true)
+      expect(invoice.withholdingTaxAmount).toBe(0)
+      expect(invoice.totalAmount).toBe(2000 + 200 + 500 + 40)
+    })
+
+    it('同一見積書から複数回変換すると、その都度新しい請求書を作成する', async () => {
+      const quoteId = await finalizedQuote()
+      const { service } = create()
+      const a = service.convertFromQuote(quoteId).invoiceId
+      const b = service.convertFromQuote(quoteId).invoiceId
+      expect(a).not.toBe(b)
+    })
+
+    it('取引先が利用停止でも変換できる', async () => {
+      const quoteId = await finalizedQuote()
+      new ClientRepository(db).updateStatus(clientId, 'inactive')
+      const { service } = create()
+      expect(() => service.convertFromQuote(quoteId)).not.toThrow()
+    })
+
+    it('存在しない見積書・下書きの見積書は変換できない', async () => {
+      const { service } = create()
+      expect(() => service.convertFromQuote(9999)).toThrow('対象の見積書が見つかりません')
+      const quoteRepo = new QuoteRepository(db)
+      const { id } = quoteRepo.insert({
+        clientId,
+        issueDate: '2026-09-01',
+        validUntil: '',
+        remarks: '',
+        lineItems: [{ name: 'x', quantity: 1, unit: '', unitPrice: 1, taxRate: 10 }]
+      })
+      expect(() => service.convertFromQuote(id)).toThrow('PDF保存済み')
+    })
   })
 })

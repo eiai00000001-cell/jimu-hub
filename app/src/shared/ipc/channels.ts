@@ -23,6 +23,7 @@ export const IPC_CHANNELS = {
   quotesFinalize: 'quotes:finalize',
   quotesOpenPdf: 'quotes:openPdf',
   quotesShowPdfInFolder: 'quotes:showPdfInFolder',
+  quotesConvertToInvoice: 'quotes:convertToInvoice',
   invoicesList: 'invoices:list',
   invoicesGet: 'invoices:get',
   invoicesSaveDraft: 'invoices:saveDraft',

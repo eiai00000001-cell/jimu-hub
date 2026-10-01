@@ -21,6 +21,9 @@ export const ClientListFilterSchema = z.object({
 /** quotes:get・quotes:openPdf・quotes:showPdfInFolderのid */
 export const QuoteIdSchema = z.number().int().positive()
 
+/** quotes:convertToInvoiceのquoteId */
+export const ConvertQuoteIdSchema = z.number().int().positive()
+
 /** quotes:saveDraft・quotes:finalizeの{ id? }(新規作成時は省略される) */
 export const OptionalQuoteIdSchema = z.number().int().positive().optional()
 

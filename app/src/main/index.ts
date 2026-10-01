@@ -115,6 +115,7 @@ app.whenReady().then(() => {
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
+      quoteRepository,
       companyProfileRepository,
       numberingService,
       pdfService
@@ -123,7 +124,7 @@ app.whenReady().then(() => {
     new ClientIpcHandler(clientService).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
-    new QuotesIpcHandler(quoteService).registerHandlers()
+    new QuotesIpcHandler(quoteService, invoiceService).registerHandlers()
     new InvoicesIpcHandler(invoiceService).registerHandlers()
   }
 

@@ -39,6 +39,8 @@ export interface Invoice {
   clientName: string
   clientHonorific: Honorific
   sourceQuoteId: number | null
+  /** 変換元見積書の書類番号(変換元がない、または未採番の場合はnull) */
+  sourceQuoteNumber: string | null
   issueDate: string
   dueDate: string | null
   remarks: string | null
