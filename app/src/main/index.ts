@@ -20,6 +20,7 @@ import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
 import { QuotesIpcHandler } from './ipc/quotes.ipc-handler'
 import { InvoicesIpcHandler } from './ipc/invoices.ipc-handler'
+import { StartupRecoveryService } from './services/startup-recovery.service'
 import { initializeStartup } from './startup'
 import { applyWindowSecurity, denyAllPermissionRequests, readDevOnlyEnv } from './app-security'
 
@@ -84,6 +85,18 @@ app.whenReady().then(() => {
   const { status: startupStatus, database } = initializeStartup(dbFilePath)
 
   new AppIpcHandler(startupStatus).registerHandlers()
+
+  if (!database) {
+    // データベースを開けない場合は、起動エラー画面から復元(F-03と同一のimportData)できるようにする(F-09)
+    new DataIpcHandler(
+      new StartupRecoveryService({
+        dbFilePath,
+        backupsDir,
+        documentsDir,
+        appVersion: app.getVersion()
+      })
+    ).registerHandlers()
+  }
 
   if (database) {
     const clientRepository = new ClientRepository(database)

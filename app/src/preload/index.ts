@@ -19,6 +19,7 @@ import type { InvoiceListFilter } from '@shared/types/invoice'
  */
 const jimuhubApi: JimuhubApi = {
   getStartupStatus: () => ipcRenderer.invoke(IPC_CHANNELS.appStartupStatus),
+  relaunchApp: () => ipcRenderer.invoke(IPC_CHANNELS.appRelaunch),
   listClients: (filter?: ClientListFilter) => ipcRenderer.invoke(IPC_CHANNELS.clientsList, filter),
   getClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsGet, id),
   createClient: (input: ClientInput) => ipcRenderer.invoke(IPC_CHANNELS.clientsCreate, input),

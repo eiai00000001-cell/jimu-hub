@@ -92,6 +92,8 @@ export interface OpenPdfResult {
  */
 export interface JimuhubApi {
   getStartupStatus(): Promise<StartupStatus>
+  /** 起動エラー画面からの復元成功後に、アプリを再起動する(F-09) */
+  relaunchApp(): Promise<void>
   listClients(filter?: ClientListFilter): Promise<Client[]>
   /** 対象が存在しない場合はPromiseがreject(例外)される(ClientService.getClient()参照) */
   getClient(id: number): Promise<Client>
