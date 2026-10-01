@@ -28,6 +28,7 @@ mac:
     - target: dmg
       arch:
         - universal
+  icon: resources/icon.icns
   category: public.app-category.business
   identity: null
   hardenedRuntime: false
