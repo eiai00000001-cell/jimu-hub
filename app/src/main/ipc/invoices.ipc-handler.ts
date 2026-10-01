@@ -5,6 +5,7 @@ import {
   OptionalInvoiceIdSchema,
   InvoiceListFilterSchema
 } from '@shared/schemas/ipc.schema'
+import type { PaymentStatusInput } from '@shared/schemas/invoice.schema'
 import type { InvoiceListFilter } from '@shared/types/invoice'
 import type {
   SaveInvoiceDraftRequest,
@@ -48,6 +49,11 @@ export class InvoicesIpcHandler {
         const { id, ...input } = payload
         return this.service.finalizeInvoice(input, OptionalInvoiceIdSchema.parse(id))
       }
+    )
+    ipcMain.handle(
+      IPC_CHANNELS.invoicesUpdatePaymentStatus,
+      async (_event, id: unknown, input: PaymentStatusInput) =>
+        this.service.updatePaymentStatus(parseId(id), input)
     )
     ipcMain.handle(IPC_CHANNELS.invoicesOpenPdf, async (_event, id: unknown) =>
       this.openPdf(parseId(id))

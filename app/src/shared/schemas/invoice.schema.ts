@@ -16,6 +16,23 @@ export const InvoiceLineItemInputSchema = LineItemInputSchema.extend({
 })
 export type InvoiceLineItemInput = z.infer<typeof InvoiceLineItemInputSchema>
 
+/** 入金ステータス変更(F-15)。入金済みの場合は入金日が必須、未収の場合は入金日をクリアする */
+export const PaymentStatusInputSchema = z
+  .object({
+    paymentStatus: z.enum(['unpaid', 'paid']),
+    paymentDate: z.string().trim().nullable().optional()
+  })
+  .superRefine((value, ctx) => {
+    if (value.paymentStatus === 'paid' && !value.paymentDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['paymentDate'],
+        message: VALIDATION_MESSAGES.paymentDateRequired
+      })
+    }
+  })
+export type PaymentStatusInput = z.infer<typeof PaymentStatusInputSchema>
+
 export const InvoiceInputSchema = z.object({
   // 未選択は0で表す(取引先idは1始まりの自動採番のため、0は「未選択」を表す番兵値として扱う)
   clientId: z.number().int().min(1, VALIDATION_MESSAGES.quoteClientRequired),

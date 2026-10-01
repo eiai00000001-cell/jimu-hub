@@ -19,6 +19,7 @@ export const VALIDATION_MESSAGES = {
   lineItemNameRequired: '品名を入力してください',
   lineItemQuantityInvalid: '数量は0より大きい数値を、小数第2位までで入力してください',
   lineItemUnitPriceInvalid: '単価は0以上の整数で入力してください',
+  paymentDateRequired: '入金日を入力してください',
   validUntilBeforeIssueDate: '発行日より前の日付が入力されています(保存は可能です)'
 } as const
 
@@ -76,6 +77,11 @@ export const INVOICE_MESSAGES = {
   finalizedNotEditable: 'PDF保存済みの請求書は編集できません',
   emptyList: '該当する請求書がありません',
   hashMismatchWarning: 'PDFファイルの改変が疑われます',
+  markAsPaidSuccess: '入金済みにしました',
+  markAsUnpaidSuccess: '未収に戻しました',
+  markAsUnpaidTitle: '未収に戻しますか',
+  markAsUnpaidDescription: '入金日の記録はクリアされます。この操作は「はい」を押すと確定します。',
+  paymentRequiresFinalized: 'PDF保存済みの請求書のみ入金ステータスを変更できます',
   convertSuccess: '見積書から請求書(下書き)を作成しました',
   convertRequiresFinalized: 'PDF保存済みの見積書のみ請求書に変換できます'
 } as const

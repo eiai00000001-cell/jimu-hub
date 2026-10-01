@@ -96,7 +96,8 @@ describe('InvoicesIpcHandler', () => {
       IPC_CHANNELS.invoicesSaveDraft,
       IPC_CHANNELS.invoicesFinalize,
       IPC_CHANNELS.invoicesOpenPdf,
-      IPC_CHANNELS.invoicesShowPdfInFolder
+      IPC_CHANNELS.invoicesShowPdfInFolder,
+      IPC_CHANNELS.invoicesUpdatePaymentStatus
     ]) {
       expect(handlers.has(ch)).toBe(true)
     }
@@ -137,5 +138,21 @@ describe('InvoicesIpcHandler', () => {
       handlers.get(IPC_CHANNELS.invoicesList)!({}, { paymentStatus: 'x' })
     ).rejects.toThrow()
     await expect(handlers.get(IPC_CHANNELS.invoicesList)!({})).resolves.toEqual([])
+  })
+
+  it('updatePaymentStatusは入金済み・未収へ更新でき、不正なidは拒否する', async () => {
+    const r = (await handlers.get(IPC_CHANNELS.invoicesFinalize)!({}, { ...input, clientId })) as {
+      id: number
+    }
+    const update = handlers.get(IPC_CHANNELS.invoicesUpdatePaymentStatus)!
+    expect(await update({}, r.id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })).toEqual({
+      success: true
+    })
+    const got = (await handlers.get(IPC_CHANNELS.invoicesGet)!({}, r.id)) as {
+      paymentStatus: string
+    }
+    expect(got.paymentStatus).toBe('paid')
+    await expect(update({}, 'abc', { paymentStatus: 'unpaid' })).rejects.toThrow()
+    await expect(update({}, r.id, { paymentStatus: 'paid' })).rejects.toThrow('入金日')
   })
 })

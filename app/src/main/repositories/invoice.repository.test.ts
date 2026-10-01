@@ -210,4 +210,20 @@ describe('InvoiceRepository', () => {
     expect(repository.findAll({ paymentStatus: 'unpaid' })).toHaveLength(2)
     expect(repository.findAll({ amountMin: 400000 })).toHaveLength(0)
   })
+
+  it('updatePaymentStatusで入金済み(入金日あり)・未収(入金日クリア)を更新できる', () => {
+    const { id } = repository.insert({ ...baseInput, clientId })
+    repository.finalize(id, { invoiceNumber: '2026-001', invoiceFormat: 'qualified' })
+
+    repository.updatePaymentStatus(id, 'paid', '2026-09-30')
+    let found = repository.findById(id)
+    expect(found?.paymentStatus).toBe('paid')
+    expect(found?.paymentDate).toBe('2026-09-30')
+    expect(repository.findAll({ paymentStatus: 'paid' })).toHaveLength(1)
+
+    repository.updatePaymentStatus(id, 'unpaid', '2026-09-30')
+    found = repository.findById(id)
+    expect(found?.paymentStatus).toBe('unpaid')
+    expect(found?.paymentDate).toBeNull()
+  })
 })

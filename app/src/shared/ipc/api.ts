@@ -116,6 +116,10 @@ export interface JimuhubApi {
   getInvoice(id: number): Promise<Invoice>
   saveInvoiceDraft(request: SaveInvoiceDraftRequest): Promise<SaveInvoiceDraftResult>
   finalizeInvoice(request: FinalizeInvoiceRequest): Promise<FinalizeInvoiceResult>
+  updateInvoicePaymentStatus(
+    id: number,
+    input: { paymentStatus: 'unpaid' | 'paid'; paymentDate?: string | null }
+  ): Promise<{ success: true }>
   openInvoicePdf(id: number): Promise<OpenPdfResult>
   showInvoicePdfInFolder(id: number): Promise<OpenPdfResult>
 }

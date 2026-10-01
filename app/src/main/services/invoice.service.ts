@@ -1,4 +1,9 @@
-import { InvoiceInputSchema, type InvoiceInput } from '@shared/schemas/invoice.schema'
+import {
+  InvoiceInputSchema,
+  PaymentStatusInputSchema,
+  type InvoiceInput,
+  type PaymentStatusInput
+} from '@shared/schemas/invoice.schema'
 import { INVOICE_MESSAGES } from '@shared/messages/messages'
 import type { Invoice, InvoiceListFilter, InvoiceSummary } from '@shared/types/invoice'
 import type { InvoiceFormat } from '@shared/types/quote'
@@ -153,6 +158,30 @@ export class InvoiceService {
       quote.id
     )
     return { invoiceId: id }
+  }
+
+  /**
+   * 入金ステータスを変更する(詳細設計書4.15章)。PDF保存済みの請求書のみ対象。
+   * 入金済みへの変更は入金日が必須で、未収へ戻す場合は入金日をクリアする。
+   */
+  updatePaymentStatus(id: number, input: PaymentStatusInput): { success: true } {
+    const parsed = PaymentStatusInputSchema.safeParse(input)
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input')
+    }
+    const invoice = this.deps.repository.findById(id)
+    if (!invoice) {
+      throw new InvoiceNotFoundError()
+    }
+    if (invoice.status !== 'finalized') {
+      throw new Error(INVOICE_MESSAGES.paymentRequiresFinalized)
+    }
+    this.deps.repository.updatePaymentStatus(
+      id,
+      parsed.data.paymentStatus,
+      parsed.data.paymentDate ?? null
+    )
+    return { success: true }
   }
 
   private assertEditable(id: number): void {

@@ -292,6 +292,24 @@ export class InvoiceRepository {
     return { changes: result.changes }
   }
 
+  /** 入金ステータス・入金日を更新する(詳細設計書4.15章)。未収の場合は入金日をクリアする */
+  updatePaymentStatus(
+    id: number,
+    paymentStatus: 'unpaid' | 'paid',
+    paymentDate: string | null
+  ): { changes: number } {
+    const result = this.database.orm
+      .update(invoices)
+      .set({
+        paymentStatus,
+        paymentDate: paymentStatus === 'paid' ? paymentDate : null,
+        updatedAt: nowIso()
+      })
+      .where(eq(invoices.id, id))
+      .run()
+    return { changes: result.changes }
+  }
+
   /** PDF生成後、保存先パス・ハッシュ値を記録する */
   updatePdfInfo(id: number, params: { pdfPath: string; pdfHash: string }): void {
     this.database.orm

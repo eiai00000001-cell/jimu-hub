@@ -201,4 +201,51 @@ describe('InvoiceService', () => {
       expect(() => service.convertFromQuote(id)).toThrow('PDF保存済み')
     })
   })
+
+  describe('updatePaymentStatus(F-15)', () => {
+    async function finalized() {
+      companyRepo.upsert(company)
+      const { service } = create()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      return { service, id }
+    }
+
+    it('未収→入金済み(入金日必須)→未収(入金日クリア)と変更できる', async () => {
+      const { service, id } = await finalized()
+      expect(service.getInvoice(id).paymentStatus).toBe('unpaid')
+
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      expect(service.getInvoice(id)).toMatchObject({
+        paymentStatus: 'paid',
+        paymentDate: '2026-09-30'
+      })
+      expect(service.listInvoices({ paymentStatus: 'unpaid' })).toHaveLength(0)
+
+      service.updatePaymentStatus(id, { paymentStatus: 'unpaid', paymentDate: null })
+      expect(service.getInvoice(id)).toMatchObject({ paymentStatus: 'unpaid', paymentDate: null })
+      expect(service.listInvoices({ paymentStatus: 'unpaid' })).toHaveLength(1)
+    })
+
+    it('入金済みにする際に入金日が未入力の場合はエラー', async () => {
+      const { service, id } = await finalized()
+      expect(() => service.updatePaymentStatus(id, { paymentStatus: 'paid' })).toThrow(
+        '入金日を入力してください'
+      )
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: ' ' })
+      ).toThrow('入金日を入力してください')
+      expect(service.getInvoice(id).paymentStatus).toBe('unpaid')
+    })
+
+    it('下書き・存在しない請求書の入金ステータスは変更できない', () => {
+      const { service } = create()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      ).toThrow('PDF保存済み')
+      expect(() =>
+        service.updatePaymentStatus(999, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      ).toThrow(InvoiceNotFoundError)
+    })
+  })
 })

@@ -47,6 +47,10 @@ const jimuhubApi: JimuhubApi = {
     ipcRenderer.invoke(IPC_CHANNELS.invoicesSaveDraft, request),
   finalizeInvoice: (request: FinalizeInvoiceRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.invoicesFinalize, request),
+  updateInvoicePaymentStatus: (
+    id: number,
+    input: { paymentStatus: 'unpaid' | 'paid'; paymentDate?: string | null }
+  ) => ipcRenderer.invoke(IPC_CHANNELS.invoicesUpdatePaymentStatus, id, input),
   openInvoicePdf: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesOpenPdf, id),
   showInvoicePdfInFolder: (id: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.invoicesShowPdfInFolder, id)
