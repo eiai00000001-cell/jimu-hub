@@ -75,6 +75,7 @@ function renderPage(id: number, extra: Partial<Parameters<typeof InvoiceDetailPa
   return render(
     <InvoiceDetailPage
       invoiceId={id}
+      onOpenQuote={vi.fn()}
       onNavigateHome={vi.fn()}
       onNavigateClients={vi.fn()}
       onBackToList={vi.fn()}
@@ -145,5 +146,23 @@ describe('InvoiceDetailPage', () => {
     expect(await screen.findByText('対象の請求書が見つかりません')).toBeInTheDocument()
     await userEvent.click(screen.getByText('← 一覧へ戻る'))
     expect(onBackToList).toHaveBeenCalled()
+  })
+
+  it('変換元の見積書がある場合は「元の見積書」リンクを表示し、押下で見積書詳細へ遷移を要求する', async () => {
+    setup(
+      vi.fn().mockResolvedValue({ ...finalized, sourceQuoteId: 3, sourceQuoteNumber: '2026-008' })
+    )
+    const onOpenQuote = vi.fn()
+    renderPage(8, { onOpenQuote })
+    expect(await screen.findByText('元の見積書')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('2026-008 を見る'))
+    expect(onOpenQuote).toHaveBeenCalledWith(3)
+  })
+
+  it('変換元がない場合は「元の見積書」を表示しない', async () => {
+    setup(vi.fn().mockResolvedValue(finalized))
+    renderPage(8)
+    await screen.findByText('2026-012')
+    expect(screen.queryByText('元の見積書')).not.toBeInTheDocument()
   })
 })

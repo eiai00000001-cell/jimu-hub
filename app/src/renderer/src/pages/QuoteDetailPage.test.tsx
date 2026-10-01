@@ -94,6 +94,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -113,6 +114,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={onEdit}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -131,6 +133,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -144,8 +147,13 @@ describe('QuoteDetailPage', () => {
     await waitFor(() => expect(showQuotePdfInFolder).toHaveBeenCalledWith(8))
   })
 
-  it('「請求書に変換」押下では準備中の案内を表示する(T-21で実装予定)', async () => {
-    setupApi({ getQuote: vi.fn().mockResolvedValue(finalizedQuote) })
+  it('「請求書に変換」押下で変換を実行し、作成された請求書の詳細へ遷移する', async () => {
+    const convertQuoteToInvoice = vi.fn().mockResolvedValue({ invoiceId: 21 })
+    setupApi({
+      getQuote: vi.fn().mockResolvedValue(finalizedQuote),
+      convertQuoteToInvoice
+    })
+    const onConvertedToInvoice = vi.fn()
     render(
       <QuoteDetailPage
         quoteId={8}
@@ -153,12 +161,35 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={onConvertedToInvoice}
       />
     )
     await screen.findByText('2026-008')
 
     await userEvent.click(screen.getByText('請求書に変換'))
-    expect(await screen.findByText(/実装予定です/)).toBeInTheDocument()
+    await waitFor(() => expect(convertQuoteToInvoice).toHaveBeenCalledWith(8))
+    await waitFor(() => expect(onConvertedToInvoice).toHaveBeenCalledWith(21))
+  })
+
+  it('変換に失敗した場合はエラーを表示し遷移しない', async () => {
+    setupApi({
+      getQuote: vi.fn().mockResolvedValue(finalizedQuote),
+      convertQuoteToInvoice: vi.fn().mockRejectedValue(new Error('対象の見積書が見つかりません'))
+    })
+    const onConvertedToInvoice = vi.fn()
+    render(
+      <QuoteDetailPage
+        quoteId={8}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={onConvertedToInvoice}
+      />
+    )
+    await userEvent.click(await screen.findByText('請求書に変換'))
+    expect(await screen.findByText('対象の見積書が見つかりません')).toBeInTheDocument()
+    expect(onConvertedToInvoice).not.toHaveBeenCalled()
   })
 
   it('復元時のハッシュ不一致がある場合、警告バッジを表示する', async () => {
@@ -172,6 +203,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -187,6 +219,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -203,6 +236,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={onBackToList}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 
@@ -220,6 +254,7 @@ describe('QuoteDetailPage', () => {
         onNavigateClients={vi.fn()}
         onBackToList={vi.fn()}
         onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
       />
     )
 

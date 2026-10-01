@@ -40,7 +40,8 @@ function setupApi(): void {
     saveQuoteDraft: vi.fn(),
     finalizeQuote: vi.fn(),
     openQuotePdf: vi.fn(),
-    showQuotePdfInFolder: vi.fn()
+    showQuotePdfInFolder: vi.fn(),
+    convertQuoteToInvoice: vi.fn()
   } as unknown as Window['jimuhubApi']
 }
 
@@ -239,6 +240,106 @@ describe('App', () => {
 
     expect(await screen.findByText('請求書を下書き保存しました')).toBeInTheDocument()
     expect(screen.getByText('請求品目')).toBeInTheDocument()
+  })
+
+  it('見積書詳細→請求書に変換→請求書詳細(元の見積書リンク)→見積書詳細へ戻れる', async () => {
+    const quote = {
+      id: 8,
+      quoteNumber: '2026-008',
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      issueDate: '2026-09-20',
+      validUntil: null,
+      remarks: null,
+      subtotal10: 1000,
+      taxAmount10: 100,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 1100,
+      invoiceFormat: 'qualified',
+      status: 'finalized',
+      pdfPath: '/tmp/a.pdf',
+      pdfHash: 'h',
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: '見積品目',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 1000,
+          taxRate: 10,
+          amount: 1000
+        }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    }
+    window.jimuhubApi.listQuotes = vi.fn().mockResolvedValue([
+      {
+        id: 8,
+        quoteNumber: '2026-008',
+        clientId: 1,
+        clientName: 'アルファ商事株式会社',
+        issueDate: '2026-09-20',
+        totalAmount: 1100,
+        status: 'finalized'
+      }
+    ])
+    window.jimuhubApi.getQuote = vi.fn().mockResolvedValue(quote)
+    window.jimuhubApi.convertQuoteToInvoice = vi.fn().mockResolvedValue({ invoiceId: 30 })
+    window.jimuhubApi.getInvoice = vi.fn().mockResolvedValue({
+      id: 30,
+      invoiceNumber: null,
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      sourceQuoteId: 8,
+      sourceQuoteNumber: '2026-008',
+      issueDate: '2026-10-01',
+      dueDate: null,
+      remarks: null,
+      subtotal10: 1000,
+      taxAmount10: 100,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 1100,
+      withholdingTaxAmount: 0,
+      billingAmount: 1100,
+      invoiceFormat: null,
+      status: 'draft',
+      paymentStatus: 'unpaid',
+      paymentDate: null,
+      pdfPath: null,
+      pdfHash: null,
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: '見積品目',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 1000,
+          taxRate: 10,
+          amount: 1000,
+          withholdingTarget: false
+        }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    })
+
+    render(<App />)
+    await userEvent.click(await screen.findByText('見積書・請求書'))
+    await userEvent.click(await screen.findByText('2026-008'))
+    await userEvent.click(await screen.findByText('請求書に変換'))
+
+    expect(await screen.findByText('見積書から請求書(下書き)を作成しました')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('2026-008 を見る'))
+    expect(await screen.findByText('見積書詳細', { selector: 'h1' })).toBeInTheDocument()
   })
 
   it('ホームでエクスポートダイアログを開閉できる', async () => {

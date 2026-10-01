@@ -244,4 +244,29 @@ describe('InvoiceFormPage', () => {
     await userEvent.click(screen.getByText('キャンセル'))
     expect(onCancel).toHaveBeenCalled()
   })
+
+  it('変換元の見積書がある請求書の編集時は、変換元の案内と見積書へのリンクを表示する', async () => {
+    setupApi({
+      getInvoice: vi
+        .fn()
+        .mockResolvedValue({ ...draftInvoice, sourceQuoteId: 3, sourceQuoteNumber: '2026-008' })
+    })
+    const onOpenSourceQuote = vi.fn()
+    render(
+      <InvoiceFormPage
+        mode="edit"
+        invoiceId={7}
+        onSavedDraft={vi.fn()}
+        onFinalized={vi.fn()}
+        onCancel={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+        onOpenSourceQuote={onOpenSourceQuote}
+      />
+    )
+    expect(
+      await screen.findByText(/見積書 2026-008 から変換して作成しています/)
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByText('元の見積書を見る'))
+    expect(onOpenSourceQuote).toHaveBeenCalledWith(3)
+  })
 })

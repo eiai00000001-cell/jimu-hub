@@ -80,13 +80,15 @@ interface InvoiceFormPageProps {
   onFinalized: (id: number) => void
   onCancel: () => void
   onNavigateCompanyProfile: () => void
+  /** 変換元の見積書がある場合の「元の見積書を見る」リンク押下時 */
+  onOpenSourceQuote?: (quoteId: number) => void
 }
 
 /**
  * 請求書作成画面[F-11・F-13・F-14・F-16](新規作成・編集共通)
  * 参照元: 基本設計書4.13章、詳細設計書3.13章・4.14・4.16章、5章(クラス設計 `InvoiceFormPage`)
  *
- * 見積書からの変換(T-21)で作成された請求書の元見積書リンクは、T-21で追加する。
+ * 見積書からの変換(F-13)で作成された請求書は、元の見積書へのリンクを画面上部に表示する。
  */
 export function InvoiceFormPage({
   mode,
@@ -95,12 +97,14 @@ export function InvoiceFormPage({
   onSavedDraft,
   onFinalized,
   onCancel,
-  onNavigateCompanyProfile
+  onNavigateCompanyProfile,
+  onOpenSourceQuote
 }: InvoiceFormPageProps): ReactElement {
   const [clientId, setClientId] = useState<number | ''>('')
   const [clients, setClients] = useState<ClientOption[]>([])
   const [issueDate, setIssueDate] = useState(todayIsoDate())
   const [dueDate, setDueDate] = useState('')
+  const [source, setSource] = useState<{ id: number; number: string | null } | null>(null)
   const [remarks, setRemarks] = useState('')
   const [rows, setRows] = useState<LineItemFormRow[]>([{ ...EMPTY_ROW }])
   const [errors, setErrors] = useState<FormErrors>({ rows: [] })
@@ -127,6 +131,11 @@ export function InvoiceFormPage({
           setFinalizedNotice(true)
           return
         }
+        setSource(
+          invoice.sourceQuoteId === null
+            ? null
+            : { id: invoice.sourceQuoteId, number: invoice.sourceQuoteNumber }
+        )
         setClientId(invoice.clientId)
         setIssueDate(invoice.issueDate)
         setDueDate(invoice.dueDate ?? '')
@@ -315,6 +324,14 @@ export function InvoiceFormPage({
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
       {submitError ? <Message variant="error">{submitError}</Message> : null}
+      {source && onOpenSourceQuote ? (
+        <p className="source-note">
+          {`見積書 ${source.number ?? '(未採番)'} から変換して作成しています。`}
+          <button type="button" className="link" onClick={() => onOpenSourceQuote(source.id)}>
+            元の見積書を見る
+          </button>
+        </p>
+      ) : null}
 
       <div className="form-columns-3">
         <div>

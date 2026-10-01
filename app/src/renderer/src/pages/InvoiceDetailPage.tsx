@@ -17,6 +17,8 @@ interface InvoiceDetailPageProps {
   onNavigateClients: () => void
   onBackToList: () => void
   onEdit: (id: number) => void
+  /** 「元の見積書」リンク押下時に、変換元の見積書詳細画面へ遷移する */
+  onOpenQuote: (quoteId: number) => void
 }
 
 /**
@@ -24,7 +26,7 @@ interface InvoiceDetailPageProps {
  * 参照元: 基本設計書4.14章、詳細設計書3.14章・4.14・4.15章、5章(クラス設計 `InvoiceDetailPage`)
  *
  * 入金ステータスは現在の状態を表示する。「入金済みにする」等の変更操作(T-22)は
- * 実装まで「準備中」表示とする。元見積書へのリンクはT-21で追加する。
+ * 実装まで「準備中」表示とする。
  */
 export function InvoiceDetailPage({
   invoiceId,
@@ -32,7 +34,8 @@ export function InvoiceDetailPage({
   onNavigateHome,
   onNavigateClients,
   onBackToList,
-  onEdit
+  onEdit,
+  onOpenQuote
 }: InvoiceDetailPageProps): ReactElement {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -123,6 +126,16 @@ export function InvoiceDetailPage({
               <dd>{invoice.issueDate}</dd>
               <dt>支払期限</dt>
               <dd>{invoice.dueDate ?? ''}</dd>
+              {invoice.sourceQuoteId !== null ? (
+                <>
+                  <dt>元の見積書</dt>
+                  <dd>
+                    <TextLink onClick={() => onOpenQuote(invoice.sourceQuoteId as number)}>
+                      {`${invoice.sourceQuoteNumber ?? '(未採番)'} を見る`}
+                    </TextLink>
+                  </dd>
+                </>
+              ) : null}
             </dl>
 
             <table className="line-table">

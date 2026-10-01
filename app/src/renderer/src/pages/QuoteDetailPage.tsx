@@ -17,13 +17,13 @@ interface QuoteDetailPageProps {
   onNavigateClients: () => void
   onBackToList: () => void
   onEdit: (id: number) => void
+  /** 「請求書に変換」成功時に、作成された請求書(下書き)の詳細画面へ遷移する */
+  onConvertedToInvoice: (invoiceId: number) => void
 }
 
 /**
  * 見積書詳細画面[F-12・F-13]
  * 参照元: 基本設計書4.12章、詳細設計書3.12章・4.12・4.13章、5章(クラス設計 `QuoteDetailPage`)
- *
- * 「請求書に変換」は請求書への変換機能(T-21)実装まで「準備中」表示とする。
  */
 export function QuoteDetailPage({
   quoteId,
@@ -31,11 +31,12 @@ export function QuoteDetailPage({
   onNavigateHome,
   onNavigateClients,
   onBackToList,
-  onEdit
+  onEdit,
+  onConvertedToInvoice
 }: QuoteDetailPageProps): ReactElement {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [comingSoon, setComingSoon] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -58,6 +59,16 @@ export function QuoteDetailPage({
 
   async function handleOpenPdf(): Promise<void> {
     await window.jimuhubApi.openQuotePdf(quoteId)
+  }
+
+  async function handleConvertToInvoice(): Promise<void> {
+    setActionError(null)
+    try {
+      const result = await window.jimuhubApi.convertQuoteToInvoice(quoteId)
+      onConvertedToInvoice(result.invoiceId)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : QUOTE_MESSAGES.notFound)
+    }
   }
 
   async function handleShowInFolder(): Promise<void> {
@@ -85,7 +96,7 @@ export function QuoteDetailPage({
             <>
               <Button onClick={() => void handleOpenPdf()}>PDFを開く</Button>
               <Button onClick={() => void handleShowInFolder()}>Finderで表示</Button>
-              <Button variant="primary" onClick={() => setComingSoon(true)}>
+              <Button variant="primary" onClick={() => void handleConvertToInvoice()}>
                 請求書に変換
               </Button>
             </>
@@ -98,11 +109,7 @@ export function QuoteDetailPage({
       onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
-      {comingSoon ? (
-        <Message variant="warning">
-          「請求書への変換」は以降のイテレーションで実装予定です。
-        </Message>
-      ) : null}
+      {actionError ? <Message variant="error">{actionError}</Message> : null}
 
       {loadError ? (
         <>

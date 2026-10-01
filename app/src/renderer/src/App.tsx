@@ -220,6 +220,13 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onBackToList={() => setRoute({ name: 'documentList' })}
             onEdit={(id) => setRoute({ name: 'quoteEdit', id })}
+            onConvertedToInvoice={(invoiceId) =>
+              setRoute({
+                name: 'invoiceDetail',
+                id: invoiceId,
+                flashMessage: INVOICE_MESSAGES.convertSuccess
+              })
+            }
           />
         )
       case 'invoiceNew':
@@ -268,6 +275,7 @@ export function App(): ReactElement {
               })
             }
             onCancel={() => setRoute({ name: 'invoiceDetail', id: route.id })}
+            onOpenSourceQuote={(quoteId) => setRoute({ name: 'quoteDetail', id: quoteId })}
             onNavigateCompanyProfile={() =>
               setRoute({ name: 'companyProfile', returnTo: { name: 'invoiceEdit', id: route.id } })
             }
@@ -283,6 +291,7 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onBackToList={() => setRoute({ name: 'documentList' })}
             onEdit={(id) => setRoute({ name: 'invoiceEdit', id })}
+            onOpenQuote={(quoteId) => setRoute({ name: 'quoteDetail', id: quoteId })}
           />
         )
       default:
