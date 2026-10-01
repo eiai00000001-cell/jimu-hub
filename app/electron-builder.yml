@@ -6,6 +6,23 @@ directories:
 files:
   - out/**/*
   - package.json
+  # --- SEC-07: 配布物から不要な同梱物を除外する(基本設計書7章「配布・インストール」) ---
+  # better-sqlite3: macOS(darwin-arm64/darwin-x64)以外のネイティブバイナリと、ビルド用のCソース・gyp関連を除外
+  - '!node_modules/better-sqlite3/prebuilds/{win32,linux,linuxmusl}-*.node'
+  - '!node_modules/better-sqlite3/{deps,src}/**'
+  - '!node_modules/node-addon-api/**'
+  # react / react-dom / scheduler: レンダラーはviteで1つのバンドルに含めており、実行時にnode_modulesから読み込まない
+  - '!node_modules/{react,react-dom,scheduler}/**'
+  # drizzle-orm: SQLite(better-sqlite3)以外のデータベース用ドライバ・方言を除外
+  - '!node_modules/drizzle-orm/{gel-core,gel,netlify-db,mysql-core,singlestore-core,singlestore,singlestore-proxy,libsql,prisma,aws-data-api,expo-sqlite,xata-http,vercel-postgres,tidb-serverless,sqlite-proxy,sql-js,postgres-js,planetscale-serverless,pglite,pg-proxy,op-sqlite,node-postgres,neon-http,neon-serverless,neon,mysql2,mysql-proxy,bun-sqlite,bun-sql,d1,durable-sqlite,better-sqlite3-proxy,supabase,cloudflare,vercel,effect-schema,effect-postgres,knex,kysely,type-graphql,typebox,arktype,valibot,zod}/**'
+  # zod: TypeScriptソース(実行時はコンパイル済みJSを使用)
+  - '!node_modules/zod/src/**'
+  # ソースマップ・型定義・ドキュメント類(実行に不要)
+  - '!node_modules/**/*.map'
+  - '!node_modules/**/*.d.ts'
+  - '!node_modules/**/*.d.cts'
+  - '!node_modules/**/*.d.mts'
+  - '!node_modules/**/{README,CHANGELOG,HISTORY}*'
 mac:
   target:
     - target: dmg
