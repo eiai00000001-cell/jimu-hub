@@ -8,6 +8,7 @@ import type { Client } from '@shared/types/client'
 const sampleClient: Client = {
   id: 1,
   name: 'アルファ商事株式会社',
+  furigana: 'アルファショウジカブシキガイシャ',
   honorific: '御中',
   contactPerson: null,
   postalCode: null,
@@ -30,7 +31,17 @@ function setupApi(): void {
     updateClient: vi.fn().mockResolvedValue({ success: true }),
     deactivateClient: vi.fn().mockResolvedValue({ success: true }),
     exportData: vi.fn(),
-    importData: vi.fn()
+    importData: vi.fn(),
+    getCompanyProfile: vi.fn().mockResolvedValue(null),
+    saveCompanyProfile: vi.fn().mockResolvedValue({ success: true }),
+    listQuotes: vi.fn().mockResolvedValue([]),
+    listInvoices: vi.fn().mockResolvedValue([]),
+    getQuote: vi.fn(),
+    saveQuoteDraft: vi.fn(),
+    finalizeQuote: vi.fn(),
+    openQuotePdf: vi.fn(),
+    showQuotePdfInFolder: vi.fn(),
+    convertQuoteToInvoice: vi.fn()
   } as unknown as Window['jimuhubApi']
 }
 
@@ -70,6 +81,265 @@ describe('App', () => {
     await userEvent.click(screen.getByText('登録'))
 
     expect(await screen.findByText('取引先を登録しました')).toBeInTheDocument()
+  })
+
+  it('ホーム→自社情報・振込先の設定→保存→ホームへ戻ると設定が反映されている', async () => {
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('自社情報・振込先の設定'))
+    await userEvent.type(screen.getByLabelText('氏名・屋号'), 'サンプル商店 山田太郎')
+    await userEvent.type(screen.getByLabelText('住所'), '東京都千代田区1-1-1')
+    await userEvent.click(screen.getByText('保存'))
+
+    expect(await screen.findByText('自社情報を保存しました')).toBeInTheDocument()
+    expect(window.jimuhubApi.saveCompanyProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'サンプル商店 山田太郎' })
+    )
+
+    await userEvent.click(screen.getByText('ホーム'))
+    expect(await screen.findByText('取引先登録件数(利用中)')).toBeInTheDocument()
+  })
+
+  it('ホーム→見積書・請求書→見積書を新規作成→下書き保存で詳細画面へ遷移する', async () => {
+    window.jimuhubApi.getCompanyProfile = vi.fn().mockResolvedValue({
+      name: 'サンプル商店 山田太郎',
+      address: '東京都千代田区千代田1-1-1',
+      invoiceRegistrationNumber: 'T1234567890123',
+      bankName: null,
+      bankBranch: null,
+      accountType: null,
+      accountNumber: null,
+      accountHolder: null,
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    })
+    window.jimuhubApi.saveQuoteDraft = vi.fn().mockResolvedValue({ id: 3 })
+    window.jimuhubApi.getQuote = vi.fn().mockResolvedValue({
+      id: 3,
+      quoteNumber: null,
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      issueDate: '2026-09-28',
+      validUntil: null,
+      remarks: null,
+      subtotal10: 300000,
+      taxAmount10: 30000,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 330000,
+      invoiceFormat: null,
+      status: 'draft',
+      pdfPath: null,
+      pdfHash: null,
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: 'Webサイト制作一式',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 300000,
+          taxRate: 10,
+          amount: 300000
+        }
+      ],
+      createdAt: '2026-09-28T00:00:00.000Z',
+      updatedAt: '2026-09-28T00:00:00.000Z'
+    })
+
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('見積書・請求書'))
+    await userEvent.click(await screen.findByText('+ 見積書を新規作成'))
+    await userEvent.selectOptions(await screen.findByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), 'Webサイト制作一式')
+    await userEvent.click(screen.getByText('下書き保存'))
+
+    expect(await screen.findByText('見積書を下書き保存しました')).toBeInTheDocument()
+    expect(screen.getByText('Webサイト制作一式')).toBeInTheDocument()
+  })
+
+  it('見積書作成画面で自社情報未設定から設定・保存すると、見積書作成画面へ戻り完了メッセージを表示する', async () => {
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('見積書・請求書'))
+    await userEvent.click(await screen.findByText('+ 見積書を新規作成'))
+    await userEvent.click(await screen.findByText('自社情報・振込先の設定へ'))
+
+    await userEvent.type(screen.getByLabelText('氏名・屋号'), 'サンプル商店 山田太郎')
+    await userEvent.type(screen.getByLabelText('住所'), '東京都千代田区1-1-1')
+    await userEvent.click(screen.getByText('保存'))
+
+    expect(await screen.findByText('自社情報を保存しました')).toBeInTheDocument()
+    expect(screen.getByLabelText('取引先')).toBeInTheDocument()
+  })
+
+  it('請求書タブ→請求書を新規作成→下書き保存で請求書詳細へ遷移する', async () => {
+    window.jimuhubApi.getCompanyProfile = vi.fn().mockResolvedValue({
+      name: 'サンプル商店',
+      address: '東京都',
+      invoiceRegistrationNumber: null,
+      bankName: null,
+      bankBranch: null,
+      accountType: null,
+      accountNumber: null,
+      accountHolder: null,
+      updatedAt: ''
+    })
+    window.jimuhubApi.saveInvoiceDraft = vi.fn().mockResolvedValue({ id: 3 })
+    window.jimuhubApi.getInvoice = vi.fn().mockResolvedValue({
+      id: 3,
+      invoiceNumber: null,
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      sourceQuoteId: null,
+      issueDate: '2026-09-28',
+      dueDate: null,
+      remarks: null,
+      subtotal10: 1000,
+      taxAmount10: 100,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 1100,
+      withholdingTaxAmount: 0,
+      billingAmount: 1100,
+      invoiceFormat: null,
+      status: 'draft',
+      paymentStatus: 'unpaid',
+      paymentDate: null,
+      pdfPath: null,
+      pdfHash: null,
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: '請求品目',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 1000,
+          taxRate: 10,
+          amount: 1000,
+          withholdingTarget: false
+        }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    })
+
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('見積書・請求書'))
+    await userEvent.click(await screen.findByText('請求書'))
+    await userEvent.click(await screen.findByText('+ 請求書を新規作成'))
+    await userEvent.selectOptions(await screen.findByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), '請求品目')
+    await userEvent.click(screen.getByText('下書き保存'))
+
+    expect(await screen.findByText('請求書を下書き保存しました')).toBeInTheDocument()
+    expect(screen.getByText('請求品目')).toBeInTheDocument()
+  })
+
+  it('見積書詳細→請求書に変換→請求書詳細(元の見積書リンク)→見積書詳細へ戻れる', async () => {
+    const quote = {
+      id: 8,
+      quoteNumber: '2026-008',
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      issueDate: '2026-09-20',
+      validUntil: null,
+      remarks: null,
+      subtotal10: 1000,
+      taxAmount10: 100,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 1100,
+      invoiceFormat: 'qualified',
+      status: 'finalized',
+      pdfPath: '/tmp/a.pdf',
+      pdfHash: 'h',
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: '見積品目',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 1000,
+          taxRate: 10,
+          amount: 1000
+        }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    }
+    window.jimuhubApi.listQuotes = vi.fn().mockResolvedValue([
+      {
+        id: 8,
+        quoteNumber: '2026-008',
+        clientId: 1,
+        clientName: 'アルファ商事株式会社',
+        issueDate: '2026-09-20',
+        totalAmount: 1100,
+        status: 'finalized'
+      }
+    ])
+    window.jimuhubApi.getQuote = vi.fn().mockResolvedValue(quote)
+    window.jimuhubApi.convertQuoteToInvoice = vi.fn().mockResolvedValue({ invoiceId: 30 })
+    window.jimuhubApi.getInvoice = vi.fn().mockResolvedValue({
+      id: 30,
+      invoiceNumber: null,
+      clientId: 1,
+      clientName: 'アルファ商事株式会社',
+      clientHonorific: '御中',
+      sourceQuoteId: 8,
+      sourceQuoteNumber: '2026-008',
+      issueDate: '2026-10-01',
+      dueDate: null,
+      remarks: null,
+      subtotal10: 1000,
+      taxAmount10: 100,
+      subtotal8: 0,
+      taxAmount8: 0,
+      totalAmount: 1100,
+      withholdingTaxAmount: 0,
+      billingAmount: 1100,
+      invoiceFormat: null,
+      status: 'draft',
+      paymentStatus: 'unpaid',
+      paymentDate: null,
+      pdfPath: null,
+      pdfHash: null,
+      pdfHashMismatch: false,
+      lineItems: [
+        {
+          id: 1,
+          lineNo: 1,
+          name: '見積品目',
+          quantity: 1,
+          unit: '式',
+          unitPrice: 1000,
+          taxRate: 10,
+          amount: 1000,
+          withholdingTarget: false
+        }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    })
+
+    render(<App />)
+    await userEvent.click(await screen.findByText('見積書・請求書'))
+    await userEvent.click(await screen.findByText('2026-008'))
+    await userEvent.click(await screen.findByText('請求書に変換'))
+
+    expect(await screen.findByText('見積書から請求書(下書き)を作成しました')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('2026-008 を見る'))
+    expect(await screen.findByText('見積書詳細', { selector: 'h1' })).toBeInTheDocument()
   })
 
   it('ホームでエクスポートダイアログを開閉できる', async () => {

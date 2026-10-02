@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - アプリアイコン案A(モノクロ準拠・アウトライン)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- 案A: 白地+濃グレー(#3A3A3C)。中心の塗り丸から6方向へ線が伸び、先端は白抜きの丸(アウトライン)。
+       既存デザインガイドの6色のうち「白」「濃グレー」「罫線グレー」のみを用いた最もモノクロ度の高い案。 -->
+  <rect x="100" y="100" width="824" height="824" rx="180" fill="#FFFFFF" stroke="#D1D1D6" stroke-width="6"/>
+  <g stroke="#3A3A3C" stroke-width="14" stroke-linecap="round">
+    <line x1="512" y1="512" x2="512" y2="252"/>
+    <line x1="512" y1="512" x2="737" y2="382"/>
+    <line x1="512" y1="512" x2="737" y2="642"/>
+    <line x1="512" y1="512" x2="512" y2="772"/>
+    <line x1="512" y1="512" x2="287" y2="642"/>
+    <line x1="512" y1="512" x2="287" y2="382"/>
+  </g>
+  <circle cx="512" cy="512" r="78" fill="#3A3A3C"/>
+  <g fill="#FFFFFF" stroke="#3A3A3C" stroke-width="14">
+    <circle cx="512" cy="252" r="40"/>
+    <circle cx="737" cy="382" r="40"/>
+    <circle cx="737" cy="642" r="40"/>
+    <circle cx="512" cy="772" r="40"/>
+    <circle cx="287" cy="642" r="40"/>
+    <circle cx="287" cy="382" r="40"/>
+  </g>
+</svg>
+</body>
+</html>

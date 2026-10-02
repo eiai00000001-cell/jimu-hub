@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 請求書を作成(モックアップ v1.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #DCDCE0; font-family: var(--font-family); color: var(--color-text); font-size: 13px; -webkit-font-smoothing: antialiased; }
+    .window { width: 1280px; margin: 24px auto; background: var(--color-bg); border-radius: var(--radius-window); overflow: hidden; box-shadow: var(--shadow-window); border: 1px solid var(--color-border); display: flex; flex-direction: column; position: relative; }
+    .titlebar { height: 38px; min-height: 38px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; }
+    .tl-close { background: #FF5F57; } .tl-min { background: #FFBD2E; } .tl-zoom { background: #28C840; }
+    .titlebar-title { flex: 1; text-align: center; font-size: 12px; color: var(--color-text-secondary); margin-right: 56px; }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar { width: 220px; flex-shrink: 0; background: var(--color-bg); border-right: 1px solid var(--color-border); padding: 0; }
+    .sidebar-header { height: var(--header-height); box-sizing: border-box; display: flex; align-items: center; padding: 0 18px; font-size: 18px; font-weight: 600; color: var(--color-text); background: var(--color-white); border-bottom: 1px solid var(--color-border); }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item { padding: 7px 18px; margin-bottom: 2px; border-radius: 0; font-size: 13px; color: var(--color-text); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item.active .badge-soon { display: none; }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto; background: var(--color-bg); }
+    .page-header { height: var(--header-height); box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--color-text); }
+    .page-content { padding: 24px 28px; flex: 1; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: var(--control-height); padding: 0 16px; border-radius: var(--radius-button); border: 1px solid transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+    .field .required { color: var(--color-text-secondary); font-size: 11px; margin-left: 4px; }
+    .field input[type=text], .field input[type=date], .field select, .field textarea {
+      width: 100%; font-family: inherit; font-size: 13px; height: var(--control-height); padding: 0 10px;
+      border: 1px solid var(--color-border); border-radius: 0; background: var(--color-white); color: var(--color-text);
+    }
+    .field textarea { height: auto; padding: 8px 10px; resize: vertical; }
+    .field .hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 4px; }
+    .field .readonly-value { height: var(--control-height); display: flex; align-items: center; padding: 0 10px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-secondary); }
+
+    .form-columns-3 { display: flex; gap: 32px; max-width: 900px; }
+    .form-columns-3 > div { flex: 1 1 0; min-width: 0; }
+
+    .panel { background: var(--color-white); border: 1px solid var(--color-border); padding: 20px 24px; }
+
+    .line-table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); margin-top: 8px; }
+    .line-table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 8px 8px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .line-table td { padding: 6px 6px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .line-table tr:last-child td { border-bottom: none; }
+    .line-table input[type=text], .line-table input[type=number], .line-table select {
+      width: 100%; font-family: inherit; font-size: 13px; height: 28px; padding: 0 6px;
+      border: 1px solid var(--color-border); border-radius: 0; background: var(--color-white); color: var(--color-text);
+    }
+    .line-table td.col-name { width: 22%; }
+    .line-table td.col-qty { width: 7%; }
+    .line-table td.col-unit { width: 7%; }
+    .line-table td.col-price { width: 11%; }
+    .line-table td.col-tax { width: 8%; }
+    .line-table td.col-wh { width: 10%; text-align: center; }
+    .line-table td.col-whamt { width: 10%; text-align: right; font-variant-numeric: tabular-nums; }
+    .line-table td.col-amount { width: 11%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 10px; }
+    .line-table td.col-del { width: 6%; text-align: center; }
+    .add-row-btn { margin-top: 10px; }
+
+    .totals-block { margin-top: 16px; max-width: 420px; margin-left: auto; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
+    .totals-row .val { font-variant-numeric: tabular-nums; color: var(--color-text); }
+    .totals-row.grand { font-size: 15px; font-weight: 700; color: var(--color-text); border-bottom: none; padding-top: 12px; }
+    .totals-row.grand .val { font-size: 18px; }
+
+    .form-actions { display: flex; gap: 8px; margin-top: 24px; }
+    .section-heading { font-size: 14px; font-weight: 700; margin: 28px 0 12px; color: var(--color-text); }
+
+    .reference-block { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border); }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin-bottom: 12px; }
+    .source-note { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 16px; max-width: 900px; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 請求書を作成</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item active"><span>見積書・請求書</span></li>
+          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <h1 class="page-title">請求書を作成</h1>
+        </div>
+        <div class="page-content">
+          <p class="source-note">見積書 2026-008(サンプル商事株式会社)から変換して作成しています。<button class="link">元の見積書を見る</button></p>
+
+          <div class="form-columns-3">
+            <div>
+              <div class="field">
+                <label>取引先<span class="required">必須</span></label>
+                <select>
+                  <option selected>サンプル商事株式会社</option>
+                  <option>アルファ商事株式会社</option>
+                </select>
+                <div class="hint"><button class="link">+ 取引先を新規登録</button></div>
+              </div>
+            </div>
+            <div>
+              <div class="field">
+                <label>請求書番号</label>
+                <div class="readonly-value">PDF保存時に採番されます</div>
+              </div>
+            </div>
+            <div></div>
+          </div>
+
+          <div class="form-columns-3">
+            <div>
+              <div class="field">
+                <label>発行日<span class="required">必須</span></label>
+                <input type="date" value="2026-09-28">
+              </div>
+            </div>
+            <div>
+              <div class="field">
+                <label>支払期限</label>
+                <input type="date" value="2026-10-31">
+              </div>
+            </div>
+            <div></div>
+          </div>
+
+          <div class="section-heading">明細行</div>
+          <table class="line-table">
+            <thead>
+              <tr>
+                <th>品名</th>
+                <th>数量</th>
+                <th>単位</th>
+                <th>単価</th>
+                <th>税率</th>
+                <th style="text-align:center;">源泉徴収対象</th>
+                <th style="text-align:right;">源泉徴収税額</th>
+                <th style="text-align:right;">金額</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-name"><input type="text" value="Webサイト制作一式"></td>
+                <td class="col-qty"><input type="number" value="1"></td>
+                <td class="col-unit"><input type="text" value="式"></td>
+                <td class="col-price"><input type="number" value="300000"></td>
+                <td class="col-tax"><select><option selected>10%</option><option>8%</option></select></td>
+                <td class="col-wh"><input type="checkbox" checked></td>
+                <td class="col-whamt">¥30,630</td>
+                <td class="col-amount">¥300,000</td>
+                <td class="col-del"><button class="btn btn-secondary btn-sm">削除</button></td>
+              </tr>
+              <tr>
+                <td class="col-name"><input type="text" value="サーバー保守(月額)"></td>
+                <td class="col-qty"><input type="number" value="1"></td>
+                <td class="col-unit"><input type="text" value="式"></td>
+                <td class="col-price"><input type="number" value="30000"></td>
+                <td class="col-tax"><select><option selected>10%</option><option>8%</option></select></td>
+                <td class="col-wh"><input type="checkbox"></td>
+                <td class="col-whamt">¥0</td>
+                <td class="col-amount">¥30,000</td>
+                <td class="col-del"><button class="btn btn-secondary btn-sm">削除</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn btn-secondary add-row-btn">+ 行を追加</button>
+
+          <div class="totals-block">
+            <div class="totals-row"><span>10%対象 小計</span><span class="val">¥330,000</span></div>
+            <div class="totals-row"><span>10%対象 消費税額</span><span class="val">¥33,000</span></div>
+            <div class="totals-row"><span>8%対象 小計</span><span class="val">¥0</span></div>
+            <div class="totals-row"><span>8%対象 消費税額</span><span class="val">¥0</span></div>
+            <div class="totals-row"><span>合計金額(税込)</span><span class="val">¥363,000</span></div>
+            <div class="totals-row"><span>源泉徴収税額(合計)</span><span class="val">-¥30,630</span></div>
+            <div class="totals-row grand"><span>請求金額</span><span class="val">¥332,370</span></div>
+          </div>
+
+          <div class="section-heading">備考</div>
+          <div class="field" style="max-width:900px;">
+            <textarea rows="3" placeholder="請求書に記載する備考があれば入力してください"></textarea>
+          </div>
+
+          <div class="section-heading">自社情報・振込先(F-10で設定済みの内容・編集不可)</div>
+          <div class="panel" style="max-width:900px;">
+            <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: 8px; column-gap:16px; margin:0; font-size:12px;">
+              <dt style="color:var(--color-text-secondary);">氏名・屋号</dt><dd style="margin:0;">サンプル商店 山田太郎</dd>
+              <dt style="color:var(--color-text-secondary);">住所</dt><dd style="margin:0;">東京都千代田区千代田1-1-1</dd>
+              <dt style="color:var(--color-text-secondary);">インボイス登録番号</dt><dd style="margin:0;">T1234567890123</dd>
+              <dt style="color:var(--color-text-secondary);">振込先</dt><dd style="margin:0;">サンプル銀行 本店営業部 普通 1234567 ヤマダ タロウ</dd>
+            </dl>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary">下書き保存</button>
+            <button class="btn btn-primary">PDFとして保存</button>
+            <button class="btn btn-secondary">キャンセル</button>
+          </div>
+
+          <div class="reference-block">
+            <div class="reference-label">参考: 「取引先を新規登録」モーダル・エラー表示は見積書作成画面(F-12_quote-new.html)と共通のため、そちらを参照</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

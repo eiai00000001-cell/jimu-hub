@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like } from 'drizzle-orm'
+import { and, asc, desc, eq, like, sql } from 'drizzle-orm'
 import type { Database } from '../db/db'
 import { clients } from '../db/schema'
 import type { Client, ClientListFilter, ClientStatus } from '@shared/types/client'
@@ -15,6 +15,7 @@ function mapRowToClient(row: ClientRow): Client {
   return {
     id: row.id,
     name: row.name,
+    furigana: row.furigana,
     honorific: row.honorific as Client['honorific'],
     contactPerson: row.contactPerson,
     postalCode: row.postalCode,
@@ -41,7 +42,7 @@ export class ClientRepository {
   constructor(private readonly database: Database) {}
 
   findAll(filter: ClientListFilter = {}): Client[] {
-    const { keyword, sort = 'name_asc', statusFilter = 'active' } = filter
+    const { keyword, sort = 'furigana_asc', statusFilter = 'active' } = filter
 
     const conditions = []
     if (keyword) {
@@ -52,6 +53,13 @@ export class ClientRepository {
     }
 
     const orderBy = {
+      // フリガナが未入力(NULL・空文字)のレコードを五十音順対象から外し、末尾にまとめる
+      // (詳細設計書4.5章。2段階のORDER BYで実現する)
+      furigana_asc: [
+        sql`(${clients.furigana} IS NULL OR ${clients.furigana} = '') ASC`,
+        asc(clients.furigana),
+        asc(clients.id)
+      ],
       name_asc: [asc(clients.name), asc(clients.id)],
       name_desc: [desc(clients.name), desc(clients.id)],
       created_at_desc: [desc(clients.createdAt), desc(clients.id)],
@@ -79,6 +87,7 @@ export class ClientRepository {
       .insert(clients)
       .values({
         name: input.name,
+        furigana: toNullable(input.furigana),
         honorific: input.honorific,
         contactPerson: toNullable(input.contactPerson),
         postalCode: toNullable(input.postalCode),
@@ -106,6 +115,7 @@ export class ClientRepository {
       .update(clients)
       .set({
         name: input.name,
+        furigana: toNullable(input.furigana),
         honorific: input.honorific,
         contactPerson: toNullable(input.contactPerson),
         postalCode: toNullable(input.postalCode),
@@ -149,6 +159,7 @@ export class ClientRepository {
       .values({
         id: record.id,
         name: record.name,
+        furigana: record.furigana ?? null,
         honorific: record.honorific,
         contactPerson: record.contactPerson,
         postalCode: record.postalCode,

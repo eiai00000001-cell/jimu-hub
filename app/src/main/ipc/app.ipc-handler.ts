@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import type { StartupStatus } from '@shared/ipc/api'
 
@@ -11,5 +11,10 @@ export class AppIpcHandler {
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.appStartupStatus, () => this.status)
+    // 起動エラー画面からの復元成功後の再起動(詳細設計書4.9章手順4)
+    ipcMain.handle(IPC_CHANNELS.appRelaunch, () => {
+      app.relaunch()
+      app.exit(0)
+    })
   }
 }

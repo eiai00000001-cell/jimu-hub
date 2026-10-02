@@ -7,6 +7,7 @@ import { ImportDialog } from './ImportDialog'
 function setupApi(result: {
   success: boolean
   importedCount?: number
+  pdfHashMismatchCount?: number
   error?: string
 }): ReturnType<typeof vi.fn> {
   const importData = vi.fn().mockResolvedValue(result)
@@ -91,6 +92,16 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     expect(onImported).toHaveBeenCalledWith(12)
   })
 
+  it('PDFのハッシュ不一致がある場合は、件数を含む警告付きの完了メッセージを表示する', async () => {
+    setupApi({ success: true, importedCount: 5, pdfHashMismatchCount: 2 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText(/改変が疑われる書類が2件/)).toBeInTheDocument()
+  })
+
   it('復元失敗時はエラーメッセージを表示する', async () => {
     setupApi({ success: false, error: '復元に失敗しました。データは復元前の状態に戻しました' })
     render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
@@ -121,5 +132,28 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
 
     await userEvent.click(screen.getByLabelText('閉じる'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('importDataが例外で失敗した場合は、失敗メッセージを表示する(I1-06)', async () => {
+    const importData = setupApi({ success: true })
+    importData.mockRejectedValue(new Error('ディスク障害'))
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText('ディスク障害')).toBeInTheDocument()
+  })
+
+  it('復元が成功した後は、警告文と「キャンセル」「続行」ボタンを隠し完了メッセージのみ表示する(O1)', async () => {
+    setupApi({ success: true, importedCount: 3 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText(/復元が完了しました/)).toBeInTheDocument()
+    expect(screen.queryByText(/置き換わります/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '続行' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'キャンセル' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '閉じる' })).toBeInTheDocument()
   })
 })

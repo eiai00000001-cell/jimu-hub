@@ -14,6 +14,8 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): void {
     deactivateClient: vi.fn(),
     exportData: vi.fn(),
     importData: vi.fn(),
+    listQuotes: vi.fn().mockResolvedValue([]),
+    listInvoices: vi.fn().mockResolvedValue([]),
     ...overrides
   } as unknown as Window['jimuhubApi']
 }
@@ -27,8 +29,10 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -45,8 +49,10 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={onNavigateClients}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -58,8 +64,10 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -72,8 +80,10 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={onOpenExportDialog}
         onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
@@ -86,12 +96,52 @@ describe('TopPage', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onOpenExportDialog={vi.fn()}
         onOpenImportDialog={onOpenImportDialog}
+        onNavigateCompanyProfile={vi.fn()}
       />
     )
 
     await userEvent.click(screen.getByText('データを復元'))
     expect(onOpenImportDialog).toHaveBeenCalled()
+  })
+
+  it('「自社情報・振込先の設定」押下で設定画面への遷移を要求する(詳細設計書3.1章)', async () => {
+    const onNavigateCompanyProfile = vi.fn()
+    render(
+      <TopPage
+        onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onOpenExportDialog={vi.fn()}
+        onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={onNavigateCompanyProfile}
+      />
+    )
+
+    await userEvent.click(screen.getByText('自社情報・振込先の設定'))
+    expect(onNavigateCompanyProfile).toHaveBeenCalled()
+  })
+
+  it('請求書件数・未収の請求書件数(PDF保存済みかつ未収)を表示する', async () => {
+    setupApi({
+      listInvoices: vi.fn().mockResolvedValue([
+        { id: 1, status: 'finalized', paymentStatus: 'unpaid' },
+        { id: 2, status: 'finalized', paymentStatus: 'paid' },
+        { id: 3, status: 'draft', paymentStatus: 'unpaid' }
+      ])
+    })
+    render(
+      <TopPage
+        onNavigateClients={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onOpenExportDialog={vi.fn()}
+        onOpenImportDialog={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+      />
+    )
+    expect(await screen.findByText('請求書件数')).toBeInTheDocument()
+    expect(await screen.findByText('3件')).toBeInTheDocument()
+    expect(await screen.findByText('1件')).toBeInTheDocument()
   })
 })

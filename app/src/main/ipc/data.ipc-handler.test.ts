@@ -65,6 +65,23 @@ describe('DataIpcHandler', () => {
     expect(result).toEqual({ success: true, filePath: '/tmp/export.json' })
   })
 
+  it('data:exportの保存ダイアログは.zipの既定ファイル名・ZIPフィルタを指定する', async () => {
+    showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
+    await handlers.get(IPC_CHANNELS.dataExport)!({})
+
+    const options = showSaveDialog.mock.calls[0]?.[0]
+    expect(options.defaultPath).toMatch(/事務HUB_backup_\d{8}_\d{4}\.zip$/)
+    expect(options.filters).toEqual([{ name: 'ZIP', extensions: ['zip'] }])
+  })
+
+  it('data:importの選択ダイアログは新形式(zip)・旧形式(json)の双方を選択できる', async () => {
+    showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
+    await handlers.get(IPC_CHANNELS.dataImport)!({})
+
+    const options = showOpenDialog.mock.calls[0]?.[0]
+    expect(options.filters[0].extensions).toEqual(['zip', 'json'])
+  })
+
   it('data:exportはダイアログがキャンセルされた場合BackupServiceを呼び出さない', async () => {
     showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
     const handler = handlers.get(IPC_CHANNELS.dataExport)!

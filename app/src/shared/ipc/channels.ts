@@ -14,5 +14,22 @@ export const IPC_CHANNELS = {
   clientsDeactivate: 'clients:deactivate',
   dataExport: 'data:export',
   dataImport: 'data:import',
-  appStartupStatus: 'app:startup-status'
+  appStartupStatus: 'app:startup-status',
+  appRelaunch: 'app:relaunch',
+  companyGet: 'company:get',
+  companySave: 'company:save',
+  quotesList: 'quotes:list',
+  quotesGet: 'quotes:get',
+  quotesSaveDraft: 'quotes:saveDraft',
+  quotesFinalize: 'quotes:finalize',
+  quotesOpenPdf: 'quotes:openPdf',
+  quotesShowPdfInFolder: 'quotes:showPdfInFolder',
+  quotesConvertToInvoice: 'quotes:convertToInvoice',
+  invoicesList: 'invoices:list',
+  invoicesGet: 'invoices:get',
+  invoicesSaveDraft: 'invoices:saveDraft',
+  invoicesFinalize: 'invoices:finalize',
+  invoicesUpdatePaymentStatus: 'invoices:updatePaymentStatus',
+  invoicesOpenPdf: 'invoices:openPdf',
+  invoicesShowPdfInFolder: 'invoices:showPdfInFolder'
 } as const

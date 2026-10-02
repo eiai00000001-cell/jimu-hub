@@ -5,9 +5,23 @@ import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
 import { BackupService } from './services/backup.service'
 import { MigrationService } from './services/migration.service'
+import { CompanyProfileRepository } from './repositories/company-profile.repository'
+import { CompanyService } from './services/company.service'
+import { DocumentNumberSequenceRepository } from './repositories/document-number-sequence.repository'
+import { QuoteRepository } from './repositories/quote.repository'
+import { InvoiceRepository } from './repositories/invoice.repository'
+import { InvoiceService } from './services/invoice.service'
+import { NumberingService } from './services/numbering.service'
+import { cleanupLeftoverPdfTempFiles } from './services/pdf/temp-files'
+import { PdfService } from './services/pdf.service'
+import { QuoteService } from './services/quote.service'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
+import { CompanyIpcHandler } from './ipc/company.ipc-handler'
+import { QuotesIpcHandler } from './ipc/quotes.ipc-handler'
+import { InvoicesIpcHandler } from './ipc/invoices.ipc-handler'
+import { StartupRecoveryService } from './services/startup-recovery.service'
 import { initializeStartup } from './startup'
 import { applyWindowSecurity, denyAllPermissionRequests, readDevOnlyEnv } from './app-security'
 
@@ -26,6 +40,7 @@ if (devDataDir) {
 
 const dbFilePath = join(userDataDir, 'data.sqlite')
 const backupsDir = join(userDataDir, 'backups')
+const documentsDir = join(userDataDir, 'documents')
 
 function createMainWindow(): BrowserWindow {
   const shouldShow = process.env.JIMUHUB_WINDOW_SHOW !== '0'
@@ -65,12 +80,27 @@ function createMainWindow(): BrowserWindow {
 app.whenReady().then(() => {
   denyAllPermissionRequests(session.defaultSession)
 
+  // 異常終了で残ったPDF生成用の一時HTML(書類の内容を含む)を削除する(SEC-11)
+  cleanupLeftoverPdfTempFiles()
+
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。
   // これにより、データベースファイル破損時もここで処理が中断されず、必ずcreateMainWindow()まで到達する。
   const { status: startupStatus, database } = initializeStartup(dbFilePath)
 
   new AppIpcHandler(startupStatus).registerHandlers()
+
+  if (!database) {
+    // データベースを開けない場合は、起動エラー画面から復元(F-03と同一のimportData)できるようにする(F-09)
+    new DataIpcHandler(
+      new StartupRecoveryService({
+        dbFilePath,
+        backupsDir,
+        documentsDir,
+        appVersion: app.getVersion()
+      })
+    ).registerHandlers()
+  }
 
   if (database) {
     const clientRepository = new ClientRepository(database)
@@ -81,11 +111,38 @@ app.whenReady().then(() => {
       migrationService: new MigrationService(),
       dbFilePath,
       backupsDir,
+      documentsDir,
       appVersion: app.getVersion()
+    })
+
+    const companyProfileRepository = new CompanyProfileRepository(database)
+    const companyService = new CompanyService(companyProfileRepository)
+
+    const quoteRepository = new QuoteRepository(database)
+    const numberingService = new NumberingService(new DocumentNumberSequenceRepository(database))
+    const pdfService = new PdfService({ documentsDir })
+    const quoteService = new QuoteService({
+      database,
+      repository: quoteRepository,
+      companyProfileRepository,
+      numberingService,
+      pdfService
+    })
+
+    const invoiceService = new InvoiceService({
+      database,
+      repository: new InvoiceRepository(database),
+      quoteRepository,
+      companyProfileRepository,
+      numberingService,
+      pdfService
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
+    new CompanyIpcHandler(companyService).registerHandlers()
+    new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()
+    new InvoicesIpcHandler(invoiceService, documentsDir).registerHandlers()
   }
 
   createMainWindow()

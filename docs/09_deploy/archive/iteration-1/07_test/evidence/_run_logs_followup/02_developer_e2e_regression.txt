@@ -1,0 +1,9 @@
+=== 実行日時: 2026-09-27 15:26:48 +0900 ===
+=== コマンド: npx playwright test (developer作成 e2e/tests, 回帰確認) ===
+
+Running 2 tests using 1 worker
+
+  ✓  1 e2e/tests/backup-restore.spec.ts:34:3 › データ管理: エクスポートしてから復元する › エクスポートしたファイルを復元すると、登録済みの取引先が維持される (1.6s)
+  ✓  2 e2e/tests/client-management.spec.ts:19:3 › 取引先管理: 登録した内容が一覧へ反映される › 取引先を新規登録すると、一覧に反映され完了メッセージが表示される (821ms)
+
+  2 passed (2.7s)

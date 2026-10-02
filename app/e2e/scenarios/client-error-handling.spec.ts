@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 
 /**
  * 【tester作成】F-04/F-06のバリデーション形式エラー・異常系を補足確認する。
@@ -9,14 +8,8 @@ import { evidenceDir } from './evidence-dir'
  * 観点: 異常系・入力値検証
  */
 
-const EVIDENCE_DIR = evidenceDir('TC-16_client-error-handling')
-
 test.describe('F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24)', () => {
   let launched: LaunchedApp
-
-  test.beforeAll(() => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
-  })
 
   test.beforeEach(async () => {
     launched = await launchApp()
@@ -44,7 +37,7 @@ test.describe('F-04/F-06: 形式バリデーション・存在しないIDの異�
       window.getByText('電話番号は半角数字・ハイフン・括弧で入力してください')
     ).toBeVisible()
     await expect(window.getByText('メールアドレスの形式が正しくありません')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/01_format_validation_errors.png` })
+    await shot(window, 'TC-16', 'format_validation_errors')
   })
 
   test('登録画面で「キャンセル」を押すと入力内容を破棄して一覧へ戻る(TC-17)', async () => {

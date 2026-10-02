@@ -1,0 +1,3 @@
+quotes件数=2
+1|draft|(未採番)
+2|finalized|2026-002
