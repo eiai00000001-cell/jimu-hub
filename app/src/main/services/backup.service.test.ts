@@ -540,9 +540,3 @@ describe('BackupService', () => {
     })
   })
 })
-
-function buildBrokenPayloadOk(): BackupFile {
-  const payload = buildBrokenPayload()
-  payload.data.clients = []
-  return payload
-}

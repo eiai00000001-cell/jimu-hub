@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import type { Invoice } from '@shared/types/invoice'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
+import { toErrorMessage } from '../utils/error-message'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -58,7 +59,7 @@ export function InvoiceDetailPage({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setLoadError(error instanceof Error ? error.message : INVOICE_MESSAGES.notFound)
+          setLoadError(toErrorMessage(error, INVOICE_MESSAGES.notFound))
         }
       })
     return () => {
@@ -81,7 +82,7 @@ export function InvoiceDetailPage({
       setPaymentMode('view')
       setPaymentNotice(notice)
     } catch (error) {
-      setPaymentError(error instanceof Error ? error.message : INVOICE_MESSAGES.notFound)
+      setPaymentError(toErrorMessage(error, INVOICE_MESSAGES.notFound))
     }
   }
 

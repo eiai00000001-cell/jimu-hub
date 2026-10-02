@@ -7,6 +7,7 @@ import { ClientInputSchema, type ClientInput } from '@shared/schemas/client.sche
 import { HONORIFICS } from '@shared/types/client'
 import { CLIENT_MESSAGES } from '@shared/messages/messages'
 import { convertHiraganaToKatakana } from '@shared/text/furigana'
+import { toErrorMessage } from '../utils/error-message'
 
 const EMPTY_FORM: ClientInput = {
   name: '',
@@ -66,7 +67,7 @@ export function ClientFormPage({
           })
         })
         .catch((error: unknown) => {
-          setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+          setLoadError(toErrorMessage(error, CLIENT_MESSAGES.notFound))
         })
     }
   }, [mode, clientId])

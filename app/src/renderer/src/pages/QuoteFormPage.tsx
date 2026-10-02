@@ -8,6 +8,7 @@ import { QuoteInputSchema, type QuoteInput, type LineItemInput } from '@shared/s
 import { calculateLineAmount, calculateTaxBreakdown } from '@shared/calculations/tax-calculation'
 import { QUOTE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 import type { CompanyProfile } from '@shared/types/company-profile'
+import { toErrorMessage } from '../utils/error-message'
 
 interface ClientOption {
   id: number
@@ -129,7 +130,7 @@ export function QuoteFormPage({
         )
       })
       .catch((error: unknown) => {
-        setLoadError(error instanceof Error ? error.message : QUOTE_MESSAGES.notFound)
+        setLoadError(toErrorMessage(error, QUOTE_MESSAGES.notFound))
       })
   }, [mode, quoteId])
 
@@ -220,7 +221,7 @@ export function QuoteFormPage({
       })
       onFinalized(result.id)
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : QUOTE_MESSAGES.pdfSaveFailure)
+      setSubmitError(toErrorMessage(error, QUOTE_MESSAGES.pdfSaveFailure))
     } finally {
       setSubmitting(false)
     }

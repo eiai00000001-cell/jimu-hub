@@ -16,6 +16,7 @@ import {
 } from '@shared/calculations/tax-calculation'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 import type { CompanyProfile } from '@shared/types/company-profile'
+import { toErrorMessage } from '../utils/error-message'
 
 interface ClientOption {
   id: number
@@ -152,7 +153,7 @@ export function InvoiceFormPage({
         )
       })
       .catch((error: unknown) => {
-        setLoadError(error instanceof Error ? error.message : INVOICE_MESSAGES.notFound)
+        setLoadError(toErrorMessage(error, INVOICE_MESSAGES.notFound))
       })
   }, [mode, invoiceId])
 
@@ -243,7 +244,7 @@ export function InvoiceFormPage({
       })
       onFinalized(result.id)
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : INVOICE_MESSAGES.pdfSaveFailure)
+      setSubmitError(toErrorMessage(error, INVOICE_MESSAGES.pdfSaveFailure))
     } finally {
       setSubmitting(false)
     }

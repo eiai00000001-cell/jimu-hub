@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import type { Quote } from '@shared/types/quote'
 import { QUOTE_MESSAGES } from '@shared/messages/messages'
+import { toErrorMessage } from '../utils/error-message'
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`
@@ -49,7 +50,7 @@ export function QuoteDetailPage({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setLoadError(error instanceof Error ? error.message : QUOTE_MESSAGES.notFound)
+          setLoadError(toErrorMessage(error, QUOTE_MESSAGES.notFound))
         }
       })
     return () => {
@@ -67,7 +68,7 @@ export function QuoteDetailPage({
       const result = await window.jimuhubApi.convertQuoteToInvoice(quoteId)
       onConvertedToInvoice(result.invoiceId)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : QUOTE_MESSAGES.notFound)
+      setActionError(toErrorMessage(error, QUOTE_MESSAGES.notFound))
     }
   }
 
