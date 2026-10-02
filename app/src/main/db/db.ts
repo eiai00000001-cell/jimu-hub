@@ -6,9 +6,8 @@ import * as schema from './schema'
  * データベース・エクスポートファイルのスキーマバージョン(app_meta.schema_version)。
  * イテレーション1(v1.3)時点の最新値。参照元: 詳細設計書6章冒頭、4.1章手順2。
  *
- * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの
- * 対応バージョン)が存在するが、こちらはT-34(F-02/F-03のZIP化)で本バージョンに合わせて
- * 改訂する予定であり、現時点では意図的に値が異なる(1のまま)。詳細はコーディング規約参照。
+ * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)が
+ * あり、両者は同じ値(現在3)に保つこと。
  */
 export const CURRENT_SCHEMA_VERSION = 3
 
