@@ -133,4 +133,14 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     await userEvent.click(screen.getByLabelText('閉じる'))
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('importDataが例外で失敗した場合は、失敗メッセージを表示する(I1-06)', async () => {
+    const importData = setupApi({ success: true })
+    importData.mockRejectedValue(new Error('ディスク障害'))
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText('ディスク障害')).toBeInTheDocument()
+  })
 })

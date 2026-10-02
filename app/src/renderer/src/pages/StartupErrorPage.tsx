@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { Button } from '../components/Button'
 import { Message } from '../components/Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
+import { toErrorMessage } from '../utils/error-message'
 
 interface StartupErrorPageProps {
   message?: string
@@ -36,6 +37,10 @@ export function StartupErrorPage({ message }: StartupErrorPageProps): ReactEleme
         // OS標準のファイル選択ダイアログのキャンセル。警告確認の状態に戻す
         setStep('initial')
       }
+    } catch (caught) {
+      // 想定外の例外でも無反応にならないよう、失敗文言を表示して初期状態へ戻す
+      setError(toErrorMessage(caught, BACKUP_MESSAGES.importTransactionFailure))
+      setStep('initial')
     } finally {
       setSubmitting(false)
     }

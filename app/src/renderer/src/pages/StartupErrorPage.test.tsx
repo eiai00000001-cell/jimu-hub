@@ -69,4 +69,15 @@ describe('StartupErrorPage(F-09)', () => {
     expect(await screen.findByText('エクスポートファイルから復元する')).toBeInTheDocument()
     expect(screen.queryByText(/復元が完了/)).not.toBeInTheDocument()
   })
+
+  it('importDataが例外で失敗した場合も、エラーメッセージを表示し再度選び直せる(I1-06)', async () => {
+    const importData = vi.fn().mockRejectedValue(new Error('ディスク障害'))
+    window.jimuhubApi = { importData, relaunchApp: vi.fn() } as unknown as Window['jimuhubApi']
+    render(<StartupErrorPage message="x" />)
+    await userEvent.click(screen.getByText('エクスポートファイルから復元する'))
+    await userEvent.click(screen.getByText('続行'))
+
+    expect(await screen.findByText('ディスク障害')).toBeInTheDocument()
+    expect(screen.getByText('エクスポートファイルから復元する')).toBeInTheDocument()
+  })
 })
