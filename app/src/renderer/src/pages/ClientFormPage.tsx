@@ -5,10 +5,13 @@ import { Message } from '../components/Message'
 import { TextField, SelectField, TextAreaField } from '../components/FormField'
 import { ClientInputSchema, type ClientInput } from '@shared/schemas/client.schema'
 import { HONORIFICS } from '@shared/types/client'
-import { CLIENT_MESSAGES } from '@shared/messages/messages'
+import { CLIENT_MESSAGES, NAVIGATION_MESSAGES } from '@shared/messages/messages'
+import { convertHiraganaToKatakana } from '@shared/text/furigana'
+import { toErrorMessage } from '../utils/error-message'
 
 const EMPTY_FORM: ClientInput = {
   name: '',
+  furigana: '',
   honorific: '(なし)',
   contactPerson: '',
   postalCode: '',
@@ -52,6 +55,7 @@ export function ClientFormPage({
         .then((client) => {
           setForm({
             name: client.name,
+            furigana: client.furigana ?? '',
             honorific: client.honorific,
             contactPerson: client.contactPerson ?? '',
             postalCode: client.postalCode ?? '',
@@ -63,7 +67,7 @@ export function ClientFormPage({
           })
         })
         .catch((error: unknown) => {
-          setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+          setLoadError(toErrorMessage(error, CLIENT_MESSAGES.notFound))
         })
     }
   }, [mode, clientId])
@@ -109,9 +113,7 @@ export function ClientFormPage({
       screenName={pageTitle}
       activeMenu="clients"
       pageTitle={pageTitle}
-      onNavigateHome={() => {}}
-      onNavigateClients={() => {}}
-      onComingSoon={() => {}}
+      confirmLeave={() => window.confirm(NAVIGATION_MESSAGES.confirmLeave)}
     >
       {loadError ? (
         <>
@@ -131,6 +133,14 @@ export function ClientFormPage({
                 value={form.name}
                 error={errors.name}
                 onChange={(e) => updateField('name', e.target.value)}
+              />
+              <TextField
+                label="フリガナ"
+                placeholder="例: サンプルショウジカブシキガイシャ"
+                hint="一覧の五十音順表示に使用します(未入力可。全角カタカナで入力してください。ひらがなは自動的に変換されます)"
+                value={form.furigana}
+                error={errors.furigana}
+                onChange={(e) => updateField('furigana', convertHiraganaToKatakana(e.target.value))}
               />
               <SelectField
                 label="敬称"

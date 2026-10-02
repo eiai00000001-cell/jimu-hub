@@ -1,0 +1,70 @@
+
+> jimu-hub@0.1.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v5.0.2 <project-root>/app
+      Coverage enabled with v8
+
+
+ Test Files  54 passed (54)
+      Tests  494 passed (494)
+   Start at  22:03:39
+   Duration  6.92s (tests 32%, import 22%, environment 22%, setup 15%, transform 6%, worker 3%)
+
+    Isolate  54 workers spawned · ~259ms startup each (spawn + environment, per file)
+             at least ~1.74s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   87.73 |    84.14 |   75.73 |   87.69 |                   
+ main              |   34.78 |       40 |   63.63 |   33.82 |                   
+  index.ts         |       0 |        0 |       0 |       0 | 33-155            
+  startup.ts       |     100 |       75 |     100 |     100 | 40                
+ main/dev          |    8.69 |    42.85 |      50 |    8.69 |                   
+  seed.ts          |       0 |        0 |       0 |       0 | 20-53             
+ main/ipc          |   99.13 |    91.89 |     100 |   99.09 |                   
+  ...pc-handler.ts |     100 |     87.5 |     100 |     100 | 48,72             
+  pdf-opener.ts    |   94.44 |    93.33 |     100 |   94.44 | 37                
+ main/repositories |    94.9 |    85.43 |     100 |   96.57 |                   
+  ...repository.ts |   96.42 |    94.11 |     100 |   96.42 | 107               
+  ...repository.ts |   93.33 |    81.81 |     100 |      98 | 213               
+  ...repository.ts |   93.75 |       80 |     100 |   93.61 | 64,79,203         
+ main/services     |   96.35 |    86.86 |     100 |   96.27 |                   
+  backup-tables.ts |     100 |    84.61 |     100 |     100 | 145,153           
+  ...up.service.ts |   96.15 |     87.5 |     100 |   96.13 | ...29,338,422,431 
+  ...nt.service.ts |     100 |     90.9 |     100 |     100 | 16                
+  ...ny.service.ts |     100 |       75 |     100 |     100 | 11                
+  ...ce.service.ts |   95.71 |     87.8 |     100 |   95.65 | 94-95,111         
+  pdf.service.ts   |     100 |       50 |     100 |     100 | 39-68             
+  quote.service.ts |   98.07 |     91.3 |     100 |   98.07 | 123               
+  ...ry.service.ts |   84.37 |       75 |     100 |   83.87 | 49-50,74-76       
+ main/services/pdf |     100 |    88.37 |     100 |     100 |                   
+  ...f-template.ts |     100 |    86.36 |     100 |     100 | 9,83,113          
+  ...f-template.ts |     100 |    83.33 |     100 |     100 | 32,75             
+ preload           |       0 |      100 |       0 |       0 |                   
+  index.ts         |       0 |      100 |       0 |       0 | 20-60             
+ renderer/src      |    46.8 |    76.92 |   33.82 |   47.31 |                   
+  App.tsx          |   48.88 |    83.33 |   33.82 |   49.43 | ...91-294,299-305 
+  main.tsx         |       0 |        0 |     100 |       0 | 6-11              
+ ...erer/src/pages |   91.04 |    82.48 |   67.98 |    91.1 |                   
+  ...etailPage.tsx |     100 |     90.9 |      80 |     100 | 51-54             
+  ...tFormPage.tsx |   84.44 |    91.17 |      50 |   84.09 | 153-185,200-208   
+  ...tListPage.tsx |   95.45 |    93.33 |   84.61 |   95.23 | 69                
+  ...ofilePage.tsx |   84.09 |    66.66 |   58.82 |   83.72 | 121,160-210       
+  ...tListPage.tsx |   86.84 |    78.26 |   66.66 |   85.71 | ...21-128,157-165 
+  ...etailPage.tsx |   98.07 |    91.93 |      88 |   97.95 | 289               
+  ...eFormPage.tsx |    87.3 |    76.92 |   55.35 |   88.79 | ...68,488-542,591 
+  ...etailPage.tsx |   96.87 |    88.23 |    87.5 |   96.87 | 83                
+  ...eFormPage.tsx |   90.59 |    75.55 |   62.26 |   89.81 | ...97,415,473,516 
+  TopPage.tsx      |     100 |    83.33 |   88.88 |     100 | 33-43             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 87.73% ( 1552/1769 )
+Branches     : 84.14% ( 833/990 )
+Functions    : 75.73% ( 487/643 )
+Lines        : 87.69% ( 1496/1706 )
+================================================================================

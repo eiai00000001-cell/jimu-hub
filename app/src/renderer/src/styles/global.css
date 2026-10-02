@@ -312,6 +312,27 @@ button {
   max-width: 480px;
 }
 
+.section-block {
+  max-width: 720px;
+}
+.section-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--color-text);
+}
+.section-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.6;
+}
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 28px 0 24px;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -378,6 +399,78 @@ button {
   left: 16px;
 }
 
+/* タブ(押せる物の一種: 選択状態を持つ切替) */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+.tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+}
+.tab.active {
+  color: var(--color-text);
+  font-weight: 600;
+  border-bottom-color: var(--color-text);
+}
+
+/* 検索条件(入力欄) */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 16px;
+}
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-field label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.filter-field input[type='text'],
+.filter-field input[type='date'],
+.filter-field input[type='number'],
+.filter-field select {
+  height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--color-white);
+  color: var(--color-text);
+}
+.filter-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filter-range span {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.filter-range input {
+  width: 130px;
+}
+.amount-range input {
+  width: 110px;
+}
+
 /* メッセージ(読むだけの物): 角丸なし、枠(外周)なし、左4pxの帯 */
 .message {
   display: flex;
@@ -426,6 +519,41 @@ button {
   background: var(--color-bg);
   color: var(--color-text-secondary);
 }
+.badge-draft {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.badge-unpaid {
+  background: var(--color-text);
+  color: var(--color-white);
+}
+.badge-paid {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.payment-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 16px 20px;
+  max-width: 900px;
+  margin-top: 20px;
+}
+.payment-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.badge-finalized {
+  background: var(--color-text);
+  color: var(--color-white);
+}
+/* 警告バッジ(表示だけの物・丸型): 既存の赤(エラー・警告色)を流用し、危険ボタンと同じ塗り+白文字で強く注意喚起する */
+.badge-warning {
+  background: var(--color-red);
+  color: var(--color-white);
+}
 
 /* 入れ物(パネル・カード・ダイアログ): 角丸なし */
 .panel {
@@ -433,6 +561,11 @@ button {
   border: 1px solid var(--color-border);
   padding: 24px;
   max-width: 720px;
+}
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 .summary-card {
   width: 280px;
@@ -464,6 +597,133 @@ button {
   grid-template-columns: 160px 1fr;
   row-gap: 14px;
   column-gap: 16px;
+}
+
+/* 見積書・請求書作成画面(F-11〜F-14)専用: mockups/F-12_quote-new.htmlの構成 */
+.form-columns-3 {
+  display: flex;
+  gap: 32px;
+  max-width: 900px;
+}
+.form-columns-3 > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.form-section-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 28px 0 12px;
+  color: var(--color-text);
+}
+.line-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  margin-top: 8px;
+}
+.line-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+.line-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.line-table tr:last-child td {
+  border-bottom: none;
+}
+.line-table input[type='text'],
+.line-table input[type='number'],
+.line-table select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-white);
+  color: var(--color-text);
+}
+.line-table td.col-name {
+  width: 30%;
+}
+.line-table td.col-qty {
+  width: 9%;
+}
+.line-table td.col-unit {
+  width: 9%;
+}
+.line-table td.col-price {
+  width: 13%;
+}
+.line-table td.col-tax {
+  width: 10%;
+}
+.line-table td.col-wh {
+  width: 10%;
+  text-align: center;
+}
+.line-table td.col-amount {
+  width: 13%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: 12px;
+}
+.line-table td.col-del {
+  width: 6%;
+  text-align: center;
+}
+.add-row-btn {
+  margin-top: 10px;
+}
+.btn-sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.totals-block {
+  margin-top: 16px;
+  max-width: 420px;
+  margin-left: auto;
+}
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+.totals-row .val {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.totals-row.grand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  border-bottom: none;
+  padding-top: 12px;
+}
+.totals-row.grand .val {
+  font-size: 18px;
+}
+.readonly-value {
+  height: var(--control-height);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
 }
 .info-grid dt {
   color: var(--color-text-secondary);
@@ -510,12 +770,26 @@ button {
 .table tr.clickable {
   cursor: pointer;
 }
+.table td.amount,
+.table th.amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .empty-state {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
   background: var(--color-white);
   border: 1px solid var(--color-border);
+}
+.furigana-empty {
+  color: var(--color-text-secondary);
+}
+.table-note {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 10px 0 0;
+  line-height: 1.6;
 }
 
 /* オーバーレイ・ダイアログ */
@@ -563,4 +837,56 @@ button {
   height: 100vh;
   padding: 24px;
   text-align: center;
+}
+
+.source-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0 0 16px;
+  max-width: 900px;
+}
+.source-note .link {
+  margin-left: 8px;
+}
+
+/* 起動エラー画面(F-09): サイドバー・通常メニューを持たず、単一の中央カードで構成する */
+.error-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.error-card {
+  width: 480px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 40px 36px;
+  text-align: center;
+}
+.error-card .message {
+  text-align: left;
+}
+.error-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--color-text);
+}
+.error-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  margin: 0 0 28px;
+}
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.support-note {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
 }

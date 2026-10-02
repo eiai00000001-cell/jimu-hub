@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 自社情報・振込先の設定(モックアップ v1.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実アプリには存在しない) */
+      font-family: var(--font-family);
+      color: var(--color-text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .window {
+      width: 1280px;
+      margin: 24px auto;
+      background: var(--color-bg);
+      border-radius: var(--radius-window); /* 例外: ウィンドウ外枠はOS表現として角丸を維持 */
+      overflow: hidden;
+      box-shadow: var(--shadow-window);
+      border: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .titlebar {
+      height: 38px;
+      min-height: 38px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; } /* 例外: OS標準の信号ボタン */
+    .tl-close { background: #FF5F57; }
+    .tl-min { background: #FFBD2E; }
+    .tl-zoom { background: #28C840; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-right: 56px;
+    }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 0;
+    }
+    .sidebar-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center;
+      padding: 0 18px;
+      font-size: 18px; font-weight: 600; color: var(--color-text);
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item {
+      padding: 7px 18px;
+      margin-bottom: 2px;
+      border-radius: 0;
+      font-size: 13px;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item.active .badge-soon { display: none; }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+      background: var(--color-bg);
+    }
+    .page-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--color-text); }
+    .page-content { padding: 24px 28px; flex: 1; }
+
+    /* ボタン(押せる物): 角丸6px・高さ32px */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: var(--control-height); padding: 0 16px;
+      border-radius: var(--radius-button);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+
+    /* バッジ(表示だけの物): 丸型(例外) */
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
+
+    /* 入力欄(書き込む物): 角丸なし(直角)・高さ32px */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+    .field .required { color: var(--color-text-secondary); font-size: 11px; margin-left: 4px; }
+    .field input[type=text], .field select, .field textarea {
+      width: 100%; font-family: inherit; font-size: 13px;
+      height: var(--control-height); padding: 0 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 0;
+      background: var(--color-white);
+      color: var(--color-text);
+    }
+    .field textarea { height: auto; padding: 8px 10px; resize: vertical; }
+    .field .hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 4px; }
+
+    .form-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .form-columns { display: flex; gap: 48px; }
+    .form-columns > div { flex: 1 1 0; min-width: 0; }
+
+    .section-block { max-width: 720px; }
+    .section-heading { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
+    .section-desc { font-size: 11px; color: var(--color-text-secondary); margin: 0 0 16px; line-height: 1.6; }
+    .section-divider { border: none; border-top: 1px solid var(--color-border); margin: 28px 0 24px; }
+
+    /* メッセージ(読むだけの物) */
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; max-width: 720px; }
+    .message-success { border-left-color: var(--color-text); }
+    .message-icon { font-weight: 700; flex-shrink: 0; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 自社情報・振込先の設定</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item active"><span>見積書・請求書</span></li>
+          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <h1 class="page-title">自社情報・振込先の設定</h1>
+        </div>
+        <div class="page-content">
+          <div class="message message-success">
+            <span class="message-icon">&#10003;</span>
+            <span>自社情報を保存しました。</span>
+          </div>
+
+          <div class="section-block">
+            <div class="section-heading">自社情報</div>
+            <p class="section-desc">見積書・請求書の発行者情報として記載されます。</p>
+            <div class="form-columns">
+              <div>
+                <div class="field">
+                  <label>氏名・屋号<span class="required">必須</span></label>
+                  <input type="text" placeholder="例: サンプル商店 山田太郎" value="サンプル商店 山田太郎">
+                </div>
+                <div class="field">
+                  <label>住所<span class="required">必須</span></label>
+                  <textarea rows="2" placeholder="例: 東京都千代田区千代田1-1-1">東京都千代田区千代田1-1-1</textarea>
+                </div>
+              </div>
+              <div>
+                <div class="field">
+                  <label>インボイス登録番号</label>
+                  <input type="text" placeholder="例: T1234567890123" value="T1234567890123">
+                  <div class="hint">「T」+ 数字13桁の形式を推奨します。未登録の場合は空欄のままにしてください(見積書・請求書の記載形式が自動で切り替わります)</div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <div class="section-heading">振込先(任意)</div>
+            <p class="section-desc">請求書にのみ記載されます。未入力の項目は請求書に表示されません。</p>
+            <div class="form-columns">
+              <div>
+                <div class="field">
+                  <label>振込先銀行名</label>
+                  <input type="text" placeholder="例: サンプル銀行" value="サンプル銀行">
+                </div>
+                <div class="field">
+                  <label>振込先支店名</label>
+                  <input type="text" placeholder="例: 本店営業部" value="本店営業部">
+                </div>
+                <div class="field">
+                  <label>口座種別</label>
+                  <select>
+                    <option>(未選択)</option>
+                    <option selected>普通</option>
+                    <option>当座</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <div class="field">
+                  <label>口座番号</label>
+                  <input type="text" placeholder="例: 1234567" value="1234567">
+                </div>
+                <div class="field">
+                  <label>口座名義</label>
+                  <input type="text" placeholder="例: ヤマダ タロウ" value="ヤマダ タロウ">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

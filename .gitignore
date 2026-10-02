@@ -46,4 +46,6 @@ app/test-results/
 
 # テストの操作記録(trace)はPC内の絶対パスを含むため、ローカルにのみ保存する
 docs/07_test/evidence/**/*.zip
+# 納品時の記録フォルダ(docs/09_deploy/archive/)へコピーされる分も含め、docs/配下のZIPは管理対象外にする(SEC-08)
+docs/**/*.zip
 app/e2e/scenarios/.output/

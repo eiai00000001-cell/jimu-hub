@@ -1,4 +1,6 @@
-import { Database } from './db/db'
+import { Database, CURRENT_SCHEMA_VERSION } from './db/db'
+import { AppMetaRepository } from './repositories/app-meta.repository'
+import { MigrationService } from './services/migration.service'
 import { STARTUP_MESSAGES } from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
 
@@ -29,6 +31,17 @@ export function initializeStartup(dbFilePath: string): StartupResult {
   try {
     database = new Database(dbFilePath)
     database.initialize()
+
+    // schema_versionが現行バージョンより小さい場合(既存インストールからの起動)は、
+    // MigrationService.applyMigrations()で不足しているカラムを追加し、schema_versionを更新する
+    // (詳細設計書4.1章手順2)。
+    const appMetaRepository = new AppMetaRepository(database)
+    const storedVersion = appMetaRepository.get('schema_version')
+    const fromVersion = storedVersion ? Number(storedVersion) : CURRENT_SCHEMA_VERSION
+    if (fromVersion < CURRENT_SCHEMA_VERSION) {
+      new MigrationService().applyMigrations(database, fromVersion)
+    }
+
     return { status: { ok: true }, database }
   } catch (error) {
     console.error('データベース初期化に失敗しました', error)

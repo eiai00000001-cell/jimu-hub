@@ -1,7 +1,13 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import { readDevOnlyEnv } from '../app-security'
-import type { BackupService, ExportDataResult, ImportDataResult } from '../services/backup.service'
+import type { ExportDataResult, ImportDataResult } from '../services/backup.service'
+
+/** `BackupService`および起動エラー画面用の`StartupRecoveryService`が満たすインターフェース */
+export interface BackupOperations {
+  exportData(filePath: string): ExportDataResult
+  importData(filePath: string): ImportDataResult
+}
 
 function defaultExportFileName(): string {
   const now = new Date()
@@ -9,7 +15,7 @@ function defaultExportFileName(): string {
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(
     now.getHours()
   )}${pad(now.getMinutes())}`
-  return `事務HUB_backup_${stamp}.json`
+  return `事務HUB_backup_${stamp}.zip`
 }
 
 /**
@@ -18,7 +24,7 @@ function defaultExportFileName(): string {
  * 参照元: 詳細設計書 4.2章・4.3章、5章(クラス設計 `DataIpcHandler`)、7章
  */
 export class DataIpcHandler {
-  constructor(private readonly service: BackupService) {}
+  constructor(private readonly service: BackupOperations) {}
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.dataExport, () => this.handleExport())
@@ -37,7 +43,7 @@ export class DataIpcHandler {
     const focusedWindow = BrowserWindow.getFocusedWindow()
     const options = {
       defaultPath: `${app.getPath('documents')}/${defaultExportFileName()}`,
-      filters: [{ name: 'JSON', extensions: ['json'] }]
+      filters: [{ name: 'ZIP', extensions: ['zip'] }]
     }
     const result = focusedWindow
       ? await dialog.showSaveDialog(focusedWindow, options)
@@ -59,8 +65,9 @@ export class DataIpcHandler {
 
     const focusedWindow = BrowserWindow.getFocusedWindow()
     const options = {
+      // 新形式(ZIP)に加え、旧形式(JSON単体)のエクスポートファイルも選択できる(詳細設計書4.3章手順2)
       properties: ['openFile' as const],
-      filters: [{ name: 'JSON', extensions: ['json'] }]
+      filters: [{ name: 'バックアップファイル', extensions: ['zip', 'json'] }]
     }
     const result = focusedWindow
       ? await dialog.showOpenDialog(focusedWindow, options)

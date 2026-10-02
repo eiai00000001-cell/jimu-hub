@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 取引先一覧(操作説明用注釈版)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実アプリには存在しない) */
+      font-family: var(--font-family);
+      color: var(--color-text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .window {
+      width: 1280px;
+      margin: 24px auto;
+      background: var(--color-bg);
+      border-radius: var(--radius-window); /* 例外: ウィンドウ外枠はOS表現として角丸を維持 */
+      overflow: hidden;
+      box-shadow: var(--shadow-window);
+      border: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .titlebar {
+      height: 38px;
+      min-height: 38px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; } /* 例外: OS標準の信号ボタン */
+    .tl-close { background: #FF5F57; }
+    .tl-min { background: #FFBD2E; }
+    .tl-zoom { background: #28C840; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-right: 56px;
+    }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 0;
+    }
+    .sidebar-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center;
+      padding: 0 18px;
+      font-size: 18px; font-weight: 600; color: var(--color-text);
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item {
+      padding: 7px 18px;
+      margin-bottom: 2px;
+      border-radius: 0;
+      font-size: 13px;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item.active .badge-soon { display: none; }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+      background: var(--color-bg);
+    }
+    .page-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--color-text); }
+    .page-content { padding: 24px 28px; flex: 1; }
+
+    /* ボタン(押せる物): 角丸6px・高さ32px */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: var(--control-height); padding: 0 16px;
+      border-radius: var(--radius-button);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+
+    /* 入れ物(表): 角丸なし */
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; position: relative; }
+    .table tr:last-child td { border-bottom: none; }
+    /* 利用停止行の淡色化は新しい色を作らず、既存の背景グレー・補助グレー文字で表す */
+    .table tr.inactive td { color: var(--color-text-secondary); background: var(--color-bg); }
+
+    /* バッジ(表示だけの物): 丸型(例外) */
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-active { background: var(--color-bg); color: var(--color-text); }
+    .badge-inactive { background: var(--color-text); color: var(--color-white); }
+
+    /* 入力欄(書き込む物): 角丸なし(直角)・高さ32px */
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar input[type=text] {
+      font-family: inherit; font-size: 13px; height: var(--control-height); padding: 0 10px; width: 240px;
+      border: 1px solid var(--color-border); border-radius: 0; background: var(--color-white); color: var(--color-text);
+    }
+    .toolbar select {
+      height: var(--control-height); padding: 0 10px; border: 1px solid var(--color-border); border-radius: 0;
+      font-family: inherit; font-size: 13px; background: var(--color-white); color: var(--color-text);
+    }
+    .toolbar .spacer { flex: 1; }
+    .toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); }
+    .switch { width: 34px; height: 20px; border-radius: var(--radius-badge); background: var(--color-border); position: relative; flex-shrink: 0; }
+    .switch.on { background: var(--color-text); }
+    .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--color-white); }
+    .switch.on::after { left: 16px; }
+
+    /* メッセージ(読むだけの物): 角丸なし、枠(外周)なし、左4pxの帯 */
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; }
+    .message-success { border-left-color: var(--color-text); }
+    .message-icon { font-weight: 700; flex-shrink: 0; }
+
+    /* 操作説明用の注釈バッジ(納品マニュアル向け。実アプリには存在しない) */
+    .annot-target { position: relative; }
+    .annot-inline { position: relative; display: inline-block; }
+    .annot-badge {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--color-text);
+      color: var(--color-white);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--color-white);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+      z-index: 100;
+      font-family: var(--font-family);
+    }
+    /* 注釈バッジ(行内配置版): テキストが箱の端から始まる要素は、絶対配置だと文字と重なるため
+       通常のフロー内(テキストの直前)に配置する */
+    .annot-badge-flow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: var(--color-text);
+      color: var(--color-white);
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-family);
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 取引先一覧</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item active"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>見積書・請求書</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <h1 class="page-title">取引先管理</h1>
+          <span class="annot-inline"><span class="annot-badge">4</span><button class="btn btn-primary">+ 新規登録</button></span>
+        </div>
+        <div class="page-content">
+          <div class="message message-success">
+            <span class="message-icon">&#10003;</span>
+            <span>取引先を登録しました</span>
+          </div>
+
+          <div class="toolbar">
+            <span class="annot-inline"><span class="annot-badge">1</span><input type="text" placeholder="取引先名で検索"></span>
+            <span class="annot-inline"><span class="annot-badge">2</span><select>
+              <option>名称昇順</option>
+              <option>名称降順</option>
+              <option>登録日新しい順</option>
+              <option>登録日古い順</option>
+            </select></span>
+            <div class="spacer"></div>
+            <div class="toggle">
+              <span class="annot-badge-flow">3</span><span>利用停止も表示</span>
+              <div class="switch on"></div>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>敬称</th>
+                <th>担当者名</th>
+                <th>電話番号</th>
+                <th>状態</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="annot-badge-flow">5</span>アルファ商事株式会社</td>
+                <td>御中</td>
+                <td>サンプル 太郎</td>
+                <td>03-1111-2222</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
+              <tr>
+                <td>オレンジ物産株式会社</td>
+                <td>様</td>
+                <td>サンプル 花子</td>
+                <td>03-2222-3333</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
+              <tr>
+                <td>サンプル商事株式会社</td>
+                <td>御中</td>
+                <td>サンプル 次郎</td>
+                <td>03-3333-4444</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
+              <tr>
+                <td>サンプルデザイン合同会社</td>
+                <td>(なし)</td>
+                <td>サンプル 三郎</td>
+                <td>03-4444-5555</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
+              <tr class="inactive">
+                <td>有限会社テスト工業</td>
+                <td>御中</td>
+                <td>サンプル 四郎</td>
+                <td>03-5555-6666</td>
+                <td><span class="badge badge-inactive">利用停止</span></td>
+              </tr>
+              <tr>
+                <td>わかば商会</td>
+                <td>様</td>
+                <td>サンプル 五郎</td>
+                <td>03-6666-7777</td>
+                <td><span class="badge badge-active">利用中</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

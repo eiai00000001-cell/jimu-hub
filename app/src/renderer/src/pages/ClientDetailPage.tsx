@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import type { Client } from '@shared/types/client'
 import { CLIENT_MESSAGES } from '@shared/messages/messages'
+import { toErrorMessage } from '../utils/error-message'
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
@@ -51,7 +52,7 @@ export function ClientDetailPage({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+          setLoadError(toErrorMessage(error, CLIENT_MESSAGES.notFound))
         }
       })
     return () => {
@@ -73,7 +74,7 @@ export function ClientDetailPage({
       // 直後の再取得が失敗した場合(稀なタイミングでの競合等)に未処理のPromise rejectionと
       // ならないよう捕捉し、既存のMessage部品(エラー)+一覧への導線で案内する
       // (詳細設計書8章「詳細画面表示時に対象取引先が存在しない」の文言に合わせる)。
-      setLoadError(error instanceof Error ? error.message : CLIENT_MESSAGES.notFound)
+      setLoadError(toErrorMessage(error, CLIENT_MESSAGES.notFound))
     }
   }
 
@@ -98,8 +99,6 @@ export function ClientDetailPage({
         ) : null
       }
       onNavigateHome={onNavigateHome}
-      onNavigateClients={() => {}}
-      onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
 
@@ -118,6 +117,8 @@ export function ClientDetailPage({
               <dd>{client.id}</dd>
               <dt>取引先名称</dt>
               <dd>{client.name}</dd>
+              <dt>フリガナ</dt>
+              <dd>{client.furigana}</dd>
               <dt>敬称</dt>
               <dd>{client.honorific}</dd>
               <dt>担当者名</dt>

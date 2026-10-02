@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 起動エラー(モックアップ v1.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --control-height: 32px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実アプリには存在しない) */
+      font-family: var(--font-family);
+      color: var(--color-text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .window {
+      width: 1280px;
+      min-height: 640px;
+      margin: 24px auto;
+      background: var(--color-bg);
+      border-radius: var(--radius-window); /* 例外: ウィンドウ外枠はOS表現として角丸を維持 */
+      overflow: hidden;
+      box-shadow: var(--shadow-window);
+      border: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .titlebar {
+      height: 38px;
+      min-height: 38px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; } /* 例外: OS標準の信号ボタン */
+    .tl-close { background: #FF5F57; }
+    .tl-min { background: #FFBD2E; }
+    .tl-zoom { background: #28C840; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-right: 56px;
+    }
+    /* 起動エラー画面はサイドバー・通常メニューを持たず、単一の中央カードで構成する */
+    .error-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .error-card {
+      width: 480px;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      padding: 40px 36px;
+      text-align: center;
+    }
+    .error-title { font-size: 18px; font-weight: 600; margin: 0 0 10px; color: var(--color-text); }
+    .error-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 28px; }
+
+    /* ボタン(押せる物) */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: var(--control-height); padding: 0 16px;
+      border-radius: var(--radius-button);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-danger { background: var(--color-red); border-color: var(--color-red); color: var(--color-white); }
+
+    .support-note { margin-top: 24px; font-size: 11px; color: var(--color-text-secondary); line-height: 1.7; }
+    .support-note .link { color: var(--color-text); text-decoration: underline; }
+
+    /* メッセージ(読むだけの物) */
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin: 0 0 20px; text-align: left; }
+    .message-success { border-left-color: var(--color-text); }
+    .message-error, .message-warning { border-left-color: var(--color-red); }
+    .message-icon { font-weight: 700; flex-shrink: 0; line-height: 1.5; }
+
+    .reference-block { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--color-border); text-align: left; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin-bottom: 12px; }
+    .ref-card { background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; text-align: center; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 起動エラー</div>
+    </div>
+    <div class="error-body">
+      <div class="error-card">
+        <div class="message message-error">
+          <span class="message-icon">!</span>
+          <span>データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください。</span>
+        </div>
+        <h1 class="error-title">アプリを起動できませんでした</h1>
+        <p class="error-desc">エクスポートファイル(.zip または .json)から、以前の状態にデータを復元できます。復元前に警告文をご確認いただきます。</p>
+        <button class="btn btn-danger">エクスポートファイルから復元する</button>
+        <p class="support-note">解決しない場合は、<span class="link">操作マニュアル</span>のトラブルシューティングをご参照ください。</p>
+
+        <div class="reference-block">
+          <div class="reference-label">参考: 復元成功時の表示</div>
+          <div class="ref-card">
+            <div class="message message-success" style="margin-bottom:16px;">
+              <span class="message-icon">&#10003;</span>
+              <span>復元が完了しました。アプリを再起動してください。</span>
+            </div>
+            <button class="btn btn-primary">アプリを再起動</button>
+          </div>
+
+          <div class="reference-label">参考: 復元失敗時の表示(画面はそのまま維持し、再度ファイルを選び直せる)</div>
+          <div class="ref-card">
+            <div class="message message-error" style="margin-bottom:0;">
+              <span class="message-icon">!</span>
+              <span>選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

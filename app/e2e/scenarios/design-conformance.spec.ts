@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 
 /**
  * 【tester作成】デザインガイド(docs/04_design/デザインガイド.md v0.10)5章「部品カテゴリーのルール」
@@ -15,14 +14,8 @@ import { evidenceDir } from './evidence-dir'
  * 実機の描画結果から確認する(観点: デザインガイド適合)。
  */
 
-const EVIDENCE_DIR = evidenceDir('TC-34_design-conformance')
-
 test.describe('デザインガイド適合confirmation(TC-34)', () => {
   let launched: LaunchedApp
-
-  test.beforeAll(() => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
-  })
 
   test.beforeEach(async () => {
     launched = await launchApp()
@@ -68,7 +61,7 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
     const badgeRadius = await badge.evaluate((el) => getComputedStyle(el).borderRadius)
     expect(badgeRadius).toBe('999px')
 
-    await window.screenshot({ path: `${EVIDENCE_DIR}/01_detail_panel_and_badge.png` })
+    await shot(window, 'TC-34', 'detail_panel_and_badge')
 
     // 危険色(赤)は「データ復元」ダイアログの「続行」ボタンにのみ使用されることを確認
     await window.getByRole('button', { name: 'ホーム' }).click()
@@ -84,10 +77,10 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
     const cancelStyle = await cancelButton.evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(cancelStyle).not.toBe('rgb(179, 69, 58)')
 
-    await window.screenshot({ path: `${EVIDENCE_DIR}/02_import_dialog_danger_button.png` })
+    await shot(window, 'TC-34', 'import_dialog_danger_button')
   })
 
-  test('サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移しない(TC-03)', async () => {
+  test('サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移せず、「見積書・請求書」は遷移する(TC-03)', async () => {
     const { window } = launched
 
     // ホーム画面から「準備中」メニュー押下
@@ -99,12 +92,16 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
 
     // 取引先一覧画面からも同様に案内表示のみで遷移しないこと(結合確認: 全画面共通のサイドバー挙動)
     await window.getByRole('button', { name: '取引先管理' }).click()
-    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await window.getByRole('button', { name: '入出金・経費' }).click()
     await expect(
-      window.getByText('「見積書・請求書」は以降のイテレーションで実装予定です。')
+      window.getByText('「入出金・経費」は以降のイテレーションで実装予定です。')
     ).toBeVisible()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先一覧')
 
-    await window.screenshot({ path: `${EVIDENCE_DIR}/03_coming_soon_notice.png` })
+    // イテレーション1で「見積書・請求書」は実装済みとなり、準備中ではなく画面遷移する(詳細設計書3.1章)
+    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書・請求書')
+    await expect(window.locator('.sidebar-item.active')).toHaveText('見積書・請求書')
+    await shot(window, 'TC-03', 'coming_soon_notice')
   })
 })

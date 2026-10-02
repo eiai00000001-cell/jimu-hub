@@ -3,6 +3,7 @@ import { ClientInputSchema } from './client.schema'
 
 const validInput = {
   name: '株式会社サンプル',
+  furigana: 'カブシキガイシャサンプル',
   honorific: '御中',
   contactPerson: '山田太郎',
   postalCode: '123-4567',
@@ -42,6 +43,49 @@ describe('ClientInputSchema', () => {
 
   it('取引先名称が101文字以上の場合はエラーになる', () => {
     const result = ClientInputSchema.safeParse({ ...validInput, name: 'あ'.repeat(101) })
+    expect(result.success).toBe(false)
+  })
+
+  it('フリガナが未指定の場合は空文字を既定値にする', () => {
+    const { furigana: _furigana, ...rest } = validInput
+    const result = ClientInputSchema.safeParse(rest)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.furigana).toBe('')
+    }
+  })
+
+  it('フリガナのひらがなは全角カタカナへ自動変換される', () => {
+    const result = ClientInputSchema.safeParse({ ...validInput, furigana: 'かぶしきがいしゃ' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.furigana).toBe('カブシキガイシャ')
+    }
+  })
+
+  it('フリガナの前後の空白は除去される', () => {
+    const result = ClientInputSchema.safeParse({ ...validInput, furigana: '  サンプル  ' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.furigana).toBe('サンプル')
+    }
+  })
+
+  it('フリガナに半角カナ・漢字・英数字が含まれる場合はエラーになる', () => {
+    const halfWidth = ClientInputSchema.safeParse({ ...validInput, furigana: 'ｻﾝﾌﾟﾙ' })
+    expect(halfWidth.success).toBe(false)
+    if (!halfWidth.success) {
+      expect(halfWidth.error.issues[0]?.message).toBe(
+        'フリガナは全角カタカナで入力してください(ひらがなは自動的に変換されます)'
+      )
+    }
+
+    const kanji = ClientInputSchema.safeParse({ ...validInput, furigana: 'サンプル商事' })
+    expect(kanji.success).toBe(false)
+  })
+
+  it('フリガナが101文字以上の場合はエラーになる', () => {
+    const result = ClientInputSchema.safeParse({ ...validInput, furigana: 'ア'.repeat(101) })
     expect(result.success).toBe(false)
   })
 

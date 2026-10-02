@@ -8,6 +8,7 @@ import type { Client } from '@shared/types/client'
 const activeClient: Client = {
   id: 1,
   name: 'アルファ商事株式会社',
+  furigana: 'アルファショウジカブシキガイシャ',
   honorific: '御中',
   contactPerson: 'サンプル太郎',
   postalCode: null,
@@ -48,26 +49,52 @@ describe('ClientListPage', () => {
     vi.clearAllMocks()
   })
 
-  it('初期表示は利用中のみ・名称昇順で一覧を取得する', async () => {
+  it('初期表示は利用中のみ・フリガナ昇順で一覧を取得する(詳細設計書3.2章)', async () => {
     const listClients = setupApi()
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={vi.fn()} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
     )
 
     await waitFor(() =>
       expect(listClients).toHaveBeenCalledWith({
         keyword: '',
-        sort: 'name_asc',
+        sort: 'furigana_asc',
         statusFilter: 'active'
       })
     )
     expect(await screen.findByText('アルファ商事株式会社')).toBeInTheDocument()
+    expect(screen.getByText('アルファショウジカブシキガイシャ')).toBeInTheDocument()
+    expect(screen.getByLabelText('並べ替え')).toHaveValue('furigana_asc')
+  })
+
+  it('フリガナが未入力の取引先は一覧で「(未入力)」と表示する', async () => {
+    setupApi([{ ...activeClient, furigana: null }])
+    render(
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('(未入力)')).toBeInTheDocument()
   })
 
   it('該当0件の場合は案内文言を表示する', async () => {
     setupApi([])
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={vi.fn()} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
     )
 
     expect(await screen.findByText('該当する取引先がありません')).toBeInTheDocument()
@@ -76,7 +103,12 @@ describe('ClientListPage', () => {
   it('検索キーワード入力で一覧を絞り込む', async () => {
     const listClients = setupApi()
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={vi.fn()} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
     )
     await screen.findByText('アルファ商事株式会社')
 
@@ -85,7 +117,7 @@ describe('ClientListPage', () => {
     await waitFor(() =>
       expect(listClients).toHaveBeenLastCalledWith({
         keyword: 'アルファ',
-        sort: 'name_asc',
+        sort: 'furigana_asc',
         statusFilter: 'active'
       })
     )
@@ -94,7 +126,12 @@ describe('ClientListPage', () => {
   it('並べ替え条件を変更すると一覧を再取得する', async () => {
     const listClients = setupApi()
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={vi.fn()} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
     )
     await screen.findByText('アルファ商事株式会社')
 
@@ -112,7 +149,12 @@ describe('ClientListPage', () => {
   it('「利用停止も表示」をONにすると全件を取得し、利用停止行をグレー表示する', async () => {
     const listClients = setupApi([activeClient, inactiveClient])
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={vi.fn()} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={vi.fn()}
+      />
     )
     await screen.findByText('アルファ商事株式会社')
 
@@ -121,7 +163,7 @@ describe('ClientListPage', () => {
     await waitFor(() =>
       expect(listClients).toHaveBeenLastCalledWith({
         keyword: '',
-        sort: 'name_asc',
+        sort: 'furigana_asc',
         statusFilter: 'all'
       })
     )
@@ -135,6 +177,7 @@ describe('ClientListPage', () => {
     render(
       <ClientListPage
         onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onNewClient={vi.fn()}
         onSelectClient={onSelectClient}
       />
@@ -148,7 +191,12 @@ describe('ClientListPage', () => {
     setupApi()
     const onNewClient = vi.fn()
     render(
-      <ClientListPage onNavigateHome={vi.fn()} onNewClient={onNewClient} onSelectClient={vi.fn()} />
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={onNewClient}
+        onSelectClient={vi.fn()}
+      />
     )
 
     await userEvent.click(screen.getByText('+ 新規登録'))
@@ -160,6 +208,7 @@ describe('ClientListPage', () => {
     render(
       <ClientListPage
         onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
         onNewClient={vi.fn()}
         onSelectClient={vi.fn()}
         flashMessage="取引先を登録しました"

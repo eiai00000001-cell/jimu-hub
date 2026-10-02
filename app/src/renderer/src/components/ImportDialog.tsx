@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { Button } from './Button'
 import { Message } from './Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
+import { toErrorMessage } from '../utils/error-message'
 
 interface ImportDialogProps {
   onClose: () => void
@@ -33,13 +34,21 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
       if (response.success && response.importedCount !== undefined) {
         setResult({
           success: true,
-          message: BACKUP_MESSAGES.importSuccess(response.importedCount)
+          message: BACKUP_MESSAGES.importSuccess(
+            response.importedCount,
+            response.pdfHashMismatchCount
+          )
         })
         onImported(response.importedCount)
       } else if (!response.success && response.error) {
         setResult({ success: false, message: response.error })
       }
       // success:false かつ error未設定 = OS標準ダイアログのキャンセル。何も表示しない
+    } catch (caught) {
+      setResult({
+        success: false,
+        message: toErrorMessage(caught, BACKUP_MESSAGES.importTransactionFailure)
+      })
     } finally {
       setSubmitting(false)
     }
@@ -53,7 +62,7 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
         </button>
         <h2>データを復元</h2>
 
-        {step === 'initial' ? (
+        {result?.success ? null : step === 'initial' ? (
           <>
             <p>{BACKUP_MESSAGES.importIntro}</p>
             <div className="modal-actions">

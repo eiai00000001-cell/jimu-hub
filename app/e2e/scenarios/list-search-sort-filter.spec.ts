@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 import type { ClientInput } from '../../src/shared/schemas/client.schema'
 
 /**
@@ -10,8 +9,6 @@ import type { ClientInput } from '../../src/shared/schemas/client.schema'
  * 参照元: 詳細設計書 3.2章(入力項目定義表)・4.5章(処理フロー設計)
  * 観点: 機能テスト・境界値・性能
  */
-
-const EVIDENCE_DIR = evidenceDir('TC-18_list-search-sort-filter')
 
 function client(name: string, honorific: ClientInput['honorific'] = '(なし)'): ClientInput {
   return {
@@ -29,10 +26,6 @@ function client(name: string, honorific: ClientInput['honorific'] = '(なし)'):
 
 test.describe('F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22)', () => {
   let launched: LaunchedApp
-
-  test.beforeAll(() => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
-  })
 
   test.beforeEach(async () => {
     launched = await launchApp()
@@ -63,19 +56,19 @@ test.describe('F-05: 取引先一覧の検索・並べ替え・状態フィル�
     await expect(window.getByRole('cell', { name: 'あおぞら商事' })).toBeVisible()
     await expect(window.getByRole('cell', { name: 'あおい商店' })).toBeVisible()
     await expect(window.getByRole('cell', { name: '株式会社ライトハウス' })).not.toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/01_search_partial_match.png` })
+    await shot(window, 'TC-18', 'search_partial_match')
 
     // TC-18: 検索(0件ヒット時の案内文言)
     await window.getByLabel('取引先名で検索').fill('存在しないキーワードXYZ')
     await expect(window.getByText('該当する取引先がありません')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/02_search_no_match.png` })
+    await shot(window, 'TC-21', 'search_no_match')
     await window.getByLabel('取引先名で検索').fill('')
 
     // TC-19: 並べ替え(名称降順)
     await window.getByLabel('並べ替え').selectOption('name_desc')
     // 1行目のセルが最も名称順で大きい(降順の先頭)ことを確認
     await expect(window.locator('tbody tr').first()).toContainText('株式会社ライトハウス')
-    await window.screenshot({ path: `${EVIDENCE_DIR}/03_sort_name_desc.png` })
+    await shot(window, 'TC-19', 'sort_name_desc')
 
     // TC-19: 並べ替え(登録日新しい順。最後に登録した"株式会社ライトハウス"が先頭)
     await window.getByLabel('並べ替え').selectOption('created_at_desc')
@@ -92,11 +85,11 @@ test.describe('F-05: 取引先一覧の検索・並べ替え・状態フィル�
     await window.getByRole('button', { name: '一覧へ戻る' }).click()
 
     await expect(window.getByRole('cell', { name: 'あおぞら商事' })).not.toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/04_status_filter_default_hides_inactive.png` })
+    await shot(window, 'TC-20', 'status_filter_default_hides_inactive')
 
     await window.getByRole('switch', { name: '利用停止も表示' }).click()
     await expect(window.getByRole('cell', { name: 'あおぞら商事' })).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/05_status_filter_show_all.png` })
+    await shot(window, 'TC-20', 'status_filter_show_all')
   })
 
   test('取引先50件投入時の一覧表示・検索が実用的な時間で完了する(TC-22)', async () => {
@@ -130,7 +123,7 @@ test.describe('F-05: 取引先一覧の検索・並べ替え・状態フィル�
       `[性能計測] ${total}件登録: ${createDurationMs}ms, 一覧描画: ${renderDurationMs}ms, 検索: ${searchDurationMs}ms`
     )
 
-    await window.screenshot({ path: `${EVIDENCE_DIR}/06_list_50_records.png` })
+    await shot(window, 'TC-22', 'list_50_records')
 
     // 体感の遅延がないことの目安として、一覧描画・検索とも3秒以内に完了することを確認する
     expect(renderDurationMs).toBeLessThan(3000)

@@ -8,6 +8,7 @@ import type { Client } from '@shared/types/client'
 const activeClient: Client = {
   id: 3,
   name: 'サンプル商事株式会社',
+  furigana: 'サンプルショウジカブシキガイシャ',
   honorific: '御中',
   contactPerson: 'サンプル次郎',
   postalCode: '100-0001',
@@ -61,6 +62,7 @@ describe('ClientDetailPage', () => {
     )
 
     expect(await screen.findByText('サンプル商事株式会社')).toBeInTheDocument()
+    expect(screen.getByText('サンプルショウジカブシキガイシャ')).toBeInTheDocument()
     expect(screen.getByText('contact@example.com')).toBeInTheDocument()
     expect(screen.getByText('T1234567890123')).toBeInTheDocument()
   })

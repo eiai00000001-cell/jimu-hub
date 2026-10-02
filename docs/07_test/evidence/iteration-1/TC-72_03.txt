@@ -1,0 +1,3 @@
+isPackaged=true
+--user-data-dir配下にdata.sqlite作成、JIMUHUB_DATA_DIR指定先は空のまま(無視された)
+見積書2026-001のPDFを生成(<user-data-dir>/documents/quotes/2026/2026-001_配布版確認商事.pdf)し内容を確認

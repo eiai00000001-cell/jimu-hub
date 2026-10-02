@@ -5,11 +5,18 @@ import { z } from 'zod'
  * 参照元: 詳細設計書 4.2章(エクスポート)・4.3章(復元)
  */
 
-export const CURRENT_SCHEMA_VERSION = 1
+/**
+ * エクスポートファイルの最新スキーマバージョン(DBのschema_versionと同一の値)。
+ * 1: 取引先のみ / 2: フリガナ・自社情報・見積書・請求書を追加 / 3: pdfHashMismatchを追加(ZIP形式)
+ */
+export const CURRENT_SCHEMA_VERSION = 3
 
 export const BackupClientRecordSchema = z.object({
   id: z.number().int(),
   name: z.string(),
+  // schemaVersion1のエクスポートファイル(furiganaを持たない)との後方互換のため、
+  // 省略可能(未指定時はnull)とする(T-26でclientsにfurigana列を追加)
+  furigana: z.string().nullable().optional(),
   honorific: z.string(),
   contactPerson: z.string().nullable(),
   postalCode: z.string().nullable(),
@@ -24,12 +31,25 @@ export const BackupClientRecordSchema = z.object({
 })
 export type BackupClientRecord = z.infer<typeof BackupClientRecordSchema>
 
+/**
+ * 取引先以外のテーブル行(自社情報・見積書・請求書・各明細行)。列は`backup-tables.ts`の定義で検証・変換する。
+ * schemaVersion1(取引先のみ)のファイルには存在しないため、いずれも省略可能(省略時は空/なし)。
+ */
+export const BackupRowSchema = z.record(z.string(), z.unknown())
+export type BackupRow = z.infer<typeof BackupRowSchema>
+
 export const BackupFileSchema = z.object({
   schemaVersion: z.number().int(),
   appVersion: z.string(),
   exportedAt: z.string(),
   data: z.object({
-    clients: z.array(BackupClientRecordSchema)
+    clients: z.array(BackupClientRecordSchema),
+    companyProfile: BackupRowSchema.nullable().default(null),
+    quotes: z.array(BackupRowSchema).default([]),
+    quoteLineItems: z.array(BackupRowSchema).default([]),
+    invoices: z.array(BackupRowSchema).default([]),
+    invoiceLineItems: z.array(BackupRowSchema).default([])
   })
 })
-export type BackupFile = z.infer<typeof BackupFileSchema>
+/** 検証・正規化後のバックアップ構造(省略可能なテーブルは既定値で補われている) */
+export type BackupFile = z.output<typeof BackupFileSchema>

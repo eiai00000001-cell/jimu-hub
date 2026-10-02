@@ -7,6 +7,7 @@ import type { Client, ClientSortKey } from '@shared/types/client'
 import { CLIENT_MESSAGES } from '@shared/messages/messages'
 
 const SORT_OPTIONS: Array<{ value: ClientSortKey; label: string }> = [
+  { value: 'furigana_asc', label: 'フリガナ昇順' },
   { value: 'name_asc', label: '名称昇順' },
   { value: 'name_desc', label: '名称降順' },
   { value: 'created_at_desc', label: '登録日新しい順' },
@@ -16,6 +17,7 @@ const SORT_OPTIONS: Array<{ value: ClientSortKey; label: string }> = [
 interface ClientListPageProps {
   flashMessage?: string
   onNavigateHome: () => void
+  onNavigateDocuments: () => void
   onNewClient: () => void
   onSelectClient: (id: number) => void
 }
@@ -27,11 +29,12 @@ interface ClientListPageProps {
 export function ClientListPage({
   flashMessage,
   onNavigateHome,
+  onNavigateDocuments,
   onNewClient,
   onSelectClient
 }: ClientListPageProps): ReactElement {
   const [keyword, setKeyword] = useState('')
-  const [sort, setSort] = useState<ClientSortKey>('name_asc')
+  const [sort, setSort] = useState<ClientSortKey>('furigana_asc')
   const [showInactive, setShowInactive] = useState(false)
   const [clients, setClients] = useState<Client[] | null>(null)
   const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
@@ -62,6 +65,7 @@ export function ClientListPage({
       }
       onNavigateHome={onNavigateHome}
       onNavigateClients={() => {}}
+      onNavigateDocuments={onNavigateDocuments}
       onComingSoon={(label) => setComingSoonLabel(label)}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
@@ -111,6 +115,7 @@ export function ClientListPage({
           <thead>
             <tr>
               <th>名称</th>
+              <th>フリガナ</th>
               <th>敬称</th>
               <th>担当者名</th>
               <th>電話番号</th>
@@ -125,6 +130,9 @@ export function ClientListPage({
                 onClick={() => onSelectClient(client.id)}
               >
                 <td>{client.name}</td>
+                <td className={client.furigana ? undefined : 'furigana-empty'}>
+                  {client.furigana || '(未入力)'}
+                </td>
                 <td>{client.honorific}</td>
                 <td>{client.contactPerson ?? ''}</td>
                 <td>{client.phone ?? ''}</td>
@@ -136,6 +144,11 @@ export function ClientListPage({
           </tbody>
         </table>
       )}
+      {clients && clients.length > 0 ? (
+        <p className="table-note">
+          フリガナ昇順で並べ替えた場合、フリガナが未入力の取引先は五十音順対象から外し、一覧の末尾にまとめて表示します。
+        </p>
+      ) : null}
     </AppShell>
   )
 }

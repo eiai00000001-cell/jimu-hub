@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - アプリアイコン案C(白地・大小の集約ノード)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- 案C: 白地+濃グレーの塗り丸(大小差)。取引先・見積書・請求書など大きさの異なる複数の業務が
+       1つの拠点(事務HUB)に集約されるイメージを、ノードの大小差で表現する。 -->
+  <rect x="100" y="100" width="824" height="824" rx="180" fill="#FFFFFF" stroke="#D1D1D6" stroke-width="6"/>
+  <g stroke="#3A3A3C" stroke-width="13" stroke-linecap="round">
+    <line x1="512" y1="512" x2="512" y2="252"/>
+    <line x1="512" y1="512" x2="737" y2="382"/>
+    <line x1="512" y1="512" x2="737" y2="642"/>
+    <line x1="512" y1="512" x2="512" y2="772"/>
+    <line x1="512" y1="512" x2="287" y2="642"/>
+    <line x1="512" y1="512" x2="287" y2="382"/>
+  </g>
+  <g fill="#3A3A3C">
+    <circle cx="512" cy="252" r="34"/>
+    <circle cx="737" cy="382" r="46"/>
+    <circle cx="737" cy="642" r="30"/>
+    <circle cx="512" cy="772" r="50"/>
+    <circle cx="287" cy="642" r="36"/>
+    <circle cx="287" cy="382" r="42"/>
+  </g>
+  <circle cx="512" cy="512" r="96" fill="#3A3A3C"/>
+</svg>
+</body>
+</html>

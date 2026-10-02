@@ -1,0 +1,115 @@
+=== 実行日時: 2026-09-27 10:21:08 +0900 ===
+=== 実行環境: Darwin 25.6.0, Node v25.2.1, npm 11.6.2 ===
+=== コマンド: npx playwright test --config=e2e/scenarios/playwright.config.ts (tester作成 結合シナリオ, 最終確認実行) ===
+
+Running 15 tests using 1 worker
+
+  ✓   1 e2e/scenarios/backup-integrity.spec.ts:68:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート内容が詳細設計書4.2章の構造と一致し、復元が全置換(既存データの上書きではなく完全な置き換え)になる(TC-05・TC-07) (1.3s)
+  ✓   2 e2e/scenarios/backup-integrity.spec.ts:122:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート失敗(異常系): 保存先が存在しない場合にエラーメッセージが表示される(TC-06) (730ms)
+  ✓   3 e2e/scenarios/backup-integrity.spec.ts:136:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): 壊れたJSONファイルを選択するとエラーメッセージが表示される(TC-09) (775ms)
+  ✓   4 e2e/scenarios/backup-integrity.spec.ts:152:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): schemaVersionが新しすぎる場合にエラーメッセージが表示される(TC-10) (761ms)
+  ✓   5 e2e/scenarios/backup-integrity.spec.ts:170:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(データ整合性): DB制約違反でトランザクションが失敗した場合、元データへロールバックされる(TC-12) (1.2s)
+  ✓   6 e2e/scenarios/backup-integrity.spec.ts:236:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元前の自動退避は直近3世代のみ保持する(TC-11) (1.3s)
+  ✓   7 e2e/scenarios/client-error-handling.spec.ts:29:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 郵便番号・電話番号・メールアドレスの形式不正でエラーが表示される(TC-16) (788ms)
+  ✓   8 e2e/scenarios/client-error-handling.spec.ts:50:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 登録画面で「キャンセル」を押すと入力内容を破棄して一覧へ戻る(TC-17) (713ms)
+  ✓   9 e2e/scenarios/client-error-handling.spec.ts:65:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 存在しない取引先IDを取得しようとするとエラーになる(TC-24・IPC直接確認) (573ms)
+  ✘  10 e2e/scenarios/client-lifecycle.spec.ts:33:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する (12.1s)
+  ✓  11 e2e/scenarios/design-conformance.spec.ts:35:3 › デザインガイド適合confirmation(TC-34) › 主要部品の色・角丸が6色ルールどおりに描画される (1.0s)
+  ✓  12 e2e/scenarios/design-conformance.spec.ts:88:3 › デザインガイド適合confirmation(TC-34) › サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移しない(TC-03) (730ms)
+  ✓  13 e2e/scenarios/list-search-sort-filter.spec.ts:45:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 検索(部分一致)・並べ替え・状態フィルタが仕様どおりに動作する(TC-18〜TC-21) (1.2s)
+[性能計測] 50件登録: 40ms, 一覧描画: 24ms, 検索: 11ms
+  ✓  14 e2e/scenarios/list-search-sort-filter.spec.ts:99:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 取引先50件投入時の一覧表示・検索が実用的な時間で完了する(TC-22) (696ms)
+  ✘  15 e2e/scenarios/startup-error.spec.ts:26:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される (10.3s)
+
+
+  1) e2e/scenarios/client-lifecycle.spec.ts:33:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する 
+
+    Error: 不具合TC-31-a: 利用停止後も詳細画面のバッジが更新されない
+
+    expect(locator).toBeVisible() failed
+
+    Locator: getByText('利用停止', { exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - 不具合TC-31-a: 利用停止後も詳細画面のバッジが更新されない getByText('利用停止', { exact: true }) with timeout 5000ms
+      - waiting for getByText('利用停止', { exact: true })
+
+
+      121 |     await expect
+      122 |       .soft(window.getByText('利用停止', { exact: true }), '不具合TC-31-a: 利用停止後も詳細画面のバッジが更新されない')
+    > 123 |       .toBeVisible()
+          |        ^
+      124 |     await expect
+      125 |       .soft(window.getByRole('button', { name: '編集' }), '不具合TC-31-a: 利用停止後も編集ボタンが非活性にならない')
+      126 |       .toBeDisabled()
+        at <project-root>/app/e2e/scenarios/client-lifecycle.spec.ts:123:8
+
+    Error: 不具合TC-31-a: 利用停止後も編集ボタンが非活性にならない
+
+    expect(locator).toBeDisabled() failed
+
+    Locator:  getByRole('button', { name: '編集' })
+    Expected: disabled
+    Received: enabled
+    Timeout:  5000ms
+
+    Call log:
+      - 不具合TC-31-a: 利用停止後も編集ボタンが非活性にならない getByRole('button', { name: '編集' }) with timeout 5000ms
+      - waiting for getByRole('button', { name: '編集' })
+        14 × locator resolved to <button type="button" class="btn btn-secondary">編集</button>
+           - unexpected value "enabled"
+
+
+      124 |     await expect
+      125 |       .soft(window.getByRole('button', { name: '編集' }), '不具合TC-31-a: 利用停止後も編集ボタンが非活性にならない')
+    > 126 |       .toBeDisabled()
+          |        ^
+      127 |
+      128 |     // --- F-05: 既定フィルタでは一覧から除外され、ホーム件数も0件に戻ることを確認(結合確認) ---
+      129 |     await window.getByRole('button', { name: '一覧へ戻る' }).click()
+        at <project-root>/app/e2e/scenarios/client-lifecycle.spec.ts:126:8
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/scenarios/client-lifecycle-結合シナリオ-取引-b7305-→編集→利用停止→ホーム件数連動までが一貫して整合する/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/scenarios/client-lifecycle-結合シナリオ-取引-b7305-→編集→利用停止→ホーム件数連動までが一貫して整合する/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/client-lifecycle-結合シナリオ-取引-b7305-→編集→利用停止→ホーム件数連動までが一貫して整合する/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/client-lifecycle-結合シナリオ-取引-b7305-→編集→利用停止→ホーム件数連動までが一貫して整合する/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) e2e/scenarios/startup-error.spec.ts:26:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される 
+
+    TimeoutError: electronApplication.firstWindow: Timeout 10000ms exceeded while waiting for event "window"
+
+      44 |       // 実際の結果は下記のとおり不具合TC-02-aとして報告書に記録する(このassertは意図的に失敗させ、
+      45 |       // 実施結果「不合格」の再現エビデンスとする)。
+    > 46 |       const window = await app.firstWindow({ timeout: 10_000 })
+         |                                ^
+      47 |       await expect(
+      48 |         window.getByText(
+      49 |           'データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください'
+        at <project-root>/app/e2e/scenarios/startup-error.spec.ts:46:32
+
+    Error Context: e2e/.output/scenarios/startup-error-F-01-データベース破-e78ac-ファイルが破損している場合、起動エラー画面が表示される/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/startup-error-F-01-データベース破-e78ac-ファイルが破損している場合、起動エラー画面が表示される/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/startup-error-F-01-データベース破-e78ac-ファイルが破損している場合、起動エラー画面が表示される/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    e2e/scenarios/client-lifecycle.spec.ts:33:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する 
+    e2e/scenarios/startup-error.spec.ts:26:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される 
+  13 passed (34.8s)

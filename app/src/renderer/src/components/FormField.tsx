@@ -64,8 +64,18 @@ export function TextAreaField({
   )
 }
 
+interface SelectOption {
+  value: string
+  label: string
+}
+
 interface SelectFieldProps extends FieldMeta, SelectHTMLAttributes<HTMLSelectElement> {
-  options: readonly string[]
+  /** 文字列配列を渡した場合は値と表示文言が一致するものとして扱う(例: 敬称)。値と表示文言を分けたい場合(例: 未選択を表す空文字)は`{ value, label }`の配列を渡す */
+  options: readonly string[] | readonly SelectOption[]
+}
+
+function toOption(option: string | SelectOption): SelectOption {
+  return typeof option === 'string' ? { value: option, label: option } : option
 }
 
 export function SelectField({
@@ -79,9 +89,9 @@ export function SelectField({
   return (
     <FieldWrapper label={label} required={required} error={error} hint={hint}>
       <select aria-label={label} aria-invalid={Boolean(error)} {...selectProps}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+        {options.map(toOption).map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
