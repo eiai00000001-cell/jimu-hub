@@ -62,7 +62,7 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
         </button>
         <h2>データを復元</h2>
 
-        {step === 'initial' ? (
+        {result?.success ? null : step === 'initial' ? (
           <>
             <p>{BACKUP_MESSAGES.importIntro}</p>
             <div className="modal-actions">

@@ -143,4 +143,17 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
 
     expect(await screen.findByText('ディスク障害')).toBeInTheDocument()
   })
+
+  it('復元が成功した後は、警告文と「キャンセル」「続行」ボタンを隠し完了メッセージのみ表示する(O1)', async () => {
+    setupApi({ success: true, importedCount: 3 })
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText(/復元が完了しました/)).toBeInTheDocument()
+    expect(screen.queryByText(/置き換わります/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '続行' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'キャンセル' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '閉じる' })).toBeInTheDocument()
+  })
 })
