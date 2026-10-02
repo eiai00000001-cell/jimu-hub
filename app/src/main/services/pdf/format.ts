@@ -27,9 +27,9 @@ export function formatQuantity(value: number): string {
 export function formatDateJapanese(isoDate: string): string {
   const [year, month, day] = isoDate.split('-')
   if (!year || !month || !day) {
-    return isoDate
+    return escapeHtml(isoDate)
   }
-  return `${year}年${Number(month)}月${Number(day)}日`
+  return escapeHtml(`${year}年${Number(month)}月${Number(day)}日`)
 }
 
 /**

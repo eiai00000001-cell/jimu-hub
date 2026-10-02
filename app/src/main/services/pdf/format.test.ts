@@ -48,6 +48,11 @@ describe('formatDateJapanese', () => {
   it('月日が1桁の場合も0埋めせず表示する', () => {
     expect(formatDateJapanese('2026-01-05')).toBe('2026年1月5日')
   })
+
+  it('不正な値でもHTMLをエスケープして返す(I1-02)', () => {
+    expect(formatDateJapanese('<img src=x>')).toBe('&lt;img src=x&gt;')
+    expect(formatDateJapanese('2026-<b>-01')).not.toContain('<b>')
+  })
 })
 
 describe('sanitizeFileNamePart', () => {

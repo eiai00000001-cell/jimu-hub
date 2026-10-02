@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { VALIDATION_MESSAGES } from '../messages/messages'
+import { optionalIsoDate, requiredIsoDate } from './date.schema'
 
 /**
  * 見積書の入力バリデーションスキーマ。
@@ -35,8 +36,8 @@ export type LineItemInput = z.infer<typeof LineItemInputSchema>
 export const QuoteInputSchema = z.object({
   // 未選択は0で表す(取引先idは1始まりの自動採番のため、0は「未選択」を表す番兵値として扱う)
   clientId: z.number().int().min(1, VALIDATION_MESSAGES.quoteClientRequired),
-  issueDate: z.string().trim().min(1, VALIDATION_MESSAGES.issueDateRequired),
-  validUntil: z.string().trim().default(''),
+  issueDate: requiredIsoDate(VALIDATION_MESSAGES.issueDateRequired),
+  validUntil: optionalIsoDate.default(''),
   remarks: optionalText('備考', 500).default(''),
   lineItems: z.array(LineItemInputSchema).min(1, VALIDATION_MESSAGES.lineItemsRequired)
 })
