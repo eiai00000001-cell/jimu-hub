@@ -192,6 +192,27 @@ describe('InvoiceFormPage', () => {
     expect(await screen.findByText('PDFの保存に失敗しました')).toBeInTheDocument()
   })
 
+  it('PDF保存に失敗した後の再試行では、同じ下書きを再利用し新しい下書きを作らない(BUG-01(i1))', async () => {
+    const finalizeInvoice = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('PDFの保存に失敗しました'))
+      .mockResolvedValueOnce({ id: 10, invoiceNumber: '2026-002', pdfPath: '/tmp/x.pdf' })
+    const { saveInvoiceDraft } = setupApi({ finalizeInvoice })
+    const onFinalized = vi.fn()
+    renderNew({ onFinalized })
+    await screen.findByText('サンプル商事株式会社')
+    await userEvent.selectOptions(screen.getByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), 'A')
+    await userEvent.click(screen.getByText('PDFとして保存'))
+    expect(await screen.findByText('PDFの保存に失敗しました')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('PDFとして保存'))
+    await waitFor(() => expect(onFinalized).toHaveBeenCalledWith(10))
+
+    expect(saveInvoiceDraft).toHaveBeenCalledTimes(1)
+    expect(finalizeInvoice).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 10 }))
+    expect(finalizeInvoice).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 10 }))
+  })
+
   it('下書き保存が失敗した場合はエラーメッセージを表示する(I1-08)', async () => {
     setupApi({
       saveInvoiceDraft: vi.fn().mockRejectedValue(new Error('FOREIGN KEY constraint failed'))

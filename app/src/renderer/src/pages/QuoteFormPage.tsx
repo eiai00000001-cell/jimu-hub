@@ -98,6 +98,8 @@ export function QuoteFormPage({
   const [showQuickRegister, setShowQuickRegister] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [finalizedNotice, setFinalizedNotice] = useState(false)
+  // 新規作成画面で一度保存(下書き保存・確定の失敗を含む)した書類のid。再試行時に同じ下書きを再利用する
+  const [draftId, setDraftId] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     window.jimuhubApi.listClients({ statusFilter: 'active' }).then(setClients)
@@ -194,9 +196,10 @@ export function QuoteFormPage({
     setSubmitting(true)
     try {
       const result = await window.jimuhubApi.saveQuoteDraft({
-        id: mode === 'edit' ? quoteId : undefined,
+        id: mode === 'edit' ? quoteId : draftId,
         ...validated
       })
+      setDraftId(result.id)
       onSavedDraft(result.id)
     } catch (error) {
       setSubmitError(toErrorMessage(error, QUOTE_MESSAGES.draftSaveFailure))
@@ -217,8 +220,16 @@ export function QuoteFormPage({
     setSubmitError(null)
     setSubmitting(true)
     try {
+      // 新規作成画面では、先に下書きとして保存してidを確保する。確定(PDF保存)に失敗しても
+      // 下書きのidを保持し、再試行時は同じ下書きを確定することで未採番の下書きの重複を防ぐ
+      let targetId = mode === 'edit' ? quoteId : draftId
+      if (targetId === undefined) {
+        const draft = await window.jimuhubApi.saveQuoteDraft({ ...validated })
+        targetId = draft.id
+        setDraftId(targetId)
+      }
       const result = await window.jimuhubApi.finalizeQuote({
-        id: mode === 'edit' ? quoteId : undefined,
+        id: targetId,
         ...validated
       })
       onFinalized(result.id)
