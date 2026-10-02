@@ -1,7 +1,7 @@
 {
   "name": "jimu-hub",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "事務HUB - 個人事業主向けローカル業務管理デスクトップアプリ",
   "productName": "事務HUB",
   "author": "事務HUB開発チーム",
