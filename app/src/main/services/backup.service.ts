@@ -6,11 +6,12 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   unlinkSync,
   writeFileSync
 } from 'node:fs'
 import { createHash, randomBytes } from 'node:crypto'
-import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { dirname, extname, isAbsolute, join, resolve, sep } from 'node:path'
 import AdmZip from 'adm-zip'
 import {
   BackupFileSchema,
@@ -38,6 +39,31 @@ const BACKUP_FILE_SUFFIX = '.sqlite'
 const DOCUMENTS_BACKUP_PREFIX = 'documents_'
 const DATA_JSON_ENTRY = 'data.json'
 const DOCUMENTS_ENTRY_PREFIX = 'documents/'
+const PDF_EXTENSION = '.pdf'
+
+/**
+ * 復元ファイルの読み込み上限(セキュリティチェック SEC-09。解凍爆弾・巨大ファイルによるメモリ枯渇の防止)。
+ * 個人事業主の利用規模(書類数千件・各PDF数百KB程度)に対し、十分な余裕を持たせた値とする。
+ */
+export interface RestoreLimits {
+  /** 復元ファイル(ZIP/JSON)自体のサイズ上限(バイト) */
+  maxFileBytes: number
+  /** ZIP内のエントリ数の上限 */
+  maxEntries: number
+  /** ZIP内の全エントリの展開後サイズ(宣言値)の合計上限(バイト) */
+  maxTotalUncompressedBytes: number
+}
+
+export const DEFAULT_RESTORE_LIMITS: RestoreLimits = {
+  maxFileBytes: 1024 * 1024 * 1024,
+  maxEntries: 100_000,
+  maxTotalUncompressedBytes: 2 * 1024 * 1024 * 1024
+}
+
+/** 見積書・請求書のPDFとして扱うのは拡張子`.pdf`のファイルのみ(SEC-10。PDF以外を「PDFを開く」でOSに渡さない) */
+export function hasPdfExtension(path: string): boolean {
+  return extname(path).toLowerCase() === PDF_EXTENSION
+}
 
 export interface ExportDataResult {
   success: boolean
@@ -64,6 +90,8 @@ export interface BackupServiceDeps {
   documentsDir: string
   /** エクスポートファイルに記録するアプリバージョン */
   appVersion: string
+  /** 復元ファイルの読み込み上限(省略時は`DEFAULT_RESTORE_LIMITS`。テストで小さい値を指定する) */
+  restoreLimits?: Partial<RestoreLimits>
 }
 
 type FileFormat = 'zip' | 'json'
@@ -90,7 +118,11 @@ function sha256(buffer: Buffer): string {
  * (復元自体は中断しない。基本設計書8.1章★D5)。
  */
 export class BackupService {
-  constructor(private readonly deps: BackupServiceDeps) {}
+  private readonly limits: RestoreLimits
+
+  constructor(private readonly deps: BackupServiceDeps) {
+    this.limits = { ...DEFAULT_RESTORE_LIMITS, ...deps.restoreLimits }
+  }
 
   exportData(filePath: string): ExportDataResult {
     try {
@@ -192,6 +224,9 @@ export class BackupService {
 
   /** ファイルを読み込み、形式(ZIP/JSON)に応じてdata.jsonとPDFエントリを取り出す */
   private parseFile(filePath: string): ParsedBackup {
+    if (statSync(filePath).size > this.limits.maxFileBytes) {
+      throw new BackupParseError('file too large')
+    }
     const buffer = readFileSync(filePath)
     if (this.detectFormat(buffer) === 'json') {
       return { format: 'json', json: JSON.parse(buffer.toString('utf-8')), pdfEntries: new Map() }
@@ -202,14 +237,28 @@ export class BackupService {
     if (!dataEntry) {
       throw new BackupParseError('data.json not found')
     }
+    const entries = zip.getEntries()
+    // 解凍爆弾対策(SEC-09): 展開前にエントリ数と展開後サイズの宣言値の合計を確認する。
+    // adm-zip 0.6.1は宣言値を超える展開を打ち切るため、宣言値の合計が実際の展開量の上限になる
+    if (entries.length > this.limits.maxEntries) {
+      throw new BackupParseError('too many entries')
+    }
+    const declaredTotal = entries.reduce((sum, entry) => sum + entry.header.size, 0)
+    if (declaredTotal > this.limits.maxTotalUncompressedBytes) {
+      throw new BackupParseError('uncompressed size too large')
+    }
     const pdfEntries = new Map<string, Buffer>()
-    for (const entry of zip.getEntries()) {
+    for (const entry of entries) {
       const name = entry.entryName
       if (entry.isDirectory || !name.startsWith(DOCUMENTS_ENTRY_PREFIX)) {
         continue
       }
       // ZIPスリップ対策: 親ディレクトリ参照・絶対パスを含むエントリは無視する
       if (name.split('/').includes('..') || isAbsolute(name)) {
+        continue
+      }
+      // PDF以外のファイル(実行可能な種類のファイル等)は書き出さない(SEC-10)
+      if (!hasPdfExtension(name)) {
         continue
       }
       pdfEntries.set(name, entry.getData())
@@ -238,6 +287,10 @@ export class BackupService {
     }
     // エクスポートは常に`documents/...`の相対パスで書き出すため、絶対パスは受け付けない
     if (isAbsolute(value)) {
+      return null
+    }
+    // PDF以外のファイルを書類のPDFとして採用しない(SEC-10)
+    if (!hasPdfExtension(value)) {
       return null
     }
     const resolved = resolve(dirname(this.deps.documentsDir), value)

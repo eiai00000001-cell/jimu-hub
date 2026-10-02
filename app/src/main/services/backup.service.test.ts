@@ -534,6 +534,93 @@ describe('BackupService', () => {
       expect(existsSync(join(documentsDir, 'new.pdf'))).toBe(false)
     })
 
+    it('ZIP内の.pdf以外のエントリは書き出さず、data.jsonのpdfPathが.pdf以外を指す場合は採用しない(SEC-10)', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+      const zip = new AdmZip(exportPath)
+      zip.addFile('documents/quotes/2026/evil.terminal', Buffer.from('x'))
+      const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
+      data.data.quotes[0].pdfPath = 'documents/quotes/2026/evil.terminal'
+      zip.updateFile('data.json', Buffer.from(JSON.stringify(data)))
+      zip.writeZip(exportPath)
+
+      const result = service.importData(exportPath)
+
+      expect(result.success).toBe(true)
+      expect(existsSync(join(documentsDir, 'quotes', '2026', 'evil.terminal'))).toBe(false)
+      expect(
+        existsSync(join(documentsDir, 'quotes', '2026', '2026-003_株式会社サンプル.pdf'))
+      ).toBe(true)
+      expect(new QuoteRepository(db).findById(quoteId)?.pdfPath).toBeNull()
+    })
+
+    describe('復元ファイルのサイズ・エントリ数の上限(SEC-09)', () => {
+      function serviceWithLimits(limits: {
+        maxFileBytes?: number
+        maxEntries?: number
+        maxTotalUncompressedBytes?: number
+      }): BackupService {
+        return new BackupService({
+          database: db,
+          clientRepository: repository,
+          migrationService: new MigrationService(),
+          dbFilePath,
+          backupsDir,
+          documentsDir,
+          appVersion: '0.1.0',
+          restoreLimits: limits
+        })
+      }
+
+      it('ファイルサイズが上限を超える場合は、展開せず解析エラーを返しデータに触れない', () => {
+        repository.insert(baseInput)
+        service.exportData(exportPath)
+        repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
+
+        const result = serviceWithLimits({ maxFileBytes: 10 }).importData(exportPath)
+
+        expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
+        expect(repository.findAllForBackup()).toHaveLength(2)
+        expect(existsSync(backupsDir)).toBe(false)
+      })
+
+      it('ZIPのエントリ数が上限を超える場合は解析エラーを返す', () => {
+        seedDocuments()
+        service.exportData(exportPath)
+        const zip = new AdmZip(exportPath)
+        zip.addFile('documents/extra1.pdf', Buffer.from('x'))
+        zip.addFile('documents/extra2.pdf', Buffer.from('x'))
+        zip.writeZip(exportPath)
+
+        const result = serviceWithLimits({ maxEntries: 3 }).importData(exportPath)
+
+        expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
+      })
+
+      it('展開後の合計サイズ(宣言値)が上限を超える場合は、展開せず解析エラーを返す(解凍爆弾対策)', () => {
+        seedDocuments()
+        service.exportData(exportPath)
+        const zip = new AdmZip(exportPath)
+        // 高圧縮率のエントリ(ZIPファイル自体は小さいが展開後は大きい)
+        zip.addFile('documents/bomb.pdf', Buffer.alloc(1024 * 1024, 0))
+        zip.writeZip(exportPath)
+
+        const result = serviceWithLimits({ maxTotalUncompressedBytes: 512 * 1024 }).importData(
+          exportPath
+        )
+
+        expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
+        expect(existsSync(join(documentsDir, 'bomb.pdf'))).toBe(false)
+      })
+
+      it('上限内であれば従来どおり復元できる(既定値)', () => {
+        seedDocuments()
+        service.exportData(exportPath)
+
+        expect(service.importData(exportPath).success).toBe(true)
+      })
+    })
+
     it('detectFormatはPKシグネチャでZIP/JSONを判定する', () => {
       expect(service.detectFormat(Buffer.from('PK\u0003\u0004xxxx'))).toBe('zip')
       expect(service.detectFormat(Buffer.from('{"a":1}'))).toBe('json')
