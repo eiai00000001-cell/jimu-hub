@@ -1,0 +1,17 @@
+ファイル総数: asar内=661 unpacked=27
+除外確認 react/react-dom/scheduler(バンドル済み): 含まれない(OK)
+除外確認 node-addon-api: 含まれない(OK)
+除外確認 better-sqlite3 のCソース・deps: 含まれない(OK)
+除外確認 他OS用ネイティブバイナリ(win32/linux): 含まれない(OK)
+除外確認 ソースマップ: 含まれない(OK)
+除外確認 型定義(.d.ts/.d.cts/.d.mts): 含まれない(OK)
+除外確認 zodのTypeScriptソース: 含まれない(OK)
+除外確認 drizzle-orm の他DB方言(mysql-core等): 含まれない(OK)
+除外確認 README/CHANGELOG: 含まれない(OK)
+必要ファイル Mainエントリ: 1件
+必要ファイル Preload: 1件
+必要ファイル Renderer: 1件
+必要ファイル better-sqlite3 ネイティブ(darwin): 4件
+必要ファイル adm-zip: 1件
+必要ファイル drizzle-orm(sqlite): 82件
+app.asar=4.6M / app.asar.unpacked=3.9M
