@@ -342,6 +342,27 @@ describe('QuoteFormPage(新規作成)', () => {
     expect(await screen.findByText('取引先が存在しません')).toBeInTheDocument()
   })
 
+  it('サイドバーで画面を離れる際は確認し、キャンセルすると入力内容を保持する(O2)', async () => {
+    setupApi()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(
+      <QuoteFormPage
+        mode="new"
+        onSavedDraft={vi.fn()}
+        onFinalized={vi.fn()}
+        onCancel={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+      />
+    )
+    await screen.findByText('サンプル商事株式会社')
+    await userEvent.type(screen.getByLabelText('品名1'), '入力中の品名')
+    await userEvent.click(screen.getByText('ホーム'))
+
+    expect(confirm).toHaveBeenCalled()
+    expect(screen.getByLabelText('品名1')).toHaveValue('入力中の品名')
+    confirm.mockRestore()
+  })
+
   it('「+ 取引先を新規登録」から簡易登録すると、選択欄に反映される', async () => {
     const { createClient } = setupApi()
     render(

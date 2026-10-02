@@ -14,7 +14,11 @@ import {
   calculateTaxBreakdown,
   calculateInvoiceWithholdingTax
 } from '@shared/calculations/tax-calculation'
-import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
+import {
+  INVOICE_MESSAGES,
+  VALIDATION_MESSAGES,
+  NAVIGATION_MESSAGES
+} from '@shared/messages/messages'
 import type { CompanyProfile } from '@shared/types/company-profile'
 import { toErrorMessage } from '../utils/error-message'
 
@@ -290,15 +294,7 @@ export function InvoiceFormPage({
 
   if (loadError) {
     return (
-      <AppShell
-        screenName="請求書を作成"
-        activeMenu="documents"
-        pageTitle="請求書を作成"
-        onNavigateHome={() => {}}
-        onNavigateClients={() => {}}
-        onNavigateDocuments={() => {}}
-        onComingSoon={() => {}}
-      >
+      <AppShell screenName="請求書を作成" activeMenu="documents" pageTitle="請求書を作成">
         <Message variant="error">{loadError}</Message>
         <div className="back-link">
           <TextLink onClick={onCancel}>&larr; 一覧へ戻る</TextLink>
@@ -309,15 +305,7 @@ export function InvoiceFormPage({
 
   if (finalizedNotice) {
     return (
-      <AppShell
-        screenName="請求書を作成"
-        activeMenu="documents"
-        pageTitle="請求書を作成"
-        onNavigateHome={() => {}}
-        onNavigateClients={() => {}}
-        onNavigateDocuments={() => {}}
-        onComingSoon={() => {}}
-      >
+      <AppShell screenName="請求書を作成" activeMenu="documents" pageTitle="請求書を作成">
         <Message variant="error">{INVOICE_MESSAGES.finalizedNotEditable}</Message>
         <div className="back-link">
           <TextLink onClick={onCancel}>&larr; 一覧へ戻る</TextLink>
@@ -331,10 +319,7 @@ export function InvoiceFormPage({
       screenName="請求書を作成"
       activeMenu="documents"
       pageTitle="請求書を作成"
-      onNavigateHome={() => {}}
-      onNavigateClients={() => {}}
-      onNavigateDocuments={() => {}}
-      onComingSoon={() => {}}
+      confirmLeave={() => window.confirm(NAVIGATION_MESSAGES.confirmLeave)}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
       {submitError ? <Message variant="error">{submitError}</Message> : null}

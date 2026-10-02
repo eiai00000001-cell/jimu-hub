@@ -142,8 +142,6 @@ export function InvoiceDetailPage({
       }
       onNavigateHome={onNavigateHome}
       onNavigateClients={onNavigateClients}
-      onNavigateDocuments={() => {}}
-      onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
       {paymentNotice ? <Message variant="success">{paymentNotice}</Message> : null}

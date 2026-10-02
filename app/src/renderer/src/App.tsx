@@ -10,6 +10,7 @@ import { QuoteDetailPage } from './pages/QuoteDetailPage'
 import { InvoiceFormPage } from './pages/InvoiceFormPage'
 import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
+import { NavigationContext } from './layout/NavigationContext'
 import { ExportDialog } from './components/ExportDialog'
 import { ImportDialog } from './components/ImportDialog'
 import {
@@ -67,7 +68,13 @@ export function App(): ReactElement {
   }
 
   return (
-    <>
+    <NavigationContext.Provider
+      value={{
+        goHome: () => setRoute({ name: 'top' }),
+        goClients: () => setRoute({ name: 'clientList' }),
+        goDocuments: () => setRoute({ name: 'documentList' })
+      }}
+    >
       {renderRoute()}
       {/*
         データ管理ダイアログ(エクスポート/復元)は、画面遷移・再取得の影響を受けないよう
@@ -83,7 +90,7 @@ export function App(): ReactElement {
           onImported={() => setHomeRefreshKey((key) => key + 1)}
         />
       ) : null}
-    </>
+    </NavigationContext.Provider>
   )
 
   function renderRoute(): ReactElement {

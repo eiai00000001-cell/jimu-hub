@@ -5,7 +5,7 @@ import { Message } from '../components/Message'
 import { TextField, SelectField, TextAreaField } from '../components/FormField'
 import { ClientInputSchema, type ClientInput } from '@shared/schemas/client.schema'
 import { HONORIFICS } from '@shared/types/client'
-import { CLIENT_MESSAGES } from '@shared/messages/messages'
+import { CLIENT_MESSAGES, NAVIGATION_MESSAGES } from '@shared/messages/messages'
 import { convertHiraganaToKatakana } from '@shared/text/furigana'
 import { toErrorMessage } from '../utils/error-message'
 
@@ -113,10 +113,7 @@ export function ClientFormPage({
       screenName={pageTitle}
       activeMenu="clients"
       pageTitle={pageTitle}
-      onNavigateHome={() => {}}
-      onNavigateClients={() => {}}
-      onNavigateDocuments={() => {}}
-      onComingSoon={() => {}}
+      confirmLeave={() => window.confirm(NAVIGATION_MESSAGES.confirmLeave)}
     >
       {loadError ? (
         <>

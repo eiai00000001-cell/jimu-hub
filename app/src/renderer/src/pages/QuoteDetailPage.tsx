@@ -114,8 +114,6 @@ export function QuoteDetailPage({
       }
       onNavigateHome={onNavigateHome}
       onNavigateClients={onNavigateClients}
-      onNavigateDocuments={() => {}}
-      onComingSoon={() => {}}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
       {actionError ? <Message variant="error">{actionError}</Message> : null}

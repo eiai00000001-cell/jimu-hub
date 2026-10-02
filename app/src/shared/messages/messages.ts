@@ -26,6 +26,10 @@ export const VALIDATION_MESSAGES = {
   validUntilBeforeIssueDate: '発行日より前の日付が入力されています(保存は可能です)'
 } as const
 
+export const NAVIGATION_MESSAGES = {
+  confirmLeave: '入力中の内容は保存されません。この画面を離れてよろしいですか'
+} as const
+
 export const CLIENT_MESSAGES = {
   createSuccess: '取引先を登録しました',
   updateSuccess: '取引先を更新しました',
