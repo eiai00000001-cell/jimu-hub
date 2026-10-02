@@ -23,9 +23,11 @@ export interface TaxBreakdown {
   totalAmount: number
 }
 
-/** 明細行の金額(数量×単価、円未満切り捨て)を算出する */
+/** 明細行の金額(数量×単価、円未満切り捨て。数量は小数第2位まで)を算出する */
 export function calculateLineAmount(quantity: number, unitPrice: number): number {
-  return Math.floor(quantity * unitPrice)
+  // 数量は小数第2位までのため100倍した整数で計算し、浮動小数点誤差を避ける
+  const scaled = Math.round(quantity * 100) * unitPrice
+  return (scaled - (scaled % 100)) / 100
 }
 
 /**

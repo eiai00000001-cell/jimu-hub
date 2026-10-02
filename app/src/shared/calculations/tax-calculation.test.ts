@@ -18,6 +18,22 @@ describe('calculateLineAmount', () => {
   it('小数第2位までの数量を扱える', () => {
     expect(calculateLineAmount(0.25, 1000)).toBe(250)
   })
+
+  it('浮動小数点誤差が出る組み合わせでも正しい金額になる(I1-01)', () => {
+    expect(calculateLineAmount(0.29, 100)).toBe(29)
+    expect(calculateLineAmount(0.57, 100)).toBe(57)
+    expect(calculateLineAmount(1.15, 100)).toBe(115)
+  })
+
+  it('数量(小数第2位まで)×単価の総当たりで整数演算の結果と一致する', () => {
+    for (const unitPrice of [1, 7, 100, 999, 1000, 12345]) {
+      for (let hundredths = 1; hundredths <= 10000; hundredths++) {
+        const expected = Math.floor((hundredths * unitPrice) / 100)
+        const quantity = Number((hundredths / 100).toFixed(2))
+        expect(calculateLineAmount(quantity, unitPrice)).toBe(expected)
+      }
+    }
+  })
 })
 
 describe('calculateTaxBreakdown', () => {
