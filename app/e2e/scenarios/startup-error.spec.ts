@@ -1,9 +1,9 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const MAIN_ENTRY = join(__dirname, '..', '..', 'out', 'main', 'index.js')
@@ -20,11 +20,8 @@ const MAIN_ENTRY = join(__dirname, '..', '..', 'out', 'main', 'index.js')
  * 実際に起動エラー画面が表示されることを確認する。
  */
 
-const EVIDENCE_DIR = evidenceDir('TC-02_startup-error')
-
 test.describe('F-01: データベース破損時の起動エラー画面(TC-02)', () => {
   test('データベースファイルが破損している場合、起動エラー画面が表示される', async () => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
     const dataDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-startup-'))
 
     // 有効なSQLiteファイルではない内容を、データベースファイルとして事前に配置しておく
@@ -49,7 +46,7 @@ test.describe('F-01: データベース破損時の起動エラー画面(TC-02)'
           'データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください'
         )
       ).toBeVisible()
-      await window.screenshot({ path: `${EVIDENCE_DIR}/01_startup_error.png` })
+      await shot(window, 'TC-02', 'startup_error')
     } finally {
       await app.close().catch(() => {})
       rmSync(dataDir, { recursive: true, force: true })

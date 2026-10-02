@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import AdmZip from 'adm-zip'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 
 /**
  * 【tester作成】F-02(データエクスポート)・F-03(データ復元)のシナリオ:
@@ -18,8 +18,6 @@ import { evidenceDir } from './evidence-dir'
  * vi.mock等を用いて検証済み(README5.1章参照)。本シナリオは、実際のElectronアプリ・実ファイルシステム・
  * IPC層を介して同じ結果が得られることを確認するもので、目的が異なる(結合テスト観点)。
  */
-
-const EVIDENCE_DIR = evidenceDir('TC-09_backup-integrity')
 
 function makeBackupFile(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -52,10 +50,6 @@ function makeBackupFile(overrides: Record<string, unknown> = {}): Record<string,
 test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12)', () => {
   let launched: LaunchedApp
   let workDir: string
-
-  test.beforeAll(() => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
-  })
 
   test.beforeEach(() => {
     workDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-backup-'))
@@ -120,7 +114,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await expect(window.locator('tbody tr')).toHaveCount(1)
     await expect(window.getByRole('cell', { name: '全置換確認用_A' })).toBeVisible()
     await expect(window.getByRole('cell', { name: '全置換確認用_B' })).not.toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/07_full_replace_confirmed.png` })
+    await shot(window, 'TC-07', 'full_replace_confirmed')
   })
 
   test('エクスポート失敗(異常系): 保存先が存在しない場合にエラーメッセージが表示される(TC-06)', async () => {
@@ -134,7 +128,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await expect(
       window.getByText('保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください')
     ).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/01_export_failure.png` })
+    await shot(window, 'TC-06', 'export_failure')
   })
 
   test('復元失敗(異常系): 壊れたJSONファイルを選択するとエラーメッセージが表示される(TC-09)', async () => {
@@ -152,7 +146,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
         '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください'
       )
     ).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/02_import_parse_failure.png` })
+    await shot(window, 'TC-09', 'import_parse_failure')
   })
 
   test('復元失敗(異常系): schemaVersionが新しすぎる場合にエラーメッセージが表示される(TC-10)', async () => {
@@ -170,7 +164,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
         'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください'
       )
     ).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/03_import_version_too_new.png` })
+    await shot(window, 'TC-10', 'import_version_too_new')
   })
 
   test('復元失敗(データ整合性): DB制約違反でトランザクションが失敗した場合、元データへロールバックされる(TC-12)', async () => {
@@ -224,7 +218,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await expect(
       window.getByText('復元に失敗しました。データは復元前の状態に戻しました')
     ).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/04_import_rollback.png` })
+    await shot(window, 'TC-12', 'import_rollback')
 
     // ロールバック後も、事前に登録した取引先データが失われていないことを確認する(データ整合性)
     await window.getByLabel('閉じる').click()
@@ -236,7 +230,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await window.getByLabel('取引先名称').fill('復旧後の継続動作確認用')
     await window.getByRole('button', { name: '登録', exact: true }).click()
     await expect(window.getByText('取引先を登録しました')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/05_after_rollback_continue_working.png` })
+    await shot(window, 'TC-12', 'after_rollback_continue_working')
   })
 
   test('復元前の自動退避は直近3世代のみ保持する(TC-11)', async () => {
@@ -254,7 +248,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
       await window.getByLabel('閉じる').click()
     }
 
-    await window.screenshot({ path: `${EVIDENCE_DIR}/06_after_4_imports.png` })
+    await shot(window, 'TC-11', 'after_4_imports')
 
     const backupsDir = join(launched.dataDir, 'backups')
     const backupFiles = readdirSync(backupsDir).filter(

@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
+import { test, expect, type Page } from '@playwright/test'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
-import { evidenceDir } from './evidence-dir'
+import { shot } from './evidence-dir'
 
 /**
  * 【tester作成】結合シナリオ: F-01(トップ画面)〜F-08(利用停止)を一連の画面遷移で確認する。
@@ -13,14 +12,16 @@ import { evidenceDir } from './evidence-dir'
  * 画面をまたいだデータの受け渡し・表示の整合性(結合テスト観点)を確認する。
  */
 
-const EVIDENCE_DIR = evidenceDir('TC-31_client-lifecycle')
+/** トップ画面の「取引先登録件数(利用中)」カードの値(イテレーション1でカードが4枚に増えたため、ラベルで特定する) */
+function activeClientCount(window: Page): ReturnType<Page['locator']> {
+  return window
+    .locator('.summary-card')
+    .filter({ has: window.getByText('取引先登録件数(利用中)', { exact: true }) })
+    .locator('.summary-value')
+}
 
 test.describe('結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33)', () => {
   let launched: LaunchedApp
-
-  test.beforeAll(() => {
-    mkdirSync(EVIDENCE_DIR, { recursive: true })
-  })
 
   test.beforeEach(async () => {
     launched = await launchApp()
@@ -35,8 +36,8 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
 
     // --- F-01: ホーム画面初期表示。件数はまだ0件 ---
     await expect(window.getByText('取引先登録件数(利用中)')).toBeVisible()
-    await expect(window.getByText('0件')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/01_home_initial.png` })
+    await expect(activeClientCount(window)).toHaveText('0件')
+    await shot(window, 'TC-31', 'home_initial')
 
     // タイトルバー表記の統一(デザインガイド5.2章「事務HUB - 〈画面名〉」)を確認
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
@@ -50,10 +51,12 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
     await window.getByRole('button', { name: '+ 新規登録' }).click()
     await window.getByRole('button', { name: '登録', exact: true }).click()
     await expect(window.getByText('取引先名称を入力してください')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/02_form_validation_error.png` })
+    await shot(window, 'TC-31', 'form_validation_error')
 
     // --- F-04: 新規登録(正常系。全項目入力) ---
     await window.getByLabel('取引先名称').fill('結合シナリオ商事株式会社')
+    // イテレーション1: フリガナ(ひらがな入力は全角カタカナへ自動変換される)
+    await window.getByLabel('フリガナ').fill('けつごうしなりおしょうじかぶしきがいしゃ')
     await window.getByLabel('敬称').selectOption('御中')
     await window.getByLabel('担当者名').fill('架空 太郎')
     await window.getByLabel('郵便番号').fill('100-0001')
@@ -64,21 +67,25 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
 
     await expect(window.getByText('取引先を登録しました')).toBeVisible()
     await expect(window.getByRole('cell', { name: '結合シナリオ商事株式会社' })).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/03_list_after_create.png` })
+    await expect(
+      window.getByRole('cell', { name: 'ケツゴウシナリオショウジカブシキガイシャ' })
+    ).toBeVisible() // フリガナ列
+    await shot(window, 'TC-31', 'list_after_create')
 
     // --- F-01: ホーム件数がF-04の登録結果と連動していることを確認(結合確認) ---
     await window.getByRole('button', { name: 'ホーム' }).click()
-    await expect(window.getByText('1件')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/04_home_count_after_create.png` })
+    await expect(activeClientCount(window)).toHaveText('1件')
+    await shot(window, 'TC-31', 'home_count_after_create')
 
     // --- F-06: 詳細画面(全項目表示) ---
     await window.getByRole('button', { name: '取引先管理' }).click()
     await window.getByText('結合シナリオ商事株式会社').click()
     await expect(window.getByText('取引先ID')).toBeVisible()
+    await expect(window.getByText('ケツゴウシナリオショウジカブシキガイシャ')).toBeVisible() // フリガナ(詳細)
     await expect(window.getByText('架空 太郎')).toBeVisible()
     await expect(window.getByText('東京都千代田区千代田1-1-1(架空)')).toBeVisible()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先詳細')
-    await window.screenshot({ path: `${EVIDENCE_DIR}/05_detail_view.png` })
+    await shot(window, 'TC-31', 'detail_view')
 
     // --- F-07: 編集(異常系: 文字数上限超過) ---
     await window.getByRole('button', { name: '編集' }).click()
@@ -93,7 +100,7 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
     await window.getByRole('button', { name: '保存', exact: true }).click()
     await expect(window.getByText('取引先を更新しました')).toBeVisible()
     await expect(window.getByText('架空 花子')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/06_detail_after_update.png` })
+    await shot(window, 'TC-31', 'detail_after_update')
 
     // --- F-08: 利用停止(「いいえ」でキャンセルされることを確認) ---
     await window.getByRole('button', { name: '利用停止にする' }).click()
@@ -105,7 +112,7 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
     await window.getByRole('button', { name: '利用停止にする' }).click()
     await window.getByRole('button', { name: 'はい' }).click()
     await expect(window.getByText('取引先を利用停止にしました')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/07_detail_after_deactivate.png` })
+    await shot(window, 'TC-31', 'detail_after_deactivate')
 
     // --- バックエンドのデータ自体は正しく更新されていることを確認(IPC直接呼び出し) ---
     const clientIdOnScreen = Number(await window.locator('.info-grid dd').first().textContent())
@@ -136,14 +143,14 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
     await expect(window.getByText('該当する取引先がありません')).toBeVisible()
 
     await window.getByRole('button', { name: 'ホーム' }).click()
-    await expect(window.getByText('0件')).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/08_home_count_after_deactivate.png` })
+    await expect(activeClientCount(window)).toHaveText('0件')
+    await shot(window, 'TC-31', 'home_count_after_deactivate')
 
     // --- F-05: 「利用停止も表示」ONで、利用停止した取引先がグレー表示で再確認できる ---
     await window.getByRole('button', { name: '取引先管理' }).click()
     await window.getByRole('switch', { name: '利用停止も表示' }).click()
     await expect(window.getByRole('cell', { name: '結合シナリオ商事株式会社' })).toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/09_list_show_inactive.png` })
+    await shot(window, 'TC-31', 'list_show_inactive')
 
     // --- F-06/回帰(TC-27): 一覧からの「新規の」画面遷移(再マウント)で開いた詳細画面では、
     // 不具合TC-31-aとは異なり、バッジ・編集ボタンとも正しく「利用停止」状態を反映することを確認する。
@@ -153,6 +160,6 @@ test.describe('結合シナリオ: 取引先のライフサイクル一連確認
     await expect(window.getByText('利用停止', { exact: true }).first()).toBeVisible()
     await expect(window.getByRole('button', { name: '編集' })).toBeDisabled()
     await expect(window.getByRole('button', { name: '利用停止にする' })).not.toBeVisible()
-    await window.screenshot({ path: `${EVIDENCE_DIR}/10_detail_fresh_mount_after_deactivate.png` })
+    await shot(window, 'TC-31', 'detail_fresh_mount_after_deactivate')
   })
 })
