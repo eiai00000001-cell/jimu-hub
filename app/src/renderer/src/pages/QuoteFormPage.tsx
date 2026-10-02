@@ -198,6 +198,8 @@ export function QuoteFormPage({
         ...validated
       })
       onSavedDraft(result.id)
+    } catch (error) {
+      setSubmitError(toErrorMessage(error, QUOTE_MESSAGES.draftSaveFailure))
     } finally {
       setSubmitting(false)
     }

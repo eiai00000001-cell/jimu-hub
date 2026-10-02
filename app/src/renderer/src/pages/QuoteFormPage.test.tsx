@@ -287,6 +287,32 @@ describe('QuoteFormPage(新規作成)', () => {
     expect(await screen.findByText('PDFの保存に失敗しました')).toBeInTheDocument()
   })
 
+  it('下書き保存が失敗した場合は、接頭辞を除いたエラーメッセージを表示する(I1-08)', async () => {
+    setupApi({
+      saveQuoteDraft: vi
+        .fn()
+        .mockRejectedValue(
+          new Error("Error invoking remote method 'quotes:saveDraft': Error: 取引先が存在しません")
+        )
+    })
+    render(
+      <QuoteFormPage
+        mode="new"
+        onSavedDraft={vi.fn()}
+        onFinalized={vi.fn()}
+        onCancel={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+      />
+    )
+    await screen.findByText('サンプル商事株式会社')
+
+    await userEvent.selectOptions(screen.getByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), 'Webサイト制作一式')
+    await userEvent.click(screen.getByText('下書き保存'))
+
+    expect(await screen.findByText('取引先が存在しません')).toBeInTheDocument()
+  })
+
   it('「+ 取引先を新規登録」から簡易登録すると、選択欄に反映される', async () => {
     const { createClient } = setupApi()
     render(

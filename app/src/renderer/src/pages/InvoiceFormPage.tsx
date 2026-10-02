@@ -221,6 +221,8 @@ export function InvoiceFormPage({
         ...validated
       })
       onSavedDraft(result.id)
+    } catch (error) {
+      setSubmitError(toErrorMessage(error, INVOICE_MESSAGES.draftSaveFailure))
     } finally {
       setSubmitting(false)
     }

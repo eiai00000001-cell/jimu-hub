@@ -192,6 +192,18 @@ describe('InvoiceFormPage', () => {
     expect(await screen.findByText('PDFの保存に失敗しました')).toBeInTheDocument()
   })
 
+  it('下書き保存が失敗した場合はエラーメッセージを表示する(I1-08)', async () => {
+    setupApi({
+      saveInvoiceDraft: vi.fn().mockRejectedValue(new Error('FOREIGN KEY constraint failed'))
+    })
+    renderNew()
+    await screen.findByText('サンプル商事株式会社')
+    await userEvent.selectOptions(screen.getByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), 'A')
+    await userEvent.click(screen.getByText('下書き保存'))
+    expect(await screen.findByText('FOREIGN KEY constraint failed')).toBeInTheDocument()
+  })
+
   it('取引先の簡易登録で選択欄に反映される', async () => {
     const {} = setupApi()
     renderNew()
