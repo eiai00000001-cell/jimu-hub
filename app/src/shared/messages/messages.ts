@@ -34,6 +34,8 @@ export const CLIENT_MESSAGES = {
 } as const
 
 export const BACKUP_MESSAGES = {
+  pdfNotFound:
+    'PDFファイルが見つかりません。データは復元されていますが、PDFファイルは別途お手元のバックアップからご用意ください',
   exportSuccess: (filePath: string): string => `保存しました(保存先: ${filePath})`,
   exportFailure: '保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください',
   importIntro:

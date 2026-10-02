@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import {
   InvoiceIdSchema,
@@ -13,6 +13,7 @@ import type {
   OpenPdfResult
 } from '@shared/ipc/api'
 import type { InvoiceService } from '../services/invoice.service'
+import { PdfOpener } from './pdf-opener'
 
 function parseId(id: unknown): number {
   return InvoiceIdSchema.parse(id)
@@ -27,7 +28,14 @@ function parseFilter(filter: unknown): InvoiceListFilter {
  * 参照元: 詳細設計書 4.14〜4.16章、5章(クラス設計 `InvoiceIpcHandler`)、7章
  */
 export class InvoicesIpcHandler {
-  constructor(private readonly service: InvoiceService) {}
+  private readonly pdfOpener: PdfOpener
+
+  constructor(
+    private readonly service: InvoiceService,
+    documentsDir: string
+  ) {
+    this.pdfOpener = new PdfOpener(documentsDir)
+  }
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.invoicesList, async (_event, filter?: unknown) =>
@@ -64,18 +72,10 @@ export class InvoicesIpcHandler {
   }
 
   private async openPdf(id: number): Promise<OpenPdfResult> {
-    const invoice = this.service.getInvoice(id)
-    if (invoice.pdfPath) {
-      await shell.openPath(invoice.pdfPath)
-    }
-    return { success: true }
+    return this.pdfOpener.open(this.service.getInvoice(id).pdfPath)
   }
 
   private showPdfInFolder(id: number): OpenPdfResult {
-    const invoice = this.service.getInvoice(id)
-    if (invoice.pdfPath) {
-      shell.showItemInFolder(invoice.pdfPath)
-    }
-    return { success: true }
+    return this.pdfOpener.showInFolder(this.service.getInvoice(id).pdfPath)
   }
 }

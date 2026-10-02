@@ -137,8 +137,8 @@ app.whenReady().then(() => {
     new ClientIpcHandler(clientService).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
-    new QuotesIpcHandler(quoteService, invoiceService).registerHandlers()
-    new InvoicesIpcHandler(invoiceService).registerHandlers()
+    new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()
+    new InvoicesIpcHandler(invoiceService, documentsDir).registerHandlers()
   }
 
   createMainWindow()

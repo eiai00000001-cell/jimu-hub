@@ -1,4 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
@@ -46,10 +49,19 @@ const input = {
 
 describe('InvoicesIpcHandler', () => {
   let clientId: number
+  let documentsDir: string
+  let pdfFile: string
+  let pdfPathForService: string
 
   beforeEach(() => {
     handlers.clear()
     vi.clearAllMocks()
+    openPath.mockResolvedValue('')
+    documentsDir = join(mkdtempSync(join(tmpdir(), 'jimuhub-inv-ipc-')), 'documents')
+    mkdirSync(documentsDir, { recursive: true })
+    pdfFile = join(documentsDir, 'i.pdf')
+    writeFileSync(pdfFile, '%PDF')
+    pdfPathForService = pdfFile
     const db = new Database(':memory:')
     db.initialize()
     clientId = new ClientRepository(db).insert({
@@ -82,11 +94,13 @@ describe('InvoicesIpcHandler', () => {
       companyProfileRepository,
       numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
       pdfService: {
-        generateInvoicePdf: vi.fn().mockResolvedValue({ pdfPath: '/tmp/i.pdf', pdfHash: 'h' })
+        generateInvoicePdf: vi
+          .fn()
+          .mockImplementation(async () => ({ pdfPath: pdfPathForService, pdfHash: 'h' }))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any
     })
-    new InvoicesIpcHandler(service).registerHandlers()
+    new InvoicesIpcHandler(service, documentsDir).registerHandlers()
   })
 
   it('全チャンネルを登録する', () => {
@@ -123,10 +137,59 @@ describe('InvoicesIpcHandler', () => {
       invoiceNumber: string
     }
     expect(r.invoiceNumber).toBe('2026-001')
-    await handlers.get(IPC_CHANNELS.invoicesOpenPdf)!({}, r.id)
-    expect(openPath).toHaveBeenCalledWith('/tmp/i.pdf')
-    await handlers.get(IPC_CHANNELS.invoicesShowPdfInFolder)!({}, r.id)
-    expect(showItemInFolder).toHaveBeenCalledWith('/tmp/i.pdf')
+    expect(await handlers.get(IPC_CHANNELS.invoicesOpenPdf)!({}, r.id)).toEqual({ success: true })
+    expect(openPath).toHaveBeenCalledWith(pdfFile)
+    expect(await handlers.get(IPC_CHANNELS.invoicesShowPdfInFolder)!({}, r.id)).toEqual({
+      success: true
+    })
+    expect(showItemInFolder).toHaveBeenCalledWith(pdfFile)
+  })
+
+  it('PDFファイルが存在しない場合は、案内文言を返しOSへは渡さない(I1-05)', async () => {
+    const r = (await handlers.get(IPC_CHANNELS.invoicesFinalize)!({}, { ...input, clientId })) as {
+      id: number
+    }
+    rmSync(pdfFile)
+    const open = (await handlers.get(IPC_CHANNELS.invoicesOpenPdf)!({}, r.id)) as {
+      success: boolean
+      error?: string
+    }
+    expect(open.success).toBe(false)
+    expect(open.error).toContain('PDFファイルが見つかりません')
+    const show = (await handlers.get(IPC_CHANNELS.invoicesShowPdfInFolder)!({}, r.id)) as {
+      success: boolean
+    }
+    expect(show.success).toBe(false)
+    expect(openPath).not.toHaveBeenCalled()
+    expect(showItemInFolder).not.toHaveBeenCalled()
+  })
+
+  it('shell.openPathが失敗(エラー文字列)を返した場合は失敗として返す(I1-05)', async () => {
+    const r = (await handlers.get(IPC_CHANNELS.invoicesFinalize)!({}, { ...input, clientId })) as {
+      id: number
+    }
+    openPath.mockResolvedValueOnce('failed to open')
+    const result = (await handlers.get(IPC_CHANNELS.invoicesOpenPdf)!({}, r.id)) as {
+      success: boolean
+    }
+    expect(result.success).toBe(false)
+  })
+
+  it('pdf_pathが保存先(documents)の外を指す場合は開かない(I1-03)', async () => {
+    pdfPathForService = '/Applications/Calculator.app'
+    const r = (await handlers.get(IPC_CHANNELS.invoicesFinalize)!({}, { ...input, clientId })) as {
+      id: number
+    }
+    const open = (await handlers.get(IPC_CHANNELS.invoicesOpenPdf)!({}, r.id)) as {
+      success: boolean
+    }
+    const show = (await handlers.get(IPC_CHANNELS.invoicesShowPdfInFolder)!({}, r.id)) as {
+      success: boolean
+    }
+    expect(open.success).toBe(false)
+    expect(show.success).toBe(false)
+    expect(openPath).not.toHaveBeenCalled()
+    expect(showItemInFolder).not.toHaveBeenCalled()
   })
 
   it('不正なid・filterはIPC境界で拒否する', async () => {

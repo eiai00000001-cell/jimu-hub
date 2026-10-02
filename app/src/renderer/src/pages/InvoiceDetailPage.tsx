@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import type { Invoice } from '@shared/types/invoice'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
+import type { OpenPdfResult } from '@shared/ipc/api'
 import { toErrorMessage } from '../utils/error-message'
 
 function todayIsoDate(): string {
@@ -48,6 +49,7 @@ export function InvoiceDetailPage({
   const [paymentMode, setPaymentMode] = useState<'view' | 'enterDate' | 'confirmUnpaid'>('view')
   const [paymentDate, setPaymentDate] = useState(todayIsoDate())
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [pdfError, setPdfError] = useState<string | null>(null)
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null)
 
   useEffect(() => {
@@ -96,6 +98,14 @@ export function InvoiceDetailPage({
 
   const hasWithholding = invoice?.lineItems.some((line) => line.withholdingTarget) ?? false
 
+  async function handlePdfAction(action: (id: number) => Promise<OpenPdfResult>): Promise<void> {
+    setPdfError(null)
+    const result = await action(invoiceId)
+    if (!result.success) {
+      setPdfError(result.error)
+    }
+  }
+
   return (
     <AppShell
       screenName="請求書詳細"
@@ -118,10 +128,12 @@ export function InvoiceDetailPage({
             <Button onClick={() => onEdit(invoiceId)}>編集</Button>
           ) : (
             <>
-              <Button onClick={() => void window.jimuhubApi.openInvoicePdf(invoiceId)}>
+              <Button onClick={() => void handlePdfAction(window.jimuhubApi.openInvoicePdf)}>
                 PDFを開く
               </Button>
-              <Button onClick={() => void window.jimuhubApi.showInvoicePdfInFolder(invoiceId)}>
+              <Button
+                onClick={() => void handlePdfAction(window.jimuhubApi.showInvoicePdfInFolder)}
+              >
                 Finderで表示
               </Button>
             </>
@@ -135,6 +147,7 @@ export function InvoiceDetailPage({
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
       {paymentNotice ? <Message variant="success">{paymentNotice}</Message> : null}
+      {pdfError ? <Message variant="error">{pdfError}</Message> : null}
 
       {loadError ? (
         <>

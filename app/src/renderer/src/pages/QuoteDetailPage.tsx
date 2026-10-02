@@ -59,7 +59,11 @@ export function QuoteDetailPage({
   }, [quoteId])
 
   async function handleOpenPdf(): Promise<void> {
-    await window.jimuhubApi.openQuotePdf(quoteId)
+    setActionError(null)
+    const result = await window.jimuhubApi.openQuotePdf(quoteId)
+    if (!result.success) {
+      setActionError(result.error)
+    }
   }
 
   async function handleConvertToInvoice(): Promise<void> {
@@ -73,7 +77,11 @@ export function QuoteDetailPage({
   }
 
   async function handleShowInFolder(): Promise<void> {
-    await window.jimuhubApi.showQuotePdfInFolder(quoteId)
+    setActionError(null)
+    const result = await window.jimuhubApi.showQuotePdfInFolder(quoteId)
+    if (!result.success) {
+      setActionError(result.error)
+    }
   }
 
   return (

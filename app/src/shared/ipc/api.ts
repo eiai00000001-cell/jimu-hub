@@ -82,9 +82,7 @@ export interface ConvertQuoteToInvoiceResult {
   invoiceId: number
 }
 
-export interface OpenPdfResult {
-  success: true
-}
+export type OpenPdfResult = { success: true } | { success: false; error: string }
 
 /**
  * PreloadがcontextBridgeで公開するAPIの型(window.jimuhubApi)。

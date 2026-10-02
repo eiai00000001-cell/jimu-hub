@@ -1,4 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
@@ -68,10 +71,19 @@ const baseInput: Omit<QuoteInput, 'clientId'> = {
 describe('QuotesIpcHandler', () => {
   let db: Database
   let clientId: number
+  let documentsDir: string
+  let pdfFile: string
+  let pdfPathForService: string
 
   beforeEach(() => {
     handlers.clear()
     vi.clearAllMocks()
+    openPath.mockResolvedValue('')
+    documentsDir = join(mkdtempSync(join(tmpdir(), 'jimuhub-quote-ipc-')), 'documents')
+    mkdirSync(documentsDir, { recursive: true })
+    pdfFile = join(documentsDir, '2026-001_株式会社サンプル.pdf')
+    writeFileSync(pdfFile, '%PDF')
+    pdfPathForService = pdfFile
     db = new Database(':memory:')
     db.initialize()
 
@@ -85,7 +97,7 @@ describe('QuotesIpcHandler', () => {
     const pdfService = {
       generateQuotePdf: vi
         .fn()
-        .mockResolvedValue({ pdfPath: '/tmp/2026-001_株式会社サンプル.pdf', pdfHash: 'hash123' })
+        .mockImplementation(async () => ({ pdfPath: pdfPathForService, pdfHash: 'hash123' }))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any
     const service = new QuoteService({
@@ -106,7 +118,7 @@ describe('QuotesIpcHandler', () => {
       pdfService: {} as any
     })
 
-    new QuotesIpcHandler(service, invoiceService).registerHandlers()
+    new QuotesIpcHandler(service, invoiceService, documentsDir).registerHandlers()
   })
 
   it('全チャンネルを登録する', () => {
@@ -178,7 +190,7 @@ describe('QuotesIpcHandler', () => {
     const handler = handlers.get(IPC_CHANNELS.quotesOpenPdf)!
     const result = await handler({}, created.id)
     expect(result).toEqual({ success: true })
-    expect(openPath).toHaveBeenCalledWith('/tmp/2026-001_株式会社サンプル.pdf')
+    expect(openPath).toHaveBeenCalledWith(pdfFile)
   })
 
   it('quotes:showPdfInFolderはpdf_pathをshell.showItemInFolderへ渡す', async () => {
@@ -188,7 +200,29 @@ describe('QuotesIpcHandler', () => {
     const handler = handlers.get(IPC_CHANNELS.quotesShowPdfInFolder)!
     const result = await handler({}, created.id)
     expect(result).toEqual({ success: true })
-    expect(showItemInFolder).toHaveBeenCalledWith('/tmp/2026-001_株式会社サンプル.pdf')
+    expect(showItemInFolder).toHaveBeenCalledWith(pdfFile)
+  })
+
+  it('PDFが存在しない・保存先の外を指す場合は、案内文言を返しOSへは渡さない(I1-03, I1-05)', async () => {
+    const finalizeHandler = handlers.get(IPC_CHANNELS.quotesFinalize)!
+    const created = (await finalizeHandler({}, { ...baseInput, clientId })) as { id: number }
+    rmSync(pdfFile)
+    const open = (await handlers.get(IPC_CHANNELS.quotesOpenPdf)!({}, created.id)) as {
+      success: boolean
+      error?: string
+    }
+    expect(open.success).toBe(false)
+    expect(open.error).toContain('PDFファイルが見つかりません')
+
+    db.sqlite
+      .prepare('UPDATE quotes SET pdf_path = ? WHERE id = ?')
+      .run('/Applications/Calculator.app', created.id)
+    const outside = (await handlers.get(IPC_CHANNELS.quotesShowPdfInFolder)!({}, created.id)) as {
+      success: boolean
+    }
+    expect(outside.success).toBe(false)
+    expect(openPath).not.toHaveBeenCalled()
+    expect(showItemInFolder).not.toHaveBeenCalled()
   })
 
   describe('IPC境界での実行時バリデーション', () => {

@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import {
   ConvertQuoteIdSchema,
@@ -10,6 +10,7 @@ import type { QuoteListFilter } from '@shared/types/quote'
 import type { SaveQuoteDraftRequest, FinalizeQuoteRequest, OpenPdfResult } from '@shared/ipc/api'
 import type { QuoteService } from '../services/quote.service'
 import type { InvoiceService } from '../services/invoice.service'
+import { PdfOpener } from './pdf-opener'
 
 function parseId(id: unknown): number {
   return QuoteIdSchema.parse(id)
@@ -26,10 +27,15 @@ function parseFilter(filter: unknown): QuoteListFilter {
  * 参照元: 詳細設計書 4.12・4.13章、5章(クラス設計 `QuoteIpcHandler`)、7章(API/インターフェース設計)
  */
 export class QuotesIpcHandler {
+  private readonly pdfOpener: PdfOpener
+
   constructor(
     private readonly service: QuoteService,
-    private readonly invoiceService: InvoiceService
-  ) {}
+    private readonly invoiceService: InvoiceService,
+    documentsDir: string
+  ) {
+    this.pdfOpener = new PdfOpener(documentsDir)
+  }
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.quotesList, async (_event, filter?: unknown) =>
@@ -58,18 +64,10 @@ export class QuotesIpcHandler {
   }
 
   private async openPdf(id: number): Promise<OpenPdfResult> {
-    const quote = this.service.getQuote(id)
-    if (quote.pdfPath) {
-      await shell.openPath(quote.pdfPath)
-    }
-    return { success: true }
+    return this.pdfOpener.open(this.service.getQuote(id).pdfPath)
   }
 
   private showPdfInFolder(id: number): OpenPdfResult {
-    const quote = this.service.getQuote(id)
-    if (quote.pdfPath) {
-      shell.showItemInFolder(quote.pdfPath)
-    }
-    return { success: true }
+    return this.pdfOpener.showInFolder(this.service.getQuote(id).pdfPath)
   }
 }

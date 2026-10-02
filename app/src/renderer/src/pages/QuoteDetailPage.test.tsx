@@ -104,6 +104,23 @@ describe('QuoteDetailPage', () => {
     expect(screen.queryByText('PDFを開く')).not.toBeInTheDocument()
   })
 
+  it('PDFが見つからない場合は案内メッセージを表示する(I1-05)', async () => {
+    const { openQuotePdf } = setupApi({ getQuote: vi.fn().mockResolvedValue(finalizedQuote) })
+    openQuotePdf.mockResolvedValue({ success: false, error: 'PDFファイルが見つかりません。案内' })
+    render(
+      <QuoteDetailPage
+        quoteId={7}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
+      />
+    )
+    await userEvent.click(await screen.findByText('PDFを開く'))
+    expect(await screen.findByText('PDFファイルが見つかりません。案内')).toBeInTheDocument()
+  })
+
   it('「編集」ボタン押下でonEditを呼び出す', async () => {
     setupApi()
     const onEdit = vi.fn()

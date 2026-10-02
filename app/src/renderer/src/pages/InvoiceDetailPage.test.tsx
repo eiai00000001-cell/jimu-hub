@@ -118,6 +118,14 @@ describe('InvoiceDetailPage', () => {
     await waitFor(() => expect(showInvoicePdfInFolder).toHaveBeenCalledWith(8))
   })
 
+  it('PDFが見つからない場合は案内メッセージを表示する(I1-05)', async () => {
+    const { openInvoicePdf } = setup(vi.fn().mockResolvedValue(finalized))
+    openInvoicePdf.mockResolvedValue({ success: false, error: 'PDFファイルが見つかりません。案内' })
+    renderPage(8)
+    await userEvent.click(await screen.findByText('PDFを開く'))
+    expect(await screen.findByText('PDFファイルが見つかりません。案内')).toBeInTheDocument()
+  })
+
   it('「入金済みにする」→入金日を入力して確定すると入金済みへ更新し表示を最新化する', async () => {
     const getInvoice = vi
       .fn()
