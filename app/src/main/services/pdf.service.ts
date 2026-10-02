@@ -1,7 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
-import { createHash, randomBytes } from 'node:crypto'
-import { tmpdir } from 'node:os'
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { Quote } from '@shared/types/quote'
 import type { Invoice } from '@shared/types/invoice'
@@ -9,6 +8,7 @@ import type { CompanyProfile } from '@shared/types/company-profile'
 import { buildQuotePdfHtml } from './pdf/quote-pdf-template'
 import { buildInvoicePdfHtml } from './pdf/invoice-pdf-template'
 import { escapeHtml, sanitizeFileNamePart } from './pdf/format'
+import { newPdfTempFilePath } from './pdf/temp-files'
 
 export interface GeneratedPdfInfo {
   pdfPath: string
@@ -87,15 +87,16 @@ export class PdfService {
     documentNumber: string,
     clientName: string
   ): Promise<Buffer> {
-    const tempFilePath = join(tmpdir(), `jimuhub-pdf-${randomBytes(6).toString('hex')}.html`)
-    writeFileSync(tempFilePath, html, 'utf-8')
-
-    const window = new BrowserWindow({
-      show: false,
-      webPreferences: { sandbox: true, contextIsolation: true, offscreen: true }
-    })
-
+    // 書類の内容を含む一時HTML。作成から削除までをtry/finallyで囲み、途中で例外が起きても必ず削除する
+    // (異常終了で残った分は起動時に`cleanupLeftoverPdfTempFiles`が削除する。SEC-11)
+    const tempFilePath = newPdfTempFilePath()
+    let window: BrowserWindow | undefined
     try {
+      writeFileSync(tempFilePath, html, 'utf-8')
+      window = new BrowserWindow({
+        show: false,
+        webPreferences: { sandbox: true, contextIsolation: true, offscreen: true }
+      })
       await window.loadFile(tempFilePath)
       const footerText = `${escapeHtml(documentNumber)} / ${escapeHtml(clientName)}`
       // ChromiumのprintToPDFヘッダー/フッターテンプレートは既定でセリフ体(明朝系)のフォントが
@@ -111,7 +112,7 @@ export class PdfService {
         footerTemplate: `<div style="font-family: ${footerFontFamily}; font-size:8px; width:100%; text-align:center; color:#666666; margin: 0 24px;">${footerText}&nbsp;&nbsp;<span class="pageNumber"></span> / <span class="totalPages"></span> ページ</div>`
       })
     } finally {
-      window.destroy()
+      window?.destroy()
       rmSync(tempFilePath, { force: true })
     }
   }

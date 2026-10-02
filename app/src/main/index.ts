@@ -12,6 +12,7 @@ import { QuoteRepository } from './repositories/quote.repository'
 import { InvoiceRepository } from './repositories/invoice.repository'
 import { InvoiceService } from './services/invoice.service'
 import { NumberingService } from './services/numbering.service'
+import { cleanupLeftoverPdfTempFiles } from './services/pdf/temp-files'
 import { PdfService } from './services/pdf.service'
 import { QuoteService } from './services/quote.service'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
@@ -78,6 +79,9 @@ function createMainWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   denyAllPermissionRequests(session.defaultSession)
+
+  // 異常終了で残ったPDF生成用の一時HTML(書類の内容を含む)を削除する(SEC-11)
+  cleanupLeftoverPdfTempFiles()
 
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。

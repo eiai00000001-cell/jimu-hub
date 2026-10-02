@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { pdfTempDir } from './pdf/temp-files'
 
 const FAKE_PDF_CONTENT = Buffer.from('%PDF-1.7 fake pdf content for testing')
 
@@ -134,6 +135,19 @@ describe('PdfService', () => {
       '印刷に失敗しました'
     )
     expect(destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('成功時も失敗時も、PDF生成用の一時HTMLを残さない(SEC-11)', async () => {
+    const listTemp = (): string[] =>
+      existsSync(pdfTempDir()) ? readdirSync(pdfTempDir()).sort() : []
+    const before = listTemp()
+
+    await service.generateQuotePdf(sampleQuote, sampleCompanyProfile)
+    expect(listTemp()).toEqual(before)
+
+    printToPDF.mockRejectedValueOnce(new Error('印刷に失敗しました'))
+    await expect(service.generateQuotePdf(sampleQuote, sampleCompanyProfile)).rejects.toThrow()
+    expect(listTemp()).toEqual(before)
   })
 
   it('請求書PDFを documents/invoices/<年>/<番号>_<取引先名>.pdf へ保存する', async () => {
