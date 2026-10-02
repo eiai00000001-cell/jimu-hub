@@ -157,13 +157,19 @@ export class BackupService {
       return { success: false, error: BACKUP_MESSAGES.importVersionTooNew }
     }
 
-    const backupFile = this.deps.migrationService.migrateExportData(
-      validated.data,
-      validated.data.schemaVersion
-    )
     const restorePdfs = parsed.format === 'zip'
-
-    const documentsBackupPath = this.createSafeguardCopy(restorePdfs)
+    let backupFile: BackupFile
+    let documentsBackupPath: string | null
+    try {
+      backupFile = this.deps.migrationService.migrateExportData(
+        validated.data,
+        validated.data.schemaVersion
+      )
+      // 退避コピーの作成失敗(容量・権限不足等)も、データには未着手のため結果として返す
+      documentsBackupPath = this.createSafeguardCopy(restorePdfs)
+    } catch {
+      return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
+    }
 
     try {
       const pdfHashMismatchCount = this.deps.database.transaction(() =>
@@ -230,8 +236,9 @@ export class BackupService {
     if (typeof value !== 'string' || value === '') {
       return null
     }
+    // エクスポートは常に`documents/...`の相対パスで書き出すため、絶対パスは受け付けない
     if (isAbsolute(value)) {
-      return value
+      return null
     }
     const resolved = resolve(dirname(this.deps.documentsDir), value)
     return resolved.startsWith(resolve(this.deps.documentsDir) + sep) ? resolved : null

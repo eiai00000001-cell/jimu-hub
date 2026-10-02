@@ -463,15 +463,61 @@ describe('BackupService', () => {
       )
     })
 
-    it('ZIP内の親ディレクトリ参照を含むエントリは書き出さない(ZIPスリップ対策)', () => {
-      const evil = new AdmZip()
-      evil.addFile('data.json', Buffer.from(JSON.stringify(buildBrokenPayloadOk())))
-      evil.addFile('documents/../../evil.txt', Buffer.from('x'))
-      evil.writeZip(join(dir, 'evil.zip'))
+    it('ZIP内の親ディレクトリ参照を含むエントリは書き出さず、正常なPDFは復元する(ZIPスリップ対策)', () => {
+      const { quoteId } = seedDocuments()
+      service.exportData(exportPath)
+      const zip = new AdmZip(exportPath)
+      zip.addFile('documents/../../evil.txt', Buffer.from('x'))
+      zip.addFile('documents/quotes/../../../evil2.txt', Buffer.from('x'))
+      zip.writeZip(exportPath)
+      rmSync(documentsDir, { recursive: true, force: true })
 
-      service.importData(join(dir, 'evil.zip'))
+      const result = service.importData(exportPath)
+
+      expect(result.success).toBe(true)
+      expect(result.pdfHashMismatchCount).toBe(0)
+      expect(
+        existsSync(join(documentsDir, 'quotes', '2026', '2026-003_株式会社サンプル.pdf'))
+      ).toBe(true)
+      expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(false)
       expect(existsSync(join(dir, '..', 'evil.txt'))).toBe(false)
       expect(existsSync(join(dir, 'evil.txt'))).toBe(false)
+      expect(existsSync(join(dir, 'evil2.txt'))).toBe(false)
+      expect(existsSync(join(documentsDir, '..', 'evil2.txt'))).toBe(false)
+    })
+
+    it.each(['/Applications/Calculator.app', 'documents/../../outside.pdf', '../outside.pdf'])(
+      'data.jsonのpdfPathが %s のように documents/ 配下に収まらない場合は採用しない(I1-03)',
+      (badPath) => {
+        const { quoteId } = seedDocuments()
+        service.exportData(exportPath)
+        const zip = new AdmZip(exportPath)
+        const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
+        data.data.quotes[0].pdfPath = badPath
+        zip.updateFile('data.json', Buffer.from(JSON.stringify(data)))
+        zip.writeZip(exportPath)
+
+        const result = service.importData(exportPath)
+
+        expect(result.success).toBe(true)
+        const restored = new QuoteRepository(db).findById(quoteId)
+        expect(restored?.pdfPath).toBeNull()
+      }
+    )
+
+    it('復元前の退避コピー作成に失敗した場合は、例外を投げず失敗結果を返しデータに触れない(I1-06)', () => {
+      repository.insert(baseInput)
+      service.exportData(exportPath)
+      repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
+      vi.mocked(fsModule.copyFileSync).mockImplementationOnce(() => {
+        throw new Error('シミュレートした容量不足')
+      })
+
+      const result = service.importData(exportPath)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
+      expect(repository.findAllForBackup()).toHaveLength(2)
     })
 
     it('ZIP形式の復元に失敗した場合、documentsフォルダも復元前の状態へ戻す', () => {
