@@ -41,9 +41,29 @@ export function evidenceDir(name: string): string {
   return dir
 }
 
+/**
+ * 連番の採番。フォローアップ再実施で既存エビデンスと連番が重ならないよう、環境変数
+ * `JIMUHUB_EVIDENCE_SEQ_BASE`(例: `docs/07_test/evidence/iteration-1`)に既に存在するファイルも
+ * 採番済みとして扱い、その次の連番から始める。
+ */
 function nextSeq(tc: string): number {
-  const dir = evidenceRunDir()
-  const used = readdirSync(dir)
+  const dirs = [evidenceRunDir()]
+  const base = process.env.JIMUHUB_EVIDENCE_SEQ_BASE
+  if (base) {
+    try {
+      dirs.push(resolve(base))
+    } catch {
+      /* 指定が不正な場合は無視する */
+    }
+  }
+  const used = dirs
+    .flatMap((d) => {
+      try {
+        return readdirSync(d)
+      } catch {
+        return []
+      }
+    })
     .map((f) => new RegExp(`^${tc}_(\\d+)\\.`).exec(f))
     .filter((m): m is RegExpExecArray => m !== null)
     .map((m) => Number(m[1]))

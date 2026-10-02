@@ -254,18 +254,41 @@ test.describe('見積書・請求書: データ整合性・異常系', () => {
     expect(
       dbQuery(dataDir, 'SELECT status,quote_number FROM quotes WHERE quote_number IS NOT NULL')
     ).toBe(`finalized|${year}-002`)
-    // BUG-01: 新規作成画面でPDF保存に失敗すると、下書きとして保存済みのレコードのIDを画面が保持しないため、
-    // 再度「PDFとして保存」すると別の見積書が作られ、未採番の下書きが重複して残る
+    // BUG-01(i1)修正確認: 新規作成画面でPDF保存に失敗しても、画面が下書きのIDを保持し、
+    // 再試行時は同じ下書きが確定されるため、未採番の下書きは重複しない
     const countAfterRetry = dbQuery(dataDir, 'SELECT COUNT(*) FROM quotes')
     noteEvidence(
       'TC-51',
-      '再確定後のquotes件数と内訳(BUG-01確認)',
+      '再確定後のquotes件数と内訳(BUG-01(i1)修正確認。重複なし=1件)',
       `quotes件数=${countAfterRetry}\n${dbQuery(dataDir, "SELECT id,status,IFNULL(quote_number,'(未採番)') FROM quotes")}`
     )
     await window.getByText('一覧へ戻る').click()
-    await shot(window, 'TC-51', '再確定後の見積書一覧(未採番の下書きが重複して残る: BUG-01)')
-    expect.soft(countAfterRetry, 'BUG-01: 失敗後の再確定で未採番の下書きが重複して残る').toBe('1')
-    await shot(window, 'TC-51', '復旧後の再確定(書類番号は欠番の次の番号)')
+    await shot(window, 'TC-51', '再確定後の見積書一覧(下書きが重複せず1件のみ。BUG-01(i1)修正後)')
+    expect(countAfterRetry, '失敗後の再確定で下書きが重複しない').toBe('1')
+
+    // 請求書(F-14)も同じ流れ: 失敗→再試行で下書きが重複せず、書類番号は欠番の次になる
+    chmodSync(docs, 0o500)
+    await window.getByRole('button', { name: '請求書', exact: true }).click()
+    await window.getByRole('button', { name: '+ 請求書を新規作成' }).click()
+    await window
+      .locator('[aria-label="取引先"]')
+      .first()
+      .selectOption({ label: '補償処理確認商事' })
+    await window.getByLabel('品名1').fill('失敗する請求')
+    await window.getByLabel('単価1').fill('2000')
+    await window.getByRole('button', { name: 'PDFとして保存' }).click()
+    await expect(window.getByText('PDFの保存に失敗しました')).toBeVisible()
+    expect(
+      dbQuery(dataDir, 'SELECT status,invoice_number IS NULL,pdf_path IS NULL FROM invoices')
+    ).toBe('draft|1|1')
+    chmodSync(docs, 0o755)
+    await window.getByRole('button', { name: 'PDFとして保存' }).click()
+    await expect(window.getByText('PDFとして保存しました')).toBeVisible()
+    expect(dbQuery(dataDir, 'SELECT COUNT(*) FROM invoices')).toBe('1')
+    expect(dbQuery(dataDir, 'SELECT status,invoice_number FROM invoices')).toBe(
+      `finalized|${year}-002`
+    )
+    await shot(window, 'TC-51', '請求書: 失敗後の再確定で下書きが重複せず、書類番号は欠番の次')
     expect(clientId).toBeGreaterThan(0)
   })
 
@@ -476,9 +499,18 @@ test.describe('見積書・請求書: データ整合性・異常系', () => {
     await expect(rows).toHaveCount(1)
     await expect(rows.first()).toContainText('2026-003')
     await shot(window, 'TC-61', '発行日範囲+金額下限の絞り込み(1件)')
-    await window.getByLabel('金額(上限)').fill('1000')
+    await window.getByLabel('金額(上限)').fill('')
+    await window.getByLabel('金額(下限)').fill('1000000')
     await expect(window.getByText('該当する見積書がありません')).toBeVisible()
     await shot(window, 'TC-61', '該当なし時の案内文言')
+    // BUG-02(i1)修正後: 上限<下限の入力はエラー表示となり、絞り込み結果(一覧)は表示されない(詳細設計書3.10章)
+    await window.getByLabel('金額(下限)').fill('100000')
+    await window.getByLabel('金額(上限)').fill('1000')
+    await expect(window.getByText('金額の上限は、下限以上の金額を入力してください')).toBeVisible()
+    await expect(window.locator('tbody tr')).toHaveCount(0)
+    await shot(window, 'TC-61', '金額の上限<下限のエラー表示(BUG-02修正後)')
+    await window.getByLabel('金額(下限)').fill('')
+    await window.getByLabel('金額(上限)').fill('')
 
     // 請求書タブ
     await window.getByLabel('発行日(開始)').fill('')
@@ -498,15 +530,26 @@ test.describe('見積書・請求書: データ整合性・異常系', () => {
     await window.getByLabel('発行日(終了)').fill('2026-01-01')
     await window.getByLabel('金額(下限)').fill('50000')
     await window.getByLabel('金額(上限)').fill('1000')
-    const inverted = await window.locator('.error-message, .message-error, [role="alert"]').count()
-    await shot(window, 'TC-61', '範囲逆転(終了日<開始日・上限<下限)を入力した状態')
+    await expect(
+      window.getByText('発行日の終了日は、開始日以降の日付を入力してください')
+    ).toBeVisible()
+    await expect(window.getByText('金額の上限は、下限以上の金額を入力してください')).toBeVisible()
+    await expect(window.locator('tbody tr')).toHaveCount(0)
+    await shot(window, 'TC-61', '範囲逆転(終了日<開始日・上限<下限)のエラー表示(BUG-02修正後)')
+    // 範囲を正すとエラーが消え、絞り込み結果が再表示される
+    await window.getByLabel('発行日(開始)').fill('2026-01-01')
+    await window.getByLabel('発行日(終了)').fill('2026-03-01')
+    await window.getByLabel('金額(下限)').fill('1000')
+    await window.getByLabel('金額(上限)').fill('50000')
+    await expect(
+      window.getByText('発行日の終了日は、開始日以降の日付を入力してください')
+    ).toHaveCount(0)
+    await expect(window.getByText('金額の上限は、下限以上の金額を入力してください')).toHaveCount(0)
+    await expect(window.locator('tbody tr')).toHaveCount(2)
     noteEvidence(
       'TC-61',
-      '範囲逆転入力時のエラー表示要素数(設計: 3.10章でエラー)',
-      `エラー表示要素数=${inverted}\n画面本文:\n${await window.locator('.main, main, body').first().innerText()}`
+      '範囲逆転時のエラー表示と、範囲を正した後の再表示(請求書2件)',
+      '終了日<開始日・上限<下限でエラー文言が表示され一覧は非表示。範囲を正すとエラーが消え請求書2件が表示された'
     )
-    expect
-      .soft(inverted, 'BUG-02: 範囲逆転時にエラー表示が出る(詳細設計書3.10章)')
-      .toBeGreaterThan(0)
   })
 })

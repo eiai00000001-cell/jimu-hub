@@ -186,6 +186,11 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     const message = await importViaUi(window)
     expect(message).toMatch(/復元が完了しました\(\d+件\)/)
     expect(message).not.toContain('改変')
+    // O1修正確認: 復元成功後は警告文と「キャンセル」「続行」ボタンが非表示になる
+    await expect(window.getByRole('button', { name: '続行' })).toHaveCount(0)
+    await expect(
+      window.getByText('現在のデータがエクスポートファイルの内容で置き換わります')
+    ).toHaveCount(0)
     await shot(window, 'TC-62', '別の保存先へZIPを復元した結果(完了メッセージ)')
     await closeModal(window)
 

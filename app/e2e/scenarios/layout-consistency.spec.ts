@@ -184,21 +184,95 @@ test.describe('トップ画面・画面横断の整合性', () => {
       log.join('\n')
     )
 
-    // 結合確認: 「準備中」メニュー押下時の挙動が取引先一覧と同じ(案内表示・画面遷移なし)
+    // 結合確認: 見積書・請求書一覧でも「準備中」メニュー押下時は案内が表示され、画面遷移しない(BUG-03(i1)修正確認)
     await window.getByText('一覧へ戻る').click()
     await window.getByRole('button', { name: '案件管理' }).click()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書・請求書')
-    await window.waitForTimeout(500)
+    await expect(
+      window.getByText('「案件管理」は以降のイテレーションで実装予定です。')
+    ).toBeVisible()
     await shot(
       window,
       'TC-73',
-      '見積書・請求書一覧で「案件管理」(準備中)を押した直後(案内なし: BUG-03)'
+      '見積書・請求書一覧で「案件管理」(準備中)を押した直後(案内が表示される。BUG-03修正後)'
     )
-    await expect
-      .soft(
-        window.getByText('「案件管理」は以降のイテレーションで実装予定です。'),
-        'BUG-03: 見積書・請求書一覧で「準備中」メニューを押しても案内が表示されない(取引先一覧・トップ・自社情報画面では表示される)'
-      )
-      .toBeVisible({ timeout: 2000 })
+  })
+
+  test('TC-73b: 作成・詳細画面でもサイドバーが使え、入力画面では離脱確認が出る(O2)', async () => {
+    const { window } = launched
+    await setupCompany(window)
+    const c1 = await createClientApi(window, '離脱確認商事')
+    const q = await finalizeQuoteApi(window, c1, '2026-10-02', [
+      { name: 'a', quantity: 1, unitPrice: 1000, taxRate: 10 }
+    ])
+    const conv = await window.evaluate((id) => window.jimuhubApi.convertQuoteToInvoice(id), q.id)
+    await window.reload()
+    const dialogs: string[] = []
+    let accept = false
+    window.on('dialog', (d) => {
+      dialogs.push(d.message())
+      void (accept ? d.accept() : d.dismiss())
+    })
+    const CONFIRM = '入力中の内容は保存されません。この画面を離れてよろしいですか'
+
+    // 詳細画面(見積書・請求書): 確認なしでサイドバー遷移できる
+    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await window.getByRole('cell', { name: '2026-001' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書詳細')
+    await window.getByRole('button', { name: '取引先管理' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先一覧')
+    expect(dialogs).toEqual([])
+    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await window.getByRole('button', { name: '請求書', exact: true }).click()
+    await window.getByRole('cell', { name: '(未採番)' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 請求書詳細')
+    await window.getByRole('button', { name: 'ホーム' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
+    expect(dialogs).toEqual([])
+    await shot(window, 'TC-73', '詳細画面からサイドバーでホームへ遷移(確認なし)')
+
+    // 入力画面(見積書作成): 変更の有無にかかわらず離脱確認が出る。「キャンセル」で留まり、「OK」で遷移
+    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await window.getByRole('button', { name: '+ 見積書を新規作成' }).click()
+    await window.getByRole('button', { name: 'ホーム' }).click() // 未入力でも確認が出る(承認済みの仕様)
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書を作成')
+    expect(dialogs).toEqual([CONFIRM])
+    await window.getByLabel('品名1').fill('入力途中')
+    await window.getByRole('button', { name: '取引先管理' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書を作成')
+    await expect(window.getByLabel('品名1')).toHaveValue('入力途中')
+    expect(dialogs).toEqual([CONFIRM, CONFIRM])
+    // 準備中メニューは遷移しないため、確認は不要で案内が出る
+    await window.getByRole('button', { name: 'タスク・期限' }).click()
+    await expect(
+      window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
+    ).toBeVisible()
+    accept = true
+    await window.getByRole('button', { name: '取引先管理' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先一覧')
+    expect(dialogs.length).toBe(3)
+    noteEvidence(
+      'TC-73',
+      '離脱確認ダイアログの文言と表示回数',
+      dialogs.map((d, i) => `${i + 1}回目: ${d}`).join('\n')
+    )
+
+    // 請求書作成・取引先登録(イテレーション0の画面)も同じ挙動
+    accept = false
+    await window.getByRole('button', { name: '見積書・請求書' }).click()
+    await window.getByRole('button', { name: '請求書', exact: true }).click()
+    await window.getByRole('button', { name: '+ 請求書を新規作成' }).click()
+    await window.getByRole('button', { name: 'ホーム' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 請求書を作成')
+    accept = true
+    await window.getByRole('button', { name: 'ホーム' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
+    await window.getByRole('button', { name: '取引先管理' }).click()
+    await window.getByRole('button', { name: '+ 新規登録' }).click()
+    accept = false
+    await window.getByRole('button', { name: 'ホーム' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先を登録')
+    await shot(window, 'TC-73', '取引先登録画面でも離脱確認で留まる')
+    expect(conv.invoiceId).toBeGreaterThan(0)
   })
 })
