@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 見積書詳細(モックアップ v1.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #DCDCE0; font-family: var(--font-family); color: var(--color-text); font-size: 13px; -webkit-font-smoothing: antialiased; }
+    .window { width: 1280px; margin: 24px auto; background: var(--color-bg); border-radius: var(--radius-window); overflow: hidden; box-shadow: var(--shadow-window); border: 1px solid var(--color-border); display: flex; flex-direction: column; position: relative; }
+    .titlebar { height: 38px; min-height: 38px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; }
+    .tl-close { background: #FF5F57; } .tl-min { background: #FFBD2E; } .tl-zoom { background: #28C840; }
+    .titlebar-title { flex: 1; text-align: center; font-size: 12px; color: var(--color-text-secondary); margin-right: 56px; }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar { width: 220px; flex-shrink: 0; background: var(--color-bg); border-right: 1px solid var(--color-border); padding: 0; }
+    .sidebar-header { height: var(--header-height); box-sizing: border-box; display: flex; align-items: center; padding: 0 18px; font-size: 18px; font-weight: 600; color: var(--color-text); background: var(--color-white); border-bottom: 1px solid var(--color-border); }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item { padding: 7px 18px; margin-bottom: 2px; border-radius: 0; font-size: 13px; color: var(--color-text); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item.active .badge-soon { display: none; }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto; background: var(--color-bg); }
+    .page-header { height: var(--header-height); box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .page-title-group { display: flex; align-items: center; gap: 10px; }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--color-text); }
+    .page-content { padding: 24px 28px; flex: 1; }
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: var(--control-height); padding: 0 16px; border-radius: var(--radius-button); border: 1px solid transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
+    .badge-draft { background: var(--color-bg); color: var(--color-text); }
+    .badge-finalized { background: var(--color-text); color: var(--color-white); }
+    .badge-warning { background: var(--color-red); color: var(--color-white); }
+
+    .panel { background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; max-width: 900px; }
+    .info-grid { display: grid; grid-template-columns: 160px 1fr; row-gap: 12px; column-gap: 16px; margin-bottom: 20px; }
+    .info-grid dt { color: var(--color-text-secondary); font-size: 12px; margin: 0; }
+    .info-grid dd { margin: 0; font-size: 13px; white-space: pre-line; }
+
+    .line-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .line-table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 8px 10px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .line-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .line-table td.amount, .line-table th.amount { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .totals-block { margin-top: 16px; max-width: 420px; margin-left: auto; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
+    .totals-row .val { font-variant-numeric: tabular-nums; color: var(--color-text); }
+    .totals-row.grand { font-size: 15px; font-weight: 700; color: var(--color-text); border-bottom: none; padding-top: 12px; }
+    .totals-row.grand .val { font-size: 18px; }
+
+    .back-link { margin-top: 20px; }
+    .reference-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin-bottom: 12px; }
+    .mini-header { display: flex; align-items: center; gap: 10px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 18px; max-width: 700px; }
+
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; max-width: 900px; }
+    .message-warning, .message-error { border-left-color: var(--color-red); }
+    .message-icon { font-weight: 700; flex-shrink: 0; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 見積書詳細</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item active"><span>見積書・請求書</span></li>
+          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">見積書詳細</h1>
+            <span class="badge badge-finalized">PDF保存済み</span>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-secondary">PDFを開く</button>
+            <button class="btn btn-secondary">Finderで表示</button>
+            <button class="btn btn-primary">請求書に変換</button>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="panel">
+            <dl class="info-grid">
+              <dt>見積書番号</dt><dd>2026-008</dd>
+              <dt>取引先</dt><dd>サンプル商事株式会社 御中</dd>
+              <dt>発行日</dt><dd>2026-09-20</dd>
+              <dt>有効期限</dt><dd>2026-10-20</dd>
+            </dl>
+
+            <table class="line-table">
+              <thead>
+                <tr><th>品名</th><th>数量</th><th>単位</th><th>単価</th><th>税率</th><th class="amount">金額</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Webサイト制作一式</td><td>1</td><td>式</td><td>¥300,000</td><td>10%</td><td class="amount">¥300,000</td></tr>
+                <tr><td>サーバー保守(月額)</td><td>1</td><td>式</td><td>¥30,000</td><td>10%</td><td class="amount">¥30,000</td></tr>
+              </tbody>
+            </table>
+
+            <div class="totals-block">
+              <div class="totals-row"><span>10%対象 小計</span><span class="val">¥330,000</span></div>
+              <div class="totals-row"><span>10%対象 消費税額</span><span class="val">¥33,000</span></div>
+              <div class="totals-row"><span>8%対象 小計</span><span class="val">¥0</span></div>
+              <div class="totals-row"><span>8%対象 消費税額</span><span class="val">¥0</span></div>
+              <div class="totals-row grand"><span>合計金額</span><span class="val">¥363,000</span></div>
+            </div>
+
+            <dl class="info-grid" style="margin-top:24px; margin-bottom:0;">
+              <dt>備考</dt><dd>初回打ち合わせ内容に基づく概算見積です。</dd>
+            </dl>
+          </div>
+          <div class="back-link">
+            <button class="link">&larr; 一覧へ戻る</button>
+          </div>
+
+          <div class="reference-block">
+            <div class="reference-label">参考: 状態が「下書き」の場合(「編集」ボタンのみ表示)</div>
+            <div class="mini-header">
+              <span class="badge badge-draft">下書き</span>
+              <span style="font-weight:600;">2026-09-25発行分(未採番)</span>
+              <span style="margin-left:auto; display:flex; gap:8px;">
+                <button class="btn btn-secondary">編集</button>
+              </span>
+            </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 復元時にPDFファイルのハッシュ不一致が検出された場合の警告バッジ</div>
+            <div class="mini-header">
+              <span class="badge badge-finalized">PDF保存済み</span>
+              <span class="badge badge-warning">PDFファイルの改変が疑われます</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
