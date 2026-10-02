@@ -2,10 +2,11 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
+import { Message } from '../components/Message'
 import type { Client } from '@shared/types/client'
 import type { QuoteSummary } from '@shared/types/quote'
 import type { InvoiceSummary, PaymentStatusFilter } from '@shared/types/invoice'
-import { QUOTE_MESSAGES, INVOICE_MESSAGES } from '@shared/messages/messages'
+import { QUOTE_MESSAGES, INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 
 type Tab = 'quote' | 'invoice'
 
@@ -41,12 +42,27 @@ export function DocumentListPage({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusFilter>('all')
   const [quotes, setQuotes] = useState<QuoteSummary[] | null>(null)
   const [invoices, setInvoices] = useState<InvoiceSummary[] | null>(null)
+  const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
+
+  // 範囲指定の整合性(詳細設計書3.10章): 終了日<開始日、上限<下限はエラーとし、絞り込みは実行しない
+  const dateRangeError =
+    dateFrom !== '' && dateTo !== '' && dateTo < dateFrom
+      ? VALIDATION_MESSAGES.dateRangeInvalid
+      : null
+  const amountRangeError =
+    amountMin !== '' && amountMax !== '' && Number(amountMax) < Number(amountMin)
+      ? VALIDATION_MESSAGES.amountRangeInvalid
+      : null
+  const hasRangeError = dateRangeError !== null || amountRangeError !== null
 
   useEffect(() => {
     window.jimuhubApi.listClients({ statusFilter: 'active' }).then(setClients)
   }, [])
 
   useEffect(() => {
+    if (hasRangeError) {
+      return
+    }
     let cancelled = false
     const common = {
       clientId: clientId === '' ? undefined : clientId,
@@ -67,7 +83,7 @@ export function DocumentListPage({
     return () => {
       cancelled = true
     }
-  }, [tab, clientId, dateFrom, dateTo, amountMin, amountMax, paymentStatus])
+  }, [tab, clientId, dateFrom, dateTo, amountMin, amountMax, paymentStatus, hasRangeError])
 
   return (
     <AppShell
@@ -88,8 +104,13 @@ export function DocumentListPage({
       onNavigateHome={onNavigateHome}
       onNavigateClients={onNavigateClients}
       onNavigateDocuments={() => {}}
-      onComingSoon={() => {}}
+      onComingSoon={(label) => setComingSoonLabel(label)}
     >
+      {comingSoonLabel ? (
+        <Message variant="warning">
+          「{comingSoonLabel}」は以降のイテレーションで実装予定です。
+        </Message>
+      ) : null}
       <div className="tabs">
         <button
           type="button"
@@ -181,8 +202,10 @@ export function DocumentListPage({
               </div>
             ) : null}
           </div>
+          {dateRangeError ? <Message variant="error">{dateRangeError}</Message> : null}
+          {amountRangeError ? <Message variant="error">{amountRangeError}</Message> : null}
 
-          {tab === 'invoice' ? (
+          {hasRangeError ? null : tab === 'invoice' ? (
             invoices === null ? null : invoices.length === 0 ? (
               <div className="empty-state">{INVOICE_MESSAGES.emptyList}</div>
             ) : (

@@ -42,6 +42,15 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): {
   return { listQuotes }
 }
 
+const baseProps = {
+  onNavigateHome: vi.fn(),
+  onNavigateClients: vi.fn(),
+  onNewQuote: vi.fn(),
+  onSelectQuote: vi.fn(),
+  onNewInvoice: vi.fn(),
+  onSelectInvoice: vi.fn()
+}
+
 describe('DocumentListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -216,5 +225,48 @@ describe('DocumentListPage', () => {
     await waitFor(() =>
       expect(listQuotes).toHaveBeenLastCalledWith(expect.objectContaining({ clientId: 5 }))
     )
+  })
+
+  it('発行日の終了日が開始日より前の場合はエラーを表示し、絞り込みを実行しない(BUG-02(i1))', async () => {
+    const { listQuotes } = setupApi()
+    render(<DocumentListPage {...baseProps} />)
+    await waitFor(() => expect(listQuotes).toHaveBeenCalledTimes(1))
+
+    await userEvent.type(screen.getByLabelText('発行日(開始)'), '2026-03-01')
+    await userEvent.type(screen.getByLabelText('発行日(終了)'), '2026-01-01')
+
+    expect(
+      await screen.findByText('発行日の終了日は、開始日以降の日付を入力してください')
+    ).toBeInTheDocument()
+    const calls = listQuotes.mock.calls.length
+    expect(listQuotes.mock.calls.at(-1)?.[0]).toEqual(
+      expect.not.objectContaining({ dateTo: '2026-01-01', dateFrom: '2026-03-01' })
+    )
+    expect(calls).toBeGreaterThanOrEqual(1)
+  })
+
+  it('金額の上限が下限より小さい場合はエラーを表示する(BUG-02(i1))', async () => {
+    setupApi()
+    render(<DocumentListPage {...baseProps} />)
+    await userEvent.type(screen.getByLabelText('金額(下限)'), '50000')
+    await userEvent.type(screen.getByLabelText('金額(上限)'), '1000')
+    expect(
+      await screen.findByText('金額の上限は、下限以上の金額を入力してください')
+    ).toBeInTheDocument()
+
+    await userEvent.clear(screen.getByLabelText('金額(上限)'))
+    await userEvent.type(screen.getByLabelText('金額(上限)'), '60000')
+    expect(
+      screen.queryByText('金額の上限は、下限以上の金額を入力してください')
+    ).not.toBeInTheDocument()
+  })
+
+  it('「準備中」メニューを押すと案内を表示する(BUG-03(i1))', async () => {
+    setupApi()
+    render(<DocumentListPage {...baseProps} />)
+    await userEvent.click(screen.getByText('案件管理'))
+    expect(
+      await screen.findByText(/「案件管理」は以降のイテレーションで実装予定です/)
+    ).toBeInTheDocument()
   })
 })

@@ -19,6 +19,8 @@ export const VALIDATION_MESSAGES = {
   lineItemNameRequired: '品名を入力してください',
   lineItemQuantityInvalid: '数量は0より大きい数値を、小数第2位までで入力してください',
   lineItemUnitPriceInvalid: '単価は0以上の整数で入力してください',
+  dateRangeInvalid: '発行日の終了日は、開始日以降の日付を入力してください',
+  amountRangeInvalid: '金額の上限は、下限以上の金額を入力してください',
   dateInvalid: '日付は「YYYY-MM-DD」形式の正しい日付で入力してください',
   paymentDateRequired: '入金日を入力してください',
   validUntilBeforeIssueDate: '発行日より前の日付が入力されています(保存は可能です)'
