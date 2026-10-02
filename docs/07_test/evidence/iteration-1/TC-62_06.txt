@@ -1,0 +1,8 @@
+entries:
+data.json
+documents/invoices/2026/2026-001_ZIP往復商事株式会社.pdf
+documents/quotes/2026/2026-001_ZIP往復商事株式会社.pdf
+documents/quotes/2026/2026-002_ZIP往復第二商会.pdf
+schemaVersion=3
+quotes=3 invoices=1 clients=2
+pdfPath例=documents/quotes/2026/2026-001_ZIP往復商事株式会社.pdf
