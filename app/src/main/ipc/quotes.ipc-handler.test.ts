@@ -30,6 +30,7 @@ import { QuoteRepository } from '../repositories/quote.repository'
 import { NumberingService } from '../services/numbering.service'
 import { QuoteService } from '../services/quote.service'
 import { InvoiceService } from '../services/invoice.service'
+import type { InvoicePaymentRecorder } from '../services/cash-record.service'
 import { InvoiceRepository } from '../repositories/invoice.repository'
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
@@ -66,6 +67,13 @@ const baseInput: Omit<QuoteInput, 'clientId'> = {
   lineItems: [
     { name: 'Webサイト制作一式', quantity: 1, unit: '式', unitPrice: 300000, taxRate: 10 }
   ]
+}
+
+const noopPaymentRecorder: InvoicePaymentRecorder = {
+  createFromInvoicePayment: () => ({ id: 0 }),
+  cancelByInvoice: () => ({ cancelledCount: 0 }),
+  findLinkedByInvoice: () => [],
+  hasRecordsForInvoice: () => false
 }
 
 describe('QuotesIpcHandler', () => {
@@ -115,7 +123,8 @@ describe('QuotesIpcHandler', () => {
       companyProfileRepository,
       numberingService,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pdfService: {} as any
+      pdfService: {} as any,
+      paymentRecorder: noopPaymentRecorder
     })
 
     new QuotesIpcHandler(service, invoiceService, documentsDir).registerHandlers()

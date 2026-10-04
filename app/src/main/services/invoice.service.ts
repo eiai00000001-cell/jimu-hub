@@ -58,8 +58,8 @@ export interface InvoiceServiceDeps {
   companyProfileRepository: CompanyProfileRepository
   numberingService: NumberingService
   pdfService: PdfService
-  /** 入金記録の自動作成・取消(F-21)。本番では`CashRecordService`を渡す */
-  paymentRecorder?: InvoicePaymentRecorder
+  /** 入金記録の自動作成・取消(F-21)。入金ステータス変更と不可分のため必須。本番では`CashRecordService`を渡す */
+  paymentRecorder: InvoicePaymentRecorder
 }
 
 /**
@@ -82,7 +82,7 @@ export class InvoiceService {
     }
     return {
       ...invoice,
-      linkedRecords: this.deps.paymentRecorder?.findLinkedByInvoice(id) ?? []
+      linkedRecords: this.deps.paymentRecorder.findLinkedByInvoice(id)
     }
   }
 
@@ -196,7 +196,6 @@ export class InvoiceService {
     this.deps.database.transaction(() => {
       this.deps.repository.updatePaymentStatus(id, paymentStatus, paymentDate ?? null)
       const recorder = this.deps.paymentRecorder
-      if (!recorder) return
       if (paymentStatus === 'paid') {
         try {
           recorder.createFromInvoicePayment({
@@ -233,7 +232,7 @@ export class InvoiceService {
     if (existing.status === 'finalized') {
       throw new InvoiceNotDeletableError(INVOICE_MESSAGES.finalizedNotDeletable)
     }
-    if (this.deps.paymentRecorder?.hasRecordsForInvoice(id)) {
+    if (this.deps.paymentRecorder.hasRecordsForInvoice(id)) {
       throw new InvoiceNotDeletableError(INVOICE_MESSAGES.hasCashRecord)
     }
     this.deps.database.transaction(() => {

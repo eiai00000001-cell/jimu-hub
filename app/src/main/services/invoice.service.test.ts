@@ -9,6 +9,7 @@ import { AccountRepository } from '../repositories/account.repository'
 import { createRecordServices } from './record-services'
 import { NumberingService } from './numbering.service'
 import type { PdfService } from './pdf.service'
+import type { InvoicePaymentRecorder } from './cash-record.service'
 import { InvoiceService, InvoiceNotFoundError, InvoiceFinalizedError } from './invoice.service'
 import { CompanyProfileNotSetError, PdfSaveError } from './quote.service'
 import type { InvoiceInput } from '@shared/schemas/invoice.schema'
@@ -39,6 +40,13 @@ const baseInput: InvoiceInput = {
       withholdingTarget: true
     }
   ]
+}
+
+const noopPaymentRecorder: InvoicePaymentRecorder = {
+  createFromInvoicePayment: () => ({ id: 0 }),
+  cancelByInvoice: () => ({ cancelledCount: 0 }),
+  findLinkedByInvoice: () => [],
+  hasRecordsForInvoice: () => false
 }
 
 describe('InvoiceService', () => {
@@ -74,7 +82,8 @@ describe('InvoiceService', () => {
       companyProfileRepository: companyRepo,
       numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pdfService: { generateInvoicePdf: generate } as any
+      pdfService: { generateInvoicePdf: generate } as any,
+      paymentRecorder: noopPaymentRecorder
     })
     return { service, generate }
   }
