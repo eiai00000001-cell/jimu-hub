@@ -152,4 +152,80 @@ describe('MigrationService', () => {
       expect(version.value).toBe(String(CURRENT_DB_SCHEMA_VERSION))
     })
   })
+
+  describe('applyMigrations schema_version 3→4(F-17。詳細設計書4.1章手順2)', () => {
+    let db: Database
+
+    afterEach(() => {
+      db.close()
+    })
+
+    /** v3相当のDB(新規4テーブルなし、既存データあり)を作る */
+    function setupV3Database(): Database {
+      const v3 = new Database(':memory:')
+      v3.initialize()
+      v3.sqlite.exec(`
+        DROP TRIGGER trg_cash_record_history_no_update;
+        DROP TRIGGER trg_cash_record_history_no_delete;
+        DROP TABLE cash_record_history;
+        DROP TABLE receipts;
+        DROP TABLE cash_records;
+        DROP TABLE accounts;
+        INSERT INTO clients (name) VALUES ('既存の取引先');
+        UPDATE app_meta SET value = '3' WHERE key = 'schema_version';
+      `)
+      return v3
+    }
+
+    it('新規4テーブルと初期科目14件を作成し、既存データを保持してschema_versionを4へ更新する', () => {
+      db = setupV3Database()
+      db.initialize()
+      new MigrationService().applyMigrations(db, 3)
+
+      const accounts = db.sqlite.prepare('SELECT COUNT(*) AS c FROM accounts').get() as {
+        c: number
+      }
+      expect(accounts.c).toBe(14)
+      const clients = db.sqlite.prepare('SELECT name FROM clients').all()
+      expect(clients).toEqual([{ name: '既存の取引先' }])
+      const version = db.sqlite
+        .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
+        .get() as { value: string }
+      expect(version.value).toBe('4')
+      const triggers = db.sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+        .all()
+      expect(triggers).toHaveLength(2)
+    })
+
+    it('再実行しても初期科目は重複しない(冪等)', () => {
+      db = setupV3Database()
+      db.initialize()
+      const service = new MigrationService()
+      service.applyMigrations(db, 3)
+      service.applyMigrations(db, 3)
+      const accounts = db.sqlite.prepare('SELECT COUNT(*) AS c FROM accounts').get() as {
+        c: number
+      }
+      expect(accounts.c).toBe(14)
+    })
+
+    it('途中で失敗した場合はschema_versionを更新せず、科目も投入されない', () => {
+      db = setupV3Database()
+      db.initialize()
+      // 科目の投入を失敗させるため、accountsにdefault_keyが衝突する行を事前に用意する
+      db.sqlite.exec(
+        "INSERT INTO accounts (name, kind, default_key) VALUES ('別名の売上', 'income', 'sales_revenue')"
+      )
+      expect(() => new MigrationService().applyMigrations(db, 3)).toThrow()
+      const version = db.sqlite
+        .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
+        .get() as { value: string }
+      expect(version.value).toBe('3')
+      const accounts = db.sqlite.prepare('SELECT COUNT(*) AS c FROM accounts').get() as {
+        c: number
+      }
+      expect(accounts.c).toBe(1)
+    })
+  })
 })

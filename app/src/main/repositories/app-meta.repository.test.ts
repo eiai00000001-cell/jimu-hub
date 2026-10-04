@@ -17,7 +17,7 @@ describe('AppMetaRepository', () => {
   })
 
   it('初期化直後はschema_versionが取得できる', () => {
-    expect(repository.get('schema_version')).toBe('3')
+    expect(repository.get('schema_version')).toBe('4')
   })
 
   it('存在しないキーはnullを返す', () => {

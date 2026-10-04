@@ -60,6 +60,18 @@ export class MigrationService {
       )
     }
 
+    // schema_version 3→4: 新規4テーブル・トリガーはDatabase.initialize()で作成済み。
+    // 初期科目14件の投入とschema_versionの更新は1つのトランザクションで行い、失敗時は更新しない
+    // (詳細設計書4.1章手順2)。
+    database.transaction(() => {
+      if (fromVersion < 4) {
+        database.seedInitialAccounts()
+      }
+      this.updateSchemaVersion(database)
+    })
+  }
+
+  private updateSchemaVersion(database: Database): void {
     database.sqlite
       .prepare(
         "INSERT INTO app_meta (key, value) VALUES ('schema_version', ?) " +

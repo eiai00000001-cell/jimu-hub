@@ -56,7 +56,7 @@ describe('Database', () => {
     db.initialize()
 
     const row = db.sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-    expect(row).toEqual({ value: '3' })
+    expect(row).toEqual({ value: '4' })
   })
 
   it('transactionは正常終了時にコミットする', () => {
@@ -105,5 +105,89 @@ describe('Database', () => {
       count: number
     }
     expect(count.count).toBe(0)
+  })
+
+  describe('スキーマv4(イテレーション2。詳細設計書6.10〜6.13章)', () => {
+    it('新規作成時はschema_versionが4で、4テーブルと初期科目14件が作成される', () => {
+      db = new Database(':memory:')
+      db.initialize()
+      const names = db.sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+        .map((row) => (row as { name: string }).name)
+      for (const table of ['accounts', 'cash_records', 'receipts', 'cash_record_history']) {
+        expect(names).toContain(table)
+      }
+      const version = db.sqlite
+        .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
+        .get() as { value: string }
+      expect(version.value).toBe('4')
+
+      const rows = db.sqlite
+        .prepare('SELECT name, kind, sort_order, is_default, default_key FROM accounts ORDER BY id')
+        .all() as Array<{
+        name: string
+        kind: string
+        sort_order: number
+        is_default: number
+        default_key: string | null
+      }>
+      expect(rows).toHaveLength(14)
+      expect(rows.filter((r) => r.kind === 'expense').map((r) => r.name)).toEqual([
+        '通信費',
+        '旅費交通費',
+        '消耗品費',
+        '接待交際費',
+        '外注費',
+        '会議費',
+        '地代家賃',
+        '水道光熱費',
+        '広告宣伝費',
+        '租税公課',
+        '支払手数料',
+        '雑費'
+      ])
+      expect(rows.filter((r) => r.kind === 'expense').map((r) => r.sort_order)).toEqual(
+        Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
+      )
+      expect(rows.filter((r) => r.kind === 'income').map((r) => r.name)).toEqual([
+        '売上高',
+        '雑収入'
+      ])
+      expect(rows.every((r) => r.is_default === 1)).toBe(true)
+      expect(rows.filter((r) => r.default_key !== null)).toEqual([
+        expect.objectContaining({ name: '売上高', default_key: 'sales_revenue' })
+      ])
+    })
+
+    it('既存DB(v3)でinitialize()を呼んでも初期科目は投入されず、再実行しても重複しない', () => {
+      db = new Database(':memory:')
+      db.initialize()
+      db.sqlite.exec('DELETE FROM accounts')
+      db.initialize()
+      const count = db.sqlite.prepare('SELECT COUNT(*) AS c FROM accounts').get() as { c: number }
+      expect(count.c).toBe(0)
+    })
+
+    it('履歴テーブルはUPDATE・DELETEをトリガーで拒否する', () => {
+      db = new Database(':memory:')
+      db.initialize()
+      db.sqlite
+        .prepare(
+          "INSERT INTO cash_records (record_date, kind, amount, account_id, description) VALUES ('2026-10-01', 'expense', 100, 1, 'x')"
+        )
+        .run()
+      db.sqlite
+        .prepare(
+          "INSERT INTO cash_record_history (record_id, operation, snapshot_after, record_hash_after) VALUES (1, 'create', '{}', 'h')"
+        )
+        .run()
+      expect(() => db!.sqlite.prepare("UPDATE cash_record_history SET reason = 'x'").run()).toThrow(
+        '履歴は変更できません'
+      )
+      expect(() => db!.sqlite.prepare('DELETE FROM cash_record_history').run()).toThrow(
+        '履歴は削除できません'
+      )
+    })
   })
 })
