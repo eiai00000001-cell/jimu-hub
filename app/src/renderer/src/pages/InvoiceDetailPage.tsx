@@ -3,7 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
-import type { Invoice } from '@shared/types/invoice'
+import type { InvoiceDetail } from '@shared/types/invoice'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 import type { OpenPdfResult } from '@shared/ipc/api'
 import { toErrorMessage } from '../utils/error-message'
@@ -29,6 +29,8 @@ interface InvoiceDetailPageProps {
   onOpenQuote: (quoteId: number) => void
   /** 下書きの削除成功時に呼ぶ。省略時は`onBackToList` */
   onDeleted?: () => void
+  /** 紐づく入金記録の「入金記録を見る」リンク押下時に、入金記録の詳細画面へ遷移する */
+  onOpenCashRecord?: (recordId: number) => void
 }
 
 /**
@@ -45,9 +47,10 @@ export function InvoiceDetailPage({
   onBackToList,
   onEdit,
   onOpenQuote,
-  onDeleted
+  onDeleted,
+  onOpenCashRecord
 }: InvoiceDetailPageProps): ReactElement {
-  const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [invoice, setInvoice] = useState<InvoiceDetail | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [paymentMode, setPaymentMode] = useState<'view' | 'enterDate' | 'confirmUnpaid'>('view')
   const [paymentDate, setPaymentDate] = useState(todayIsoDate())
@@ -87,6 +90,7 @@ export function InvoiceDetailPage({
       setPaymentMode('view')
       setPaymentNotice(notice)
     } catch (error) {
+      setPaymentMode('view')
       setPaymentError(toErrorMessage(error, INVOICE_MESSAGES.notFound))
     }
   }
@@ -318,6 +322,44 @@ export function InvoiceDetailPage({
             </div>
           ) : null}
           {paymentError ? <Message variant="error">{paymentError}</Message> : null}
+
+          {(invoice.linkedRecords ?? []).length > 0 ? (
+            <div className="payment-block" style={{ display: 'block' }}>
+              <div className="payment-label" style={{ marginBottom: 8 }}>
+                紐づく入金記録
+              </div>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>入金日</th>
+                    <th className="num">金額</th>
+                    <th>状態</th>
+                    <th className="op">詳細</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(invoice.linkedRecords ?? []).map((record) => (
+                    <tr key={record.id}>
+                      <td>{record.recordDate}</td>
+                      <td className="num">{`+${formatYen(record.amount)}`}</td>
+                      <td>
+                        <span
+                          className={`badge ${record.status === 'active' ? 'badge-active' : 'badge-cancelled'}`}
+                        >
+                          {record.status === 'active' ? '有効' : '取消済'}
+                        </span>
+                      </td>
+                      <td className="op">
+                        <TextLink onClick={() => onOpenCashRecord?.(record.id)}>
+                          入金記録を見る
+                        </TextLink>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
 
           <div className="back-link">
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>

@@ -145,7 +145,8 @@ export const INVOICE_MESSAGES = {
   markAsPaidSuccess: '入金済みにしました',
   markAsUnpaidSuccess: '未収に戻しました',
   markAsUnpaidTitle: '未収に戻しますか',
-  markAsUnpaidDescription: '入金日の記録はクリアされます。この操作は「はい」を押すと確定します。',
+  markAsUnpaidDescription:
+    '入金済みを取り消します。連動する入金記録は「取消済」として残ります。入金日の記録はクリアされます。',
   paymentRequiresFinalized: 'PDF保存済みの請求書のみ入金ステータスを変更できます',
   convertSuccess: '見積書から請求書(下書き)を作成しました',
   convertRequiresFinalized: 'PDF保存済みの見積書のみ請求書に変換できます'

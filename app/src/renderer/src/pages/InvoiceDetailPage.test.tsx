@@ -259,4 +259,47 @@ describe('InvoiceDetailPage', () => {
     await screen.findByText('PDFを開く')
     expect(screen.queryByText('削除')).not.toBeInTheDocument()
   })
+
+  it('[F-21]紐づく入金記録(取消済を含む)を新しい順に表示し、リンクで入金記録の詳細へ遷移する', async () => {
+    setup(
+      vi.fn().mockResolvedValue({
+        ...finalized,
+        linkedRecords: [
+          { id: 12, recordDate: '2026-10-02', amount: 87820, status: 'active' },
+          { id: 11, recordDate: '2026-09-26', amount: 87820, status: 'cancelled' }
+        ]
+      })
+    )
+    const onOpenCashRecord = vi.fn()
+    renderPage(8, { onOpenCashRecord })
+    expect(await screen.findByText('紐づく入金記録')).toBeInTheDocument()
+    expect(screen.getAllByText('+¥87,820')).toHaveLength(2)
+    expect(screen.getByText('有効', { selector: '.badge' })).toBeInTheDocument()
+    expect(screen.getByText('取消済', { selector: '.badge' })).toBeInTheDocument()
+    await userEvent.click(screen.getAllByText('入金記録を見る')[1]!)
+    expect(onOpenCashRecord).toHaveBeenCalledWith(11)
+  })
+
+  it('[F-21]紐づく入金記録が無い場合は欄を表示しない', async () => {
+    setup(vi.fn().mockResolvedValue({ ...finalized, linkedRecords: [] }))
+    renderPage(8)
+    await screen.findByText('入金ステータス')
+    expect(screen.queryByText('紐づく入金記録')).not.toBeInTheDocument()
+  })
+
+  it('[F-21]未収に戻す確認で、入金記録が「取消済」で残る旨を案内し、失敗時は文言を表示する', async () => {
+    const { updateInvoicePaymentStatus } = setup(
+      vi.fn().mockResolvedValue({ ...finalized, paymentStatus: 'paid', paymentDate: '2026-09-30' })
+    )
+    updateInvoicePaymentStatus.mockRejectedValue(
+      new Error('入金記録を取消できなかったため、未収に戻せませんでした')
+    )
+    renderPage(8)
+    await userEvent.click(await screen.findByText('未収に戻す'))
+    expect(screen.getByText(/連動する入金記録は「取消済」として残ります/)).toBeInTheDocument()
+    await userEvent.click(screen.getByText('はい'))
+    expect(
+      await screen.findByText('入金記録を取消できなかったため、未収に戻せませんでした')
+    ).toBeInTheDocument()
+  })
 })

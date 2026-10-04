@@ -378,6 +378,7 @@ export function App(): ReactElement {
               })
             }
             onOpenQuote={(quoteId) => setRoute({ name: 'quoteDetail', id: quoteId })}
+            onOpenCashRecord={(id) => setRoute({ name: 'cashDetail', id, from: 'records' })}
           />
         )
       default:
