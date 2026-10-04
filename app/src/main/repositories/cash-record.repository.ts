@@ -140,6 +140,13 @@ export class CashRecordRepository {
       .run({ ...values, id, isDeleted: values.isDeleted ? 1 : 0, now: nowIso() })
   }
 
+  /** 変更なしと判明した更新を元に戻す際に、`updated_at`を復元する */
+  restoreUpdatedAt(id: number, updatedAt: string): void {
+    this.database.sqlite
+      .prepare('UPDATE cash_records SET updated_at = ? WHERE id = ?')
+      .run(updatedAt, id)
+  }
+
   updateHash(id: number, recordHash: string): void {
     this.database.sqlite
       .prepare('UPDATE cash_records SET record_hash = ? WHERE id = ?')
