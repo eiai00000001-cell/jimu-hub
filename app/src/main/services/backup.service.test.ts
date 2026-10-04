@@ -53,6 +53,10 @@ function buildBrokenPayload(): BackupFile {
       quoteLineItems: [],
       invoices: [],
       invoiceLineItems: [],
+      accounts: [],
+      cashRecords: [],
+      receipts: [],
+      cashRecordHistory: [],
       clients: [
         {
           id: 999,
@@ -328,7 +332,13 @@ describe('BackupService', () => {
 
       const result = service.importData(exportPath)
 
-      expect(result).toEqual({ success: true, importedCount: 3, pdfHashMismatchCount: 0 })
+      expect(result).toEqual({
+        success: true,
+        importedCount: 3,
+        pdfHashMismatchCount: 0,
+        receiptHashMismatchCount: 0,
+        recordHashMismatchCount: 0
+      })
       const quote = new QuoteRepository(db).findById(quoteId)
       expect(quote?.quoteNumber).toBe('2026-003')
       expect(quote?.lineItems).toHaveLength(1)

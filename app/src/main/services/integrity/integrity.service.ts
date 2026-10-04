@@ -34,6 +34,21 @@ export class IntegrityService {
     }
   }
 
+  /**
+   * 復元後に、全記録の記録ハッシュ・履歴ハッシュ、全領収書(外した領収書を含む)のファイルを照合し、
+   * 不一致(領収書は欠落・`file_path`が空文字を含む)の件数を返す。復元は中断しない(詳細設計書4.3章手順7-2-2・2-3)。
+   */
+  verifyAllAfterRestore(): { receiptHashMismatchCount: number; recordHashMismatchCount: number } {
+    let receiptHashMismatchCount = 0
+    let recordHashMismatchCount = 0
+    for (const id of this.records.listIds()) {
+      const result = this.checkRecord(id)
+      receiptHashMismatchCount += result.receipts.filter((r) => r.state !== 'ok').length
+      if (!result.recordHashOk || !result.historyHashOk) recordHashMismatchCount += 1
+    }
+    return { receiptHashMismatchCount, recordHashMismatchCount }
+  }
+
   private checkFile(filePath: string, sha256: string): ReceiptCheckState {
     const absolute = resolveReceiptPath(this.documentsDir, filePath)
     if (!absolute) return 'missing'

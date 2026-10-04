@@ -12,6 +12,11 @@ import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
  */
 export const CURRENT_SCHEMA_VERSION = 4
 
+export const CASH_RECORD_HISTORY_TRIGGER_NAMES = [
+  'trg_cash_record_history_no_update',
+  'trg_cash_record_history_no_delete'
+] as const
+
 const CREATE_CLIENTS_TABLE = `
 CREATE TABLE IF NOT EXISTS clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,6 +254,20 @@ CREATE TABLE IF NOT EXISTS receipts (
 CREATE INDEX IF NOT EXISTS idx_receipts_record ON receipts (record_id, removed_at);
 `
 
+/** 履歴テーブルの更新・削除を拒否するトリガー(復元時は一時的に削除して再作成する。詳細設計書4.3章手順6) */
+export const CASH_RECORD_HISTORY_TRIGGERS_SQL = `
+CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_update
+BEFORE UPDATE ON cash_record_history
+BEGIN
+  SELECT RAISE(ABORT, '履歴は変更できません');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_delete
+BEFORE DELETE ON cash_record_history
+BEGIN
+  SELECT RAISE(ABORT, '履歴は削除できません');
+END;
+`
+
 const CREATE_CASH_RECORD_HISTORY_TABLE = `
 CREATE TABLE IF NOT EXISTS cash_record_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -262,16 +281,7 @@ CREATE TABLE IF NOT EXISTS cash_record_history (
 );
 CREATE INDEX IF NOT EXISTS idx_cash_record_history_record ON cash_record_history (record_id, id);
 CREATE INDEX IF NOT EXISTS idx_cash_record_history_operated ON cash_record_history (operated_at);
-CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_update
-BEFORE UPDATE ON cash_record_history
-BEGIN
-  SELECT RAISE(ABORT, '履歴は変更できません');
-END;
-CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_delete
-BEFORE DELETE ON cash_record_history
-BEGIN
-  SELECT RAISE(ABORT, '履歴は削除できません');
-END;
+${CASH_RECORD_HISTORY_TRIGGERS_SQL}
 `
 
 /**

@@ -148,6 +148,15 @@ export class CashRecordRepository {
     )
   }
 
+  /** 全記録のID(削除済み・取消済を含む。復元後の照合用) */
+  listIds(): number[] {
+    return (
+      this.database.sqlite.prepare('SELECT id FROM cash_records ORDER BY id').all() as Array<{
+        id: number
+      }>
+    ).map((r) => r.id)
+  }
+
   findNames(record: Pick<CashRecord, 'accountId' | 'clientId' | 'invoiceId'>): RecordNames {
     const row = this.database.sqlite
       .prepare(

@@ -11,6 +11,8 @@ export interface TableDef {
   /** [JSONキー, DB列名, 真偽値として扱うか] */
   columns: ReadonlyArray<readonly [string, string, boolean?]>
   orderBy: string
+  /** DBではJSON文字列(TEXT)で保持し、エクスポートファイルではオブジェクトとして書き出すキー */
+  jsonKeys?: readonly string[]
 }
 
 export const COMPANY_PROFILE_TABLE: TableDef = {
@@ -119,6 +121,78 @@ export const INVOICE_LINE_ITEMS_TABLE: TableDef = {
   ]
 }
 
+export const ACCOUNTS_TABLE: TableDef = {
+  table: 'accounts',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['name', 'name'],
+    ['kind', 'kind'],
+    ['status', 'status'],
+    ['isDefault', 'is_default', true],
+    ['defaultKey', 'default_key'],
+    ['sortOrder', 'sort_order'],
+    ['createdAt', 'created_at'],
+    ['updatedAt', 'updated_at']
+  ]
+}
+
+export const CASH_RECORDS_TABLE: TableDef = {
+  table: 'cash_records',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['recordDate', 'record_date'],
+    ['kind', 'kind'],
+    ['amount', 'amount'],
+    ['withholdingTaxAmount', 'withholding_tax_amount'],
+    ['accountId', 'account_id'],
+    ['description', 'description'],
+    ['clientId', 'client_id'],
+    ['paymentMethod', 'payment_method'],
+    ['taxCategory', 'tax_category'],
+    ['taxAmount', 'tax_amount'],
+    ['invoiceId', 'invoice_id'],
+    ['status', 'status'],
+    ['isDeleted', 'is_deleted', true],
+    ['recordHash', 'record_hash'],
+    ['createdAt', 'created_at'],
+    ['updatedAt', 'updated_at']
+  ]
+}
+
+export const RECEIPTS_TABLE: TableDef = {
+  table: 'receipts',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['recordId', 'record_id'],
+    ['originalName', 'original_name'],
+    ['filePath', 'file_path'],
+    ['mimeType', 'mime_type'],
+    ['fileSize', 'file_size'],
+    ['sha256', 'sha256'],
+    ['attachedAt', 'attached_at'],
+    ['removedAt', 'removed_at']
+  ]
+}
+
+export const CASH_RECORD_HISTORY_TABLE: TableDef = {
+  table: 'cash_record_history',
+  orderBy: 'id',
+  jsonKeys: ['snapshotBefore', 'snapshotAfter'],
+  columns: [
+    ['id', 'id'],
+    ['recordId', 'record_id'],
+    ['operation', 'operation'],
+    ['operatedAt', 'operated_at'],
+    ['reason', 'reason'],
+    ['snapshotBefore', 'snapshot_before'],
+    ['snapshotAfter', 'snapshot_after'],
+    ['recordHashAfter', 'record_hash_after']
+  ]
+}
+
 /** テーブルの全行を、JSONキー(camelCase)のレコードとして取得する */
 export function readRows(sqlite: SqliteDatabase.Database, def: TableDef): BackupRow[] {
   const select = def.columns.map(([key, column]) => `${column} AS ${key}`).join(', ')
@@ -130,6 +204,10 @@ export function readRows(sqlite: SqliteDatabase.Database, def: TableDef): Backup
     const converted: BackupRow = { ...row }
     for (const key of boolKeys) {
       converted[key] = row[key] === 1
+    }
+    for (const key of def.jsonKeys ?? []) {
+      const value = row[key]
+      converted[key] = typeof value === 'string' ? JSON.parse(value) : null
     }
     return converted
   })
@@ -149,6 +227,9 @@ export function insertRow(
     const value = key in overrides ? overrides[key] : record[key]
     if (isBool) {
       return value === true || value === 1 ? 1 : 0
+    }
+    if (def.jsonKeys?.includes(key)) {
+      return value === undefined || value === null ? null : JSON.stringify(value)
     }
     return value === undefined ? null : value
   })

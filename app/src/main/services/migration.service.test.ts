@@ -29,7 +29,11 @@ const sampleData: BackupFile = {
     quotes: [],
     quoteLineItems: [],
     invoices: [],
-    invoiceLineItems: []
+    invoiceLineItems: [],
+    accounts: [],
+    cashRecords: [],
+    receipts: [],
+    cashRecordHistory: []
   }
 }
 
