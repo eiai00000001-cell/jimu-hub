@@ -1,6 +1,13 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  truncateSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ReceiptService } from './receipt.service'
@@ -31,6 +38,31 @@ describe('ReceiptService(F-22)', () => {
     writeFileSync(p, content)
     return p
   }
+
+  describe('容量の検証は読み込み前に行う(R-15)', () => {
+    // 3GBのスパースファイル。読み込みを先に行うとNodeの上限エラーになり、「形式が不正」へ化ける
+    const hugeFile = (name: string): string => {
+      const p = file(name, dummyPdf)
+      truncateSync(p, 3 * 1024 * 1024 * 1024)
+      return p
+    }
+
+    it('pickAndStage: 上限超過は読み込まずに「1ファイル10MBまで」とする', () => {
+      const result = service.pickAndStage([hugeFile('huge.pdf')])
+      expect(result.files).toEqual([])
+      expect(result.errors[0]!.error).toBe('領収書は1ファイル10MBまでです')
+    })
+
+    it('storeFromTokens: 選択後に大きくなったファイルも読み込まずに拒否し、何も保存しない', () => {
+      const path = file('grow.pdf', dummyPdf)
+      const picked = service.pickAndStage([path])
+      truncateSync(path, 3 * 1024 * 1024 * 1024)
+      expect(() => service.storeFromTokens([picked.files[0]!.token])).toThrow(
+        '領収書は1ファイル10MBまでです'
+      )
+      expect(existsSync(join(docs, 'receipts'))).toBe(false)
+    })
+  })
 
   it('pickAndStage: 検証に通ったファイルは識別子つきで返し、通らないものはエラーとして返す(他は追加できる)', () => {
     const result = service.pickAndStage([

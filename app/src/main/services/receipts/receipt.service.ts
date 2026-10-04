@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { RECEIPTS_DIR } from '@shared/constants/receipt'
+import { RECEIPT_LIMITS, RECEIPTS_DIR } from '@shared/constants/receipt'
 import { RECEIPT_MESSAGES } from '@shared/messages/messages'
 import type { PickReceiptsResult, ReceiptMimeType } from '@shared/types/receipt'
 import { ReceiptValidationError, validateReceiptFile } from './receipt-file-validator'
@@ -14,6 +14,14 @@ export interface StoredReceiptFile {
   mimeType: ReceiptMimeType
   fileSize: number
   sha256: string
+}
+
+/** 容量の上限を先に確認してから読み込む(巨大なファイルを読み込んでメモリを確保しないため) */
+function readWithinLimit(path: string): Buffer {
+  if (statSync(path).size > RECEIPT_LIMITS.maxFileBytes) {
+    throw new ReceiptValidationError(RECEIPT_MESSAGES.tooLarge)
+  }
+  return readFileSync(path)
 }
 
 /**
@@ -33,7 +41,7 @@ export class ReceiptService {
     for (const path of paths) {
       const fileName = basename(path)
       try {
-        const buffer = readFileSync(path)
+        const buffer = readWithinLimit(path)
         validateReceiptFile(buffer, fileName)
         const token = this.staging.register({ path, fileName, fileSize: buffer.length })
         result.files.push({ token, fileName, fileSize: buffer.length })
@@ -58,7 +66,7 @@ export class ReceiptService {
       for (const token of tokens) {
         const staged = this.staging.get(token)
         if (!staged) throw new ReceiptValidationError(RECEIPT_MESSAGES.tokenInvalid)
-        const buffer = readFileSync(staged.path)
+        const buffer = readWithinLimit(staged.path)
         const { mimeType, extension } = validateReceiptFile(buffer, staged.fileName)
         const relative = `${RECEIPTS_DIR}/${new Date().getFullYear()}/${randomUUID()}.${extension}`
         const absolute = join(this.documentsDir, relative)
