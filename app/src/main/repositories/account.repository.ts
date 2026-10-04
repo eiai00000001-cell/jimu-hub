@@ -49,6 +49,16 @@ export class AccountRepository {
     return row ? mapRow(row) : null
   }
 
+  /** システム参照用キー(`default_key`)から科目を取得する(名称を変更していても参照できる) */
+  findByDefaultKey(defaultKey: string): Account | null {
+    const row = this.database.orm
+      .select()
+      .from(accounts)
+      .where(eq(accounts.defaultKey, defaultKey))
+      .get()
+    return row ? mapRow(row) : null
+  }
+
   /** 同じ区分に同名(利用停止を含む)の科目があるか。`excludeId`は名称変更時の自身 */
   existsByName(kind: AccountKind, name: string, excludeId?: number): boolean {
     const conditions = [eq(accounts.kind, kind), eq(accounts.name, name)]

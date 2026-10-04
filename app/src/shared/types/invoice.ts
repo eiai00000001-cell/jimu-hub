@@ -63,6 +63,19 @@ export interface Invoice {
   updatedAt: string
 }
 
+/** 請求書に紐づく入金記録(取消済を含む。詳細設計書4.21章) */
+export interface LinkedCashRecord {
+  id: number
+  recordDate: string
+  amount: number
+  status: 'active' | 'cancelled'
+}
+
+/** `invoices:get`の応答(請求書+紐づく入金記録。新しい順) */
+export interface InvoiceDetail extends Invoice {
+  linkedRecords: LinkedCashRecord[]
+}
+
 /** 請求書一覧の1行(一覧表示用の要約データ) */
 export interface InvoiceSummary {
   id: number

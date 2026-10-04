@@ -72,6 +72,7 @@ export const RECORD_MESSAGES = {
   autoRecordDeleteBlocked: '請求書側で入金済みを取り消すと、この入金記録は取消済になります',
   historyWriteFailure: '履歴を記録できなかったため、変更できませんでした',
   noChange: '変更はありません',
+  invoiceRecordExists: 'この請求書には、有効な入金記録が既にあります',
   createSuccess: '記録を登録しました',
   updateSuccess: '記録を更新しました',
   deleteSuccess: '記録を削除しました',

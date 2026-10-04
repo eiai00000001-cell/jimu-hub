@@ -307,4 +307,139 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       expect(integrity.historyHashOk).toBe(false)
     })
   })
+
+  describe('請求書の入金記録の自動作成・取消(F-21。詳細設計書4.21章)', () => {
+    let invoiceId: number
+    const source = () => ({
+      id: invoiceId,
+      invoiceNumber: '2026-012',
+      clientId,
+      paymentDate: '2026-09-30',
+      billingAmount: 332370,
+      withholdingTaxAmount: 10210
+    })
+
+    beforeEach(() => {
+      invoiceId = Number(
+        db.sqlite
+          .prepare(
+            "INSERT INTO invoices (client_id, issue_date, invoice_number, status, created_at, updated_at) VALUES (?, '2026-09-01', '2026-012', 'finalized', 'x', 'x')"
+          )
+          .run(clientId).lastInsertRowid
+      )
+    })
+
+    it('売上高・源泉徴収後の金額・取引先・入金日で作成し、税区分は未選択、履歴(登録)を残す', () => {
+      const { id } = service.createFromInvoicePayment(source())
+      const detail = service.getRecord(id)
+      expect(detail).toMatchObject({
+        kind: 'income',
+        recordDate: '2026-09-30',
+        amount: 332370,
+        withholdingTaxAmount: 10210,
+        accountName: '売上高',
+        clientId,
+        invoiceId,
+        invoiceNumber: '2026-012',
+        description: '請求書 2026-012 の入金',
+        paymentMethod: null,
+        taxCategory: null,
+        taxAmount: 0,
+        status: 'active'
+      })
+      expect(detail.history).toHaveLength(1)
+      expect(detail.history[0]).toMatchObject({ operation: 'create', reason: null })
+      expect(detail.integrity).toEqual({ recordHashOk: true, historyHashOk: true })
+    })
+
+    it('売上高の名称を変更していても、default_keyで参照して作成できる。科目が無ければ例外', () => {
+      const sales = accounts
+        .findAll({ kind: 'income' })
+        .find((a) => a.defaultKey === 'sales_revenue')!
+      accounts.updateName(sales.id, '売上')
+      expect(service.getRecord(service.createFromInvoicePayment(source()).id).accountName).toBe(
+        '売上'
+      )
+      const other = Number(
+        db.sqlite
+          .prepare(
+            "INSERT INTO invoices (client_id, issue_date, status, created_at, updated_at) VALUES (?, '2026-09-01', 'finalized', 'x', 'x')"
+          )
+          .run(clientId).lastInsertRowid
+      )
+      db.sqlite.exec("UPDATE accounts SET default_key = NULL WHERE default_key = 'sales_revenue'")
+      expect(() => service.createFromInvoicePayment({ ...source(), id: other })).toThrow()
+    })
+
+    it('有効な入金記録がある請求書へは作成できない', () => {
+      service.createFromInvoicePayment(source())
+      expect(() => service.createFromInvoicePayment(source())).toThrow()
+    })
+
+    it('取消すると「取消済」で残し、履歴(取消・理由)と記録ハッシュを更新する。再作成は新しい記録になる(R-29)', () => {
+      const first = service.createFromInvoicePayment(source()).id
+      expect(service.cancelByInvoice(invoiceId)).toEqual({ cancelledCount: 1 })
+      const cancelled = service.getRecord(first)
+      expect(cancelled.status).toBe('cancelled')
+      expect(cancelled.history[0]).toMatchObject({
+        operation: 'cancel',
+        reason: '請求書の入金済みを取り消しました'
+      })
+      expect(cancelled.integrity).toEqual({ recordHashOk: true, historyHashOk: true })
+      expect(service.listRecords({}).items[0]).toMatchObject({ id: first, status: 'cancelled' })
+
+      const second = service.createFromInvoicePayment(source()).id
+      expect(second).not.toBe(first)
+      expect(service.findLinkedByInvoice(invoiceId).map((r) => [r.id, r.status])).toEqual([
+        [second, 'active'],
+        [first, 'cancelled']
+      ])
+    })
+
+    it('入金記録が無い請求書(イテレーション1の入金済み等)の取消は何もしない', () => {
+      expect(service.cancelByInvoice(invoiceId)).toEqual({ cancelledCount: 0 })
+    })
+
+    it('自動作成記録は摘要等を編集でき、請求書側の入金日・金額には影響しない。取消済は編集できない', () => {
+      const id = service.createFromInvoicePayment(source()).id
+      const result = service.updateRecord({
+        id,
+        kind: 'income',
+        recordDate: '2026-10-05',
+        amount: 332370,
+        accountId: accounts.findAll({ kind: 'income' })[1]!.id,
+        description: '摘要を変更',
+        clientId,
+        paymentMethod: 'transfer',
+        taxCategory: 'not_applicable'
+      })
+      expect(result.changed).toBe(true)
+      const inv = db.sqlite
+        .prepare('SELECT payment_date FROM invoices WHERE id = ?')
+        .get(invoiceId) as {
+        payment_date: string | null
+      }
+      expect(inv.payment_date).toBeNull()
+      service.cancelByInvoice(invoiceId)
+      expect(() =>
+        service.updateRecord({
+          id,
+          kind: 'income',
+          recordDate: '2026-10-05',
+          amount: 332370,
+          accountId: accounts.findAll({ kind: 'income' })[1]!.id,
+          description: 'x',
+          clientId,
+          paymentMethod: null,
+          taxCategory: null
+        })
+      ).toThrow('取消済の記録は編集できません')
+    })
+
+    it('hasRecordsは削除済み・取消済を含め、請求書に紐づく記録の有無を返す', () => {
+      expect(service.hasRecordsForInvoice(invoiceId)).toBe(false)
+      service.createFromInvoicePayment(source())
+      expect(service.hasRecordsForInvoice(invoiceId)).toBe(true)
+    })
+  })
 })

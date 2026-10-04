@@ -92,6 +92,47 @@ export class CashRecordRepository {
     return row ? mapRow(row) : null
   }
 
+  /** 有効(取消済・削除済でない)な入金記録を1件返す。請求書1件につき有効な記録は1件まで(R-22) */
+  findActiveByInvoiceId(invoiceId: number): CashRecord | null {
+    const row = this.database.sqlite
+      .prepare(
+        "SELECT * FROM cash_records WHERE invoice_id = ? AND status = 'active' AND is_deleted = 0 ORDER BY id DESC LIMIT 1"
+      )
+      .get(invoiceId) as CashRecordRow | undefined
+    return row ? mapRow(row) : null
+  }
+
+  /** 請求書に紐づく入金記録(削除済みを除く。取消済を含む。idの降順) */
+  findLinkedByInvoiceId(
+    invoiceId: number
+  ): Array<{ id: number; recordDate: string; amount: number; status: CashRecord['status'] }> {
+    const rows = this.database.sqlite
+      .prepare(
+        'SELECT id, record_date, amount, status FROM cash_records WHERE invoice_id = ? AND is_deleted = 0 ORDER BY id DESC'
+      )
+      .all(invoiceId) as Array<{
+      id: number
+      record_date: string
+      amount: number
+      status: CashRecord['status']
+    }>
+    return rows.map((r) => ({
+      id: r.id,
+      recordDate: r.record_date,
+      amount: r.amount,
+      status: r.status
+    }))
+  }
+
+  /** 削除済み・取消済を含め、請求書に紐づく記録があるか(請求書の下書き削除のガード用) */
+  existsByInvoiceId(invoiceId: number): boolean {
+    return (
+      this.database.sqlite
+        .prepare('SELECT 1 FROM cash_records WHERE invoice_id = ? LIMIT 1')
+        .get(invoiceId) !== undefined
+    )
+  }
+
   findNames(record: Pick<CashRecord, 'accountId' | 'clientId' | 'invoiceId'>): RecordNames {
     const row = this.database.sqlite
       .prepare(

@@ -1,3 +1,4 @@
+import { SALES_REVENUE_KEY } from '@shared/constants/accounts'
 import { calculateIncludedTax } from '@shared/calculations/included-tax'
 import { CLIENT_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
 import {
@@ -33,6 +34,26 @@ export class RecordError extends Error {
   }
 }
 
+/** 入金記録の自動作成に必要な請求書の項目 */
+export interface InvoicePaymentSource {
+  id: number
+  invoiceNumber: string | null
+  clientId: number
+  paymentDate: string | null
+  billingAmount: number
+  withholdingTaxAmount: number
+}
+
+/** `InvoiceService`が利用する入金記録の操作(請求書の状態変更と同一トランザクション内で呼ぶ) */
+export interface InvoicePaymentRecorder {
+  createFromInvoicePayment(invoice: InvoicePaymentSource): { id: number }
+  cancelByInvoice(invoiceId: number): { cancelledCount: number }
+  findLinkedByInvoice(invoiceId: number): ReturnType<CashRecordRepository['findLinkedByInvoiceId']>
+  hasRecordsForInvoice(invoiceId: number): boolean
+}
+
+export const CANCEL_REASON = '請求書の入金済みを取り消しました'
+
 export interface CashRecordServiceDeps {
   database: Database
   repository: CashRecordRepository
@@ -59,7 +80,7 @@ function parseOrThrow<T>(
  * 領収書の保存(T-46)、請求書の入金記録の自動作成・取消(T-45)は、`commit()`を経由して差し込む。
  * 参照元: 詳細設計書4.18〜4.20章、5章(`CashRecordService`)
  */
-export class CashRecordService {
+export class CashRecordService implements InvoicePaymentRecorder {
   constructor(private readonly deps: CashRecordServiceDeps) {}
 
   listRecords(filter: RecordListFilter): Paged<CashRecordSummary> {
@@ -161,6 +182,56 @@ export class CashRecordService {
       this.commit(id, 'delete', reason || null, before)
     })
     return { success: true }
+  }
+
+  /**
+   * [F-21]請求書を「入金済み」にしたときの入金記録の自動作成(詳細設計書4.21章)。
+   * 呼び出し元(`InvoiceService`)のトランザクション内で呼ぶ。失敗時は例外とし、呼び出し元がロールバックする。
+   */
+  createFromInvoicePayment(invoice: InvoicePaymentSource): { id: number } {
+    const account = this.deps.accountRepository.findByDefaultKey(SALES_REVENUE_KEY)
+    if (!account) throw new RecordError(RECORD_MESSAGES.accountRequired)
+    if (invoice.paymentDate === null) throw new RecordError(RECORD_MESSAGES.dateRequired)
+    if (this.deps.repository.findActiveByInvoiceId(invoice.id)) {
+      throw new RecordError(RECORD_MESSAGES.invoiceRecordExists)
+    }
+    const { id } = this.deps.repository.insert({
+      recordDate: invoice.paymentDate,
+      kind: 'income',
+      amount: invoice.billingAmount,
+      withholdingTaxAmount: invoice.withholdingTaxAmount,
+      accountId: account.id,
+      description: `請求書 ${invoice.invoiceNumber ?? ''} の入金`,
+      clientId: invoice.clientId,
+      paymentMethod: null,
+      taxCategory: null,
+      taxAmount: 0,
+      invoiceId: invoice.id,
+      status: 'active',
+      isDeleted: false
+    })
+    this.commit(id, 'create', null, null)
+    return { id }
+  }
+
+  /** [F-21]請求書の入金済みの取消。有効な入金記録を「取消済」にして残す(0件なら何もしない) */
+  cancelByInvoice(invoiceId: number): { cancelledCount: number } {
+    const target = this.deps.repository.findActiveByInvoiceId(invoiceId)
+    if (!target) return { cancelledCount: 0 }
+    const before = this.snapshotOf(target)
+    this.deps.repository.update(target.id, { ...this.valuesOf(target), status: 'cancelled' })
+    this.commit(target.id, 'cancel', CANCEL_REASON, before)
+    return { cancelledCount: 1 }
+  }
+
+  findLinkedByInvoice(
+    invoiceId: number
+  ): ReturnType<CashRecordRepository['findLinkedByInvoiceId']> {
+    return this.deps.repository.findLinkedByInvoiceId(invoiceId)
+  }
+
+  hasRecordsForInvoice(invoiceId: number): boolean {
+    return this.deps.repository.existsByInvoiceId(invoiceId)
   }
 
   private toValues(
