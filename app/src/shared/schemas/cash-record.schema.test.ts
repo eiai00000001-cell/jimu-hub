@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CashRecordCreateSchema,
   CashRecordInputSchema,
+  CashRecordUpdateSchema,
   HistoryListFilterSchema,
   RecordListFilterSchema
 } from './cash-record.schema'
@@ -79,5 +81,24 @@ describe('RecordListFilterSchema / HistoryListFilterSchema', () => {
     expect(RecordListFilterSchema.safeParse({ kind: 'x' }).success).toBe(false)
     expect(RecordListFilterSchema.safeParse({ page: 0 }).success).toBe(false)
     expect(HistoryListFilterSchema.safeParse({ operation: 'x' }).success).toBe(false)
+  })
+})
+
+describe('領収書の識別子の重複(R-19)', () => {
+  const message = '同じ領収書が重複して指定されています'
+  it('作成・更新とも、同じtokenの重複指定を拒否する', () => {
+    const created = CashRecordCreateSchema.safeParse({ ...valid, receiptTokens: ['a', 'a'] })
+    expect(created.success ? undefined : created.error.issues[0]?.message).toBe(message)
+    const updated = CashRecordUpdateSchema.safeParse({
+      ...valid,
+      id: 1,
+      addReceiptTokens: ['a', 'a']
+    })
+    expect(updated.success ? undefined : updated.error.issues[0]?.message).toBe(message)
+  })
+  it('異なるtokenは受け付ける', () => {
+    expect(CashRecordCreateSchema.safeParse({ ...valid, receiptTokens: ['a', 'b'] }).success).toBe(
+      true
+    )
   })
 })

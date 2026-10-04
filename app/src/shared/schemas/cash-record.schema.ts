@@ -58,6 +58,7 @@ export type CashRecordInput = z.infer<typeof CashRecordInputSchema>
 const receiptTokens = z
   .array(z.string().min(1))
   .max(RECEIPT_LIMITS.maxPerRecord, RECEIPT_MESSAGES.countExceeded)
+  .refine((tokens) => new Set(tokens).size === tokens.length, RECEIPT_MESSAGES.tokenDuplicated)
 
 /** records:createの入力(領収書の識別子の配列を含む。`receipts:pick`が返したもの) */
 export const CashRecordCreateSchema = CashRecordInputSchema.extend({
