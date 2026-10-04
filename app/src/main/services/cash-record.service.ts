@@ -56,6 +56,9 @@ export interface InvoicePaymentRecorder {
   hasRecordsForInvoice(invoiceId: number): boolean
 }
 
+/** 更新用の値(`CashRecordValues`)に含めない、自動採番・自動算出の項目 */
+const NON_VALUE_KEYS = ['id', 'recordHash', 'createdAt', 'updatedAt'] as const
+
 export const CANCEL_REASON = '請求書の入金済みを取り消しました'
 
 export interface CashRecordServiceDeps {
@@ -329,12 +332,9 @@ export class CashRecordService implements InvoicePaymentRecorder {
   }
 
   private valuesOf(record: CashRecord): CashRecordValues {
-    const { recordHash: _hash, createdAt: _c, updatedAt: _u, id: _id, ...values } = record
-    void _hash
-    void _c
-    void _u
-    void _id
-    return values
+    const values: Partial<CashRecord> = { ...record }
+    for (const key of NON_VALUE_KEYS) delete values[key]
+    return values as CashRecordValues
   }
 
   private requireRecord(id: number): CashRecord {
