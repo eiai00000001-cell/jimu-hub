@@ -5,6 +5,7 @@ import type { ReceiptCheckState } from '@shared/types/receipt'
 import type { CashRecordHistoryRepository } from '../../repositories/cash-record-history.repository'
 import type { CashRecordRepository } from '../../repositories/cash-record.repository'
 import type { ReceiptRepository } from '../../repositories/receipt.repository'
+import { validateReceiptFile } from '../receipts/receipt-file-validator'
 import { resolveReceiptPath } from '../receipts/receipt-path'
 import { computeRecordHash } from './record-hash'
 
@@ -21,7 +22,8 @@ export class IntegrityService {
     private readonly documentsDir: string
   ) {}
 
-  checkRecord(recordId: number): RecordIntegrity {
+  /** @param verifyContent trueの場合、ハッシュの一致に加えて、領収書の中身(マジックナンバー)が拡張子と合うかも確認する */
+  checkRecord(recordId: number, verifyContent = false): RecordIntegrity {
     const record = this.records.findById(recordId)
     if (!record) return { recordHashOk: false, historyHashOk: false, receipts: [] }
     const receipts = this.receipts.findByRecordId(recordId)
@@ -30,33 +32,45 @@ export class IntegrityService {
     return {
       recordHashOk: recomputed === record.recordHash,
       historyHashOk: latest !== null && latest.recordHashAfter === record.recordHash,
-      receipts: receipts.map((r) => ({ id: r.id, state: this.checkFile(r.filePath, r.sha256) }))
+      receipts: receipts.map((r) => ({
+        id: r.id,
+        state: this.checkFile(r.filePath, r.sha256, verifyContent)
+      }))
     }
   }
 
   /**
    * 復元後に、全記録の記録ハッシュ・履歴ハッシュ、全領収書(外した領収書を含む)のファイルを照合し、
-   * 不一致(領収書は欠落・`file_path`が空文字を含む)の件数を返す。復元は中断しない(詳細設計書4.3章手順7-2-2・2-3)。
+   * 不一致(領収書は欠落・`file_path`が空文字・中身が拡張子と合わないものを含む)の件数を返す。復元は中断しない(詳細設計書4.3章手順7-2-2・2-3)。
    */
   verifyAllAfterRestore(): { receiptHashMismatchCount: number; recordHashMismatchCount: number } {
     let receiptHashMismatchCount = 0
     let recordHashMismatchCount = 0
     for (const id of this.records.listIds()) {
-      const result = this.checkRecord(id)
+      const result = this.checkRecord(id, true)
       receiptHashMismatchCount += result.receipts.filter((r) => r.state !== 'ok').length
       if (!result.recordHashOk || !result.historyHashOk) recordHashMismatchCount += 1
     }
     return { receiptHashMismatchCount, recordHashMismatchCount }
   }
 
-  private checkFile(filePath: string, sha256: string): ReceiptCheckState {
+  private checkFile(filePath: string, sha256: string, verifyContent: boolean): ReceiptCheckState {
     const absolute = resolveReceiptPath(this.documentsDir, filePath)
     if (!absolute) return 'missing'
+    let buffer: Buffer
     try {
-      const actual = createHash('sha256').update(readFileSync(absolute)).digest('hex')
-      return actual === sha256 ? 'ok' : 'mismatch'
+      buffer = readFileSync(absolute)
     } catch {
       return 'missing'
     }
+    if (createHash('sha256').update(buffer).digest('hex') !== sha256) return 'mismatch'
+    if (verifyContent) {
+      try {
+        validateReceiptFile(buffer, absolute)
+      } catch {
+        return 'mismatch'
+      }
+    }
+    return 'ok'
   }
 }

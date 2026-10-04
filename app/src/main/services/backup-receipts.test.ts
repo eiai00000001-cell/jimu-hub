@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -176,6 +177,24 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
       receiptHashMismatchCount: 2,
       recordHashMismatchCount: 1
     })
+    expect(dst.records.cashRecordService.listRecords({}).totalCount).toBe(1)
+  })
+
+  it('復元時の照合: ハッシュが一致しても、中身が拡張子と異なる(マジックナンバー不一致)領収書は不一致に数える(R-17)', () => {
+    seed()
+    src.service.exportData(zipPath)
+    const zip = new AdmZip(zipPath)
+    const payload = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
+    const target = payload.data.receipts[0]
+    const fake = Buffer.from('MZ not a pdf')
+    zip.updateFile(target.filePath, fake)
+    target.sha256 = createHash('sha256').update(fake).digest('hex')
+    zip.updateFile('data.json', Buffer.from(JSON.stringify(payload)))
+    const forged = join(src.dir, 'forged.zip')
+    zip.writeZip(forged)
+
+    const result = dst.service.importData(forged)
+    expect(result).toMatchObject({ success: true, receiptHashMismatchCount: 1 })
     expect(dst.records.cashRecordService.listRecords({}).totalCount).toBe(1)
   })
 
