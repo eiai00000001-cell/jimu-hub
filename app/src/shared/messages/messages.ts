@@ -98,6 +98,15 @@ export const RECEIPT_MESSAGES = {
   pdfNotPreviewable: 'PDFはアプリ内では表示できません。「開く(OS標準アプリ)」でご確認ください'
 } as const
 
+export const CSV_MESSAGES = {
+  monthInvalid: '年月を正しく入力してください',
+  monthRangeInvalid: '終了年月は、開始年月以降を指定してください',
+  empty: '対象期間に出力する記録がありません',
+  writeFailure: 'CSVファイルの保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください',
+  success: (filePath: string, count: number): string =>
+    `CSVを出力しました。保存先: ${filePath}(${count}件)`
+} as const
+
 export const BACKUP_MESSAGES = {
   pdfNotFound:
     'PDFファイルが見つかりません。データは復元されていますが、PDFファイルは別途お手元のバックアップからご用意ください',

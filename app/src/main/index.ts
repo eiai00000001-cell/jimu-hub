@@ -20,6 +20,8 @@ import { AccountService } from './services/account.service'
 import { AccountRepository } from './repositories/account.repository'
 import { ReportsIpcHandler } from './ipc/reports.ipc-handler'
 import { SummaryRepository } from './repositories/summary.repository'
+import { CashRecordRepository } from './repositories/cash-record.repository'
+import { CsvExportService } from './services/csv-export.service'
 import { SummaryService } from './services/summary.service'
 import { ReceiptsIpcHandler } from './ipc/receipts.ipc-handler'
 import { RecordsIpcHandler } from './ipc/records.ipc-handler'
@@ -150,7 +152,10 @@ app.whenReady().then(() => {
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
-    new ReportsIpcHandler(new SummaryService(new SummaryRepository(database))).registerHandlers()
+    new ReportsIpcHandler(
+      new SummaryService(new SummaryRepository(database)),
+      new CsvExportService(new CashRecordRepository(database))
+    ).registerHandlers()
     new ReceiptsIpcHandler(
       recordServices.receiptService,
       recordServices.receiptRepository,

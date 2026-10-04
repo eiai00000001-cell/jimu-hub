@@ -67,6 +67,21 @@ export type CashRecordValues = Pick<
   | 'isDeleted'
 >
 
+/** CSV出力用の1行 */
+export interface CsvRecordRow {
+  recordDate: string
+  kind: CashRecord['kind']
+  amount: number
+  description: string
+  taxCategory: CashRecord['taxCategory']
+  taxAmount: number
+  status: CashRecord['status']
+  accountName: string
+  clientName: string | null
+  invoiceNumber: string | null
+  receiptNames: string[]
+}
+
 /** 参照名(勘定科目・取引先・請求書番号) */
 export interface RecordNames {
   accountName: string
@@ -192,6 +207,71 @@ export class CashRecordRepository {
     this.database.sqlite
       .prepare('UPDATE cash_records SET record_hash = ? WHERE id = ?')
       .run(recordHash, id)
+  }
+
+  /** CSV出力の対象件数(`record_date`の期間。削除済みを除き、取消済を含む) */
+  countForCsv(fromDate: string, toExclusive: string): number {
+    const row = this.database.sqlite
+      .prepare(
+        'SELECT COUNT(*) AS c FROM cash_records WHERE is_deleted = 0 AND record_date >= ? AND record_date < ?'
+      )
+      .get(fromDate, toExclusive) as { c: number }
+    return row.c
+  }
+
+  /**
+   * CSV出力用の記録(日付昇順・同日はid昇順)。勘定科目名・取引先名・請求書番号はJOIN、
+   * 領収書ファイル名は外していない領収書の元のファイル名をidの昇順で取得する(詳細設計書4.24章)。
+   */
+  findForCsv(fromDate: string, toExclusive: string): CsvRecordRow[] {
+    const rows = this.database.sqlite
+      .prepare(
+        `SELECT r.id, r.record_date, r.kind, r.amount, r.description, r.tax_category, r.tax_amount, r.status,
+                a.name AS account_name, c.name AS client_name, i.invoice_number
+         FROM cash_records r
+         JOIN accounts a ON a.id = r.account_id
+         LEFT JOIN clients c ON c.id = r.client_id
+         LEFT JOIN invoices i ON i.id = r.invoice_id
+         WHERE r.is_deleted = 0 AND r.record_date >= ? AND r.record_date < ?
+         ORDER BY r.record_date ASC, r.id ASC`
+      )
+      .all(fromDate, toExclusive) as Array<{
+      id: number
+      record_date: string
+      kind: CashRecord['kind']
+      amount: number
+      description: string
+      tax_category: CashRecord['taxCategory']
+      tax_amount: number
+      status: CashRecord['status']
+      account_name: string
+      client_name: string | null
+      invoice_number: string | null
+    }>
+    const receiptRows = this.database.sqlite
+      .prepare(
+        `SELECT x.record_id, x.original_name FROM receipts x
+         JOIN cash_records r ON r.id = x.record_id
+         WHERE x.removed_at IS NULL AND r.is_deleted = 0 AND r.record_date >= ? AND r.record_date < ?
+         ORDER BY x.id`
+      )
+      .all(fromDate, toExclusive) as Array<{ record_id: number; original_name: string }>
+    const names = new Map<number, string[]>()
+    for (const r of receiptRows)
+      names.set(r.record_id, [...(names.get(r.record_id) ?? []), r.original_name])
+    return rows.map((row) => ({
+      recordDate: row.record_date,
+      kind: row.kind,
+      amount: row.amount,
+      description: row.description,
+      taxCategory: row.tax_category,
+      taxAmount: row.tax_amount,
+      status: row.status,
+      accountName: row.account_name,
+      clientName: row.client_name,
+      invoiceNumber: row.invoice_number,
+      receiptNames: names.get(row.id) ?? []
+    }))
   }
 
   /** 一覧・検索(削除済みを除く。取消済を含む)。日付降順・同日はid降順(詳細設計書4.19章) */

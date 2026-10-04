@@ -4,6 +4,7 @@ import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
 import type { AccountView, AccountListFilter } from '../types/account'
 import type { AccountInput } from '../schemas/account.schema'
+import type { CsvExportInput } from '../schemas/csv-export.schema'
 import type { SummaryInput } from '../schemas/summary.schema'
 import type { SummaryResult } from '../types/summary'
 import type { PickReceiptsResult, ReceiptPreviewResult } from '../types/receipt'
@@ -100,6 +101,11 @@ export interface ConvertQuoteToInvoiceResult {
   invoiceId: number
 }
 
+/** CSV出力の結果。0件は`empty`、保存ダイアログのキャンセルは`canceled`(詳細設計書7章) */
+export type CsvExportResult =
+  | { success: true; filePath: string; count: number }
+  | { success: false; reason: 'empty' | 'canceled' | 'error'; error?: string }
+
 export type OpenPdfResult = { success: true } | { success: false; error: string }
 
 /**
@@ -125,6 +131,7 @@ export interface JimuhubApi {
   deactivateAccount(id: number): Promise<DeactivateClientResult>
   reactivateAccount(id: number): Promise<DeactivateClientResult>
   deleteAccount(id: number): Promise<DeactivateClientResult>
+  exportCsv(input: CsvExportInput): Promise<CsvExportResult>
   getSummary(input: SummaryInput): Promise<SummaryResult>
   pickReceipts(): Promise<PickReceiptsResult>
   openReceipt(id: number): Promise<OpenPdfResult>

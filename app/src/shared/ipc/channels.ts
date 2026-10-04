@@ -25,6 +25,7 @@ export const IPC_CHANNELS = {
   accountsDeactivate: 'accounts:deactivate',
   accountsReactivate: 'accounts:reactivate',
   accountsDelete: 'accounts:delete',
+  csvExport: 'csv:export',
   summaryGet: 'summary:get',
   receiptsPick: 'receipts:pick',
   receiptsOpen: 'receipts:open',
