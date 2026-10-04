@@ -285,6 +285,30 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       expect(service.listRecords({ kind: 'expense', dateFrom: '2026-09-10' }).totalCount).toBe(1)
     })
 
+    it('[電帳法]日付・金額・取引先の3条件を同時に指定した検索で、すべてを満たす記録のみを返す', () => {
+      service.createRecord(
+        input({ recordDate: '2026-09-15', amount: 5000, description: 'x', clientId })
+      )
+      service.createRecord(input({ recordDate: '2026-09-16', amount: 5000, description: 'y' }))
+      const result = service.listRecords({
+        dateFrom: '2026-09-10',
+        dateTo: '2026-09-30',
+        amountMin: 4000,
+        amountMax: 6000,
+        clientId
+      })
+      expect(result.items.map((r) => r.description)).toEqual(['x', 'b'])
+      expect(
+        service.listRecords({
+          dateFrom: '2026-09-16',
+          dateTo: '2026-09-16',
+          amountMin: 5000,
+          amountMax: 5000,
+          clientId
+        }).totalCount
+      ).toBe(0)
+    })
+
     it('取消済は含め、削除済みは含めない。領収書の件数・参照名を返す', () => {
       const all = service.listRecords({}).items
       db.sqlite.prepare("UPDATE cash_records SET status = 'cancelled' WHERE id = ?").run(all[0]!.id)

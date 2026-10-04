@@ -115,10 +115,38 @@ export const BACKUP_MESSAGES = {
   importIntro:
     '選択したファイルの内容で、現在のデータを復元します。復元するファイルはこの後の画面で選択できます。',
   importWarning: '現在のデータがエクスポートファイルの内容で置き換わります。よろしいですか',
-  importSuccess: (count: number, pdfHashMismatchCount = 0): string =>
-    pdfHashMismatchCount > 0
-      ? `復元が完了しました(${count}件)。PDFファイルの改変が疑われる書類が${pdfHashMismatchCount}件あります。該当の見積書・請求書の詳細画面でご確認ください`
-      : `復元が完了しました(${count}件)`,
+  importSuccess: (
+    count: number,
+    pdfHashMismatchCount = 0,
+    receiptHashMismatchCount = 0,
+    recordHashMismatchCount = 0
+  ): string => {
+    const warnings: string[] = []
+    if (pdfHashMismatchCount > 0) {
+      warnings.push(
+        `PDFファイルの改変が疑われる書類が${pdfHashMismatchCount}件あります。該当の見積書・請求書の詳細画面でご確認ください`
+      )
+    }
+    if (receiptHashMismatchCount > 0) {
+      warnings.push(
+        `領収書ファイルの改変・欠落が疑われるものが${receiptHashMismatchCount}件あります。該当の入出金・経費の詳細画面でご確認ください`
+      )
+    }
+    if (recordHashMismatchCount > 0) {
+      warnings.push(
+        `記録の改変が疑われる入出金・経費が${recordHashMismatchCount}件あります。該当の詳細画面でご確認ください`
+      )
+    }
+    return warnings.length > 0
+      ? `復元が完了しました(${count}件)。${warnings.join('。')}`
+      : `復元が完了しました(${count}件)`
+  },
+  warnLargeBackup:
+    '領収書の容量が大きいため、このファイルは復元できない可能性があります。続行しますか',
+  exportProgress: (current: number, total: number): string =>
+    `領収書を書き出しています(${current}/${total})`,
+  importProgress: (current: number, total: number): string =>
+    `領収書・PDFを復元しています(${current}/${total})`,
   importParseFailure:
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
   importVersionTooNew:

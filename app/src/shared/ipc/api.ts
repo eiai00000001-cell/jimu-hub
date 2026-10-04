@@ -52,12 +52,23 @@ export interface ExportDataResult {
   success: boolean
   filePath?: string
   error?: string
+  /** 見込みサイズが復元上限の80%を超える場合の警告。利用者が続行を選んだ場合のみ`confirmLarge`付きで再実行する */
+  warnLargeBackup?: boolean
+}
+
+/** エクスポート・復元中の処理済みファイル件数の通知(`data:progress`) */
+export interface DataProgress {
+  phase: 'export' | 'import'
+  current: number
+  total: number
 }
 
 export interface ImportDataResult {
   success: boolean
   importedCount?: number
   pdfHashMismatchCount?: number
+  receiptHashMismatchCount?: number
+  recordHashMismatchCount?: number
   error?: string
 }
 
@@ -147,7 +158,9 @@ export interface JimuhubApi {
   deactivateClient(id: number): Promise<DeactivateClientResult>
   /** 利用停止の取引先を利用中へ戻す(F-25)。存在しない・既に利用中の場合はreject */
   reactivateClient(id: number): Promise<DeactivateClientResult>
-  exportData(): Promise<ExportDataResult>
+  exportData(options?: { confirmLarge?: boolean }): Promise<ExportDataResult>
+  /** 進捗の通知を購読する。購読解除関数を返す */
+  onDataProgress(callback: (progress: DataProgress) => void): () => void
   importData(): Promise<ImportDataResult>
   getCompanyProfile(): Promise<CompanyProfile | null>
   saveCompanyProfile(input: CompanyProfileInput): Promise<SaveCompanyProfileResult>

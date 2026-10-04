@@ -15,6 +15,7 @@ export const IPC_CHANNELS = {
   clientsReactivate: 'clients:reactivate',
   dataExport: 'data:export',
   dataImport: 'data:import',
+  dataProgress: 'data:progress',
   appStartupStatus: 'app:startup-status',
   appRelaunch: 'app:relaunch',
   companyGet: 'company:get',

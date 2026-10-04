@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ImportDialog } from './ImportDialog'
 
@@ -155,5 +155,42 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     expect(screen.queryByRole('button', { name: '続行' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'キャンセル' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '閉じる' })).toBeInTheDocument()
+  })
+
+  it('復元の完了メッセージに、PDF・領収書・記録の不一致件数を含める', async () => {
+    window.jimuhubApi = {
+      importData: vi.fn().mockResolvedValue({
+        success: true,
+        importedCount: 12,
+        pdfHashMismatchCount: 1,
+        receiptHashMismatchCount: 2,
+        recordHashMismatchCount: 3
+      })
+    } as unknown as Window['jimuhubApi']
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+    await userEvent.click(screen.getByText('続行'))
+    const message = await screen.findByText(/復元が完了しました\(12件\)/)
+    expect(message).toHaveTextContent('PDFファイルの改変が疑われる書類が1件')
+    expect(message).toHaveTextContent('領収書ファイルの改変・欠落が疑われるものが2件')
+    expect(message).toHaveTextContent('記録の改変が疑われる入出金・経費が3件')
+  })
+
+  it('実行中は進捗「領収書・PDFを復元しています(n/m)」を表示する', async () => {
+    let emit: (p: { phase: 'export' | 'import'; current: number; total: number }) => void = () => {}
+    let finish: (v: unknown) => void = () => {}
+    window.jimuhubApi = {
+      importData: vi.fn().mockReturnValue(new Promise((resolve) => (finish = resolve))),
+      onDataProgress: vi.fn((cb) => {
+        emit = cb
+        return () => {}
+      })
+    } as unknown as Window['jimuhubApi']
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+    await userEvent.click(screen.getByText('ファイルを選択して復元'))
+    await userEvent.click(screen.getByText('続行'))
+    act(() => emit({ phase: 'import', current: 3, total: 4 }))
+    expect(await screen.findByText('領収書・PDFを復元しています(3/4)')).toBeInTheDocument()
+    finish({ success: false })
   })
 })

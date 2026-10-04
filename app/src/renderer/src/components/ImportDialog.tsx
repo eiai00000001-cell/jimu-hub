@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Button } from './Button'
 import { Message } from './Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
@@ -26,6 +26,14 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
   const [step, setStep] = useState<Step>('initial')
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+
+  // 進捗(`data:progress`)の購読。実行中のみ表示する
+  useEffect(() => {
+    return window.jimuhubApi.onDataProgress?.((p) => {
+      if (p.phase === 'import') setProgress({ current: p.current, total: p.total })
+    })
+  }, [])
 
   async function handleImport(): Promise<void> {
     setSubmitting(true)
@@ -36,7 +44,9 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
           success: true,
           message: BACKUP_MESSAGES.importSuccess(
             response.importedCount,
-            response.pdfHashMismatchCount
+            response.pdfHashMismatchCount,
+            response.receiptHashMismatchCount,
+            response.recordHashMismatchCount
           )
         })
         onImported(response.importedCount)
@@ -51,6 +61,7 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
       })
     } finally {
       setSubmitting(false)
+      setProgress(null)
     }
   }
 
@@ -85,6 +96,9 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
           </>
         )}
 
+        {submitting && progress ? (
+          <p role="status">{BACKUP_MESSAGES.importProgress(progress.current, progress.total)}</p>
+        ) : null}
         {result ? (
           <Message variant={result.success ? 'success' : 'error'}>{result.message}</Message>
         ) : null}

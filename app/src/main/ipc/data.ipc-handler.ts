@@ -1,12 +1,18 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import { readDevOnlyEnv } from '../app-security'
-import type { ExportDataResult, ImportDataResult } from '../services/backup.service'
+import type {
+  BackupProgressCallback,
+  ExportDataResult,
+  ImportDataResult
+} from '../services/backup.service'
 
 /** `BackupService`および起動エラー画面用の`StartupRecoveryService`が満たすインターフェース */
 export interface BackupOperations {
-  exportData(filePath: string): ExportDataResult
-  importData(filePath: string): ImportDataResult
+  exportData(filePath: string, onProgress?: BackupProgressCallback): ExportDataResult
+  importData(filePath: string, onProgress?: BackupProgressCallback): ImportDataResult
+  /** 見込みサイズが復元上限の80%を超えるか(起動エラー画面の復元用サービスでは未実装) */
+  isLargeBackup?(): boolean
 }
 
 function defaultExportFileName(): string {
@@ -27,17 +33,35 @@ export class DataIpcHandler {
   constructor(private readonly service: BackupOperations) {}
 
   registerHandlers(): void {
-    ipcMain.handle(IPC_CHANNELS.dataExport, () => this.handleExport())
-    ipcMain.handle(IPC_CHANNELS.dataImport, () => this.handleImport())
+    ipcMain.handle(IPC_CHANNELS.dataExport, (event, options?: { confirmLarge?: boolean }) =>
+      this.handleExport(this.progressSender(event), options?.confirmLarge === true)
+    )
+    ipcMain.handle(IPC_CHANNELS.dataImport, (event) =>
+      this.handleImport(this.progressSender(event))
+    )
   }
 
-  private async handleExport(): Promise<ExportDataResult> {
+  /** 進捗をRendererへ`data:progress`として通知する(ファイル1件ごと) */
+  private progressSender(event: IpcMainInvokeEvent): BackupProgressCallback {
+    return (progress) => {
+      if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.dataProgress, progress)
+    }
+  }
+
+  private async handleExport(
+    onProgress: BackupProgressCallback,
+    confirmLarge: boolean
+  ): Promise<ExportDataResult> {
+    // 領収書・PDFの見込みサイズが復元上限の80%を超える場合は、書き出しの前に警告する(基本設計書8.1章★E12)
+    if (!confirmLarge && this.service.isLargeBackup?.()) {
+      return { success: false, warnLargeBackup: true }
+    }
     // E2Eテスト専用: OS標準ダイアログはPlaywrightから操作できないため、
     // 環境変数でパスが指定されている場合のみダイアログ表示を省略する。
     // 配布版(パッケージ済み)では環境変数を無視し、必ずダイアログを表示する(セキュリティチェック結果報告書 v0.0 SEC-01)。
     const e2eOverridePath = readDevOnlyEnv('JIMUHUB_E2E_EXPORT_PATH', app.isPackaged)
     if (e2eOverridePath) {
-      return this.service.exportData(e2eOverridePath)
+      return this.service.exportData(e2eOverridePath, onProgress)
     }
 
     const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -53,14 +77,14 @@ export class DataIpcHandler {
       return { success: false }
     }
 
-    return this.service.exportData(result.filePath)
+    return this.service.exportData(result.filePath, onProgress)
   }
 
-  private async handleImport(): Promise<ImportDataResult> {
+  private async handleImport(onProgress: BackupProgressCallback): Promise<ImportDataResult> {
     // E2Eテスト専用: 詳細は handleExport() のコメントを参照
     const e2eOverridePath = readDevOnlyEnv('JIMUHUB_E2E_IMPORT_PATH', app.isPackaged)
     if (e2eOverridePath) {
-      return this.service.importData(e2eOverridePath)
+      return this.service.importData(e2eOverridePath, onProgress)
     }
 
     const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -78,6 +102,6 @@ export class DataIpcHandler {
       return { success: false }
     }
 
-    return this.service.importData(filePath)
+    return this.service.importData(filePath, onProgress)
   }
 }

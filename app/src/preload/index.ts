@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import type {
   JimuhubApi,
+  DataProgress,
   SaveQuoteDraftRequest,
   FinalizeQuoteRequest,
   SaveInvoiceDraftRequest,
@@ -64,7 +65,15 @@ const jimuhubApi: JimuhubApi = {
     ipcRenderer.invoke(IPC_CHANNELS.recordsDelete, input),
   listRecordHistory: (filter?: HistoryListFilter) =>
     ipcRenderer.invoke(IPC_CHANNELS.recordHistoryList, filter),
-  exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
+  exportData: (options?: { confirmLarge?: boolean }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.dataExport, options),
+  onDataProgress: (callback: (progress: DataProgress) => void) => {
+    const listener = (_event: unknown, progress: DataProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.dataProgress, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.dataProgress, listener)
+    }
+  },
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
   saveCompanyProfile: (input: CompanyProfileInput) =>
