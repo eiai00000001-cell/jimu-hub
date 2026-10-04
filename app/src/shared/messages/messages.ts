@@ -55,6 +55,33 @@ export const ACCOUNT_MESSAGES = {
   confirmDelete: (name: string): string => `「${name}」を削除します。よろしいですか`
 } as const
 
+export const RECORD_MESSAGES = {
+  dateRequired: '日付を入力してください',
+  dateOutOfRange: '日付は2000年〜2099年の範囲で入力してください',
+  amountInvalid: '金額は1円以上9,999,999,999円以下の整数で入力してください',
+  accountRequired: '勘定科目を選択してください',
+  descriptionRequired: '摘要・メモを入力してください',
+  descriptionTooLong: '摘要・メモは200文字以内で入力してください',
+  reasonTooLong: '変更理由は200文字以内で入力してください',
+  dateRangeInvalid: '日付の終了日は、開始日以降の日付を入力してください',
+  accountKindMismatch: '勘定科目が種別と一致しません',
+  inactiveNotSelectable: '利用停止中の勘定科目・取引先は選択できません',
+  notFound: '対象の記録が見つかりません',
+  notEditable: '取消済の記録は編集できません',
+  autoRecordFieldLocked: '請求書から作成された入金記録の種別・金額・取引先は変更できません',
+  autoRecordDeleteBlocked: '請求書側で入金済みを取り消すと、この入金記録は取消済になります',
+  historyWriteFailure: '履歴を記録できなかったため、変更できませんでした',
+  noChange: '変更はありません',
+  createSuccess: '記録を登録しました',
+  updateSuccess: '記録を更新しました',
+  deleteSuccess: '記録を削除しました',
+  emptyList: '該当する記録がありません',
+  recordHashWarning: 'この記録の改変が疑われます',
+  confirmDeleteTitle: 'この記録を削除しますか',
+  confirmDeleteDescription:
+    '削除した記録は一覧・集計・CSVには表示されなくなります。履歴には残り、元に戻すことはできません。'
+} as const
+
 export const BACKUP_MESSAGES = {
   pdfNotFound:
     'PDFファイルが見つかりません。データは復元されていますが、PDFファイルは別途お手元のバックアップからご用意ください',
