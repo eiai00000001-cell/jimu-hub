@@ -39,9 +39,10 @@ export class ReceiptsIpcHandler {
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.receiptsPick, async () => this.pick())
-    ipcMain.handle(IPC_CHANNELS.receiptsOpen, async (_e, id: unknown) =>
-      this.opener.open(this.filePathOf(id))
-    )
+    ipcMain.handle(IPC_CHANNELS.receiptsOpen, async (_e, id: unknown) => {
+      const receipt = this.receipts.findById(RecordIdSchema.parse(id))
+      return this.opener.open(receipt?.filePath ?? null, receipt?.sha256 ?? null)
+    })
     ipcMain.handle(IPC_CHANNELS.receiptsShowInFolder, async (_e, id: unknown) =>
       this.opener.showInFolder(this.filePathOf(id))
     )

@@ -95,6 +95,8 @@ export const RECEIPT_MESSAGES = {
     '領収書ファイルが見つかりません。データは復元されていますが、領収書ファイルは別途お手元のバックアップからご用意ください',
   mismatchWarning: 'ファイルの改変が疑われます',
   missingWarning: 'ファイルが見つかりません',
+  openMismatchConfirm:
+    'このファイルは、保存時から変更されているか、領収書として読み取れない可能性があります(改変が疑われます)。それでも開きますか?',
   unreadableWarning: '画像を表示できません。「開く」でご確認ください',
   pdfNotPreviewable: 'PDFはアプリ内では表示できません。「開く(OS標準アプリ)」でご確認ください'
 } as const
