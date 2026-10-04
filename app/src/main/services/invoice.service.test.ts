@@ -248,4 +248,26 @@ describe('InvoiceService', () => {
       ).toThrow(InvoiceNotFoundError)
     })
   })
+
+  describe('deleteDraft(F-26)', () => {
+    it('下書きの請求書を明細行ごと完全に削除する', () => {
+      const { service } = create()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      expect(service.deleteDraft(id)).toEqual({ success: true })
+      expect(() => service.getInvoice(id)).toThrow(InvoiceNotFoundError)
+      const lines = db.sqlite.prepare('SELECT COUNT(*) AS c FROM invoice_line_items').get() as {
+        c: number
+      }
+      expect(lines.c).toBe(0)
+    })
+
+    it('存在しない場合はInvoiceNotFoundError、PDF保存済みは削除できない', async () => {
+      companyRepo.upsert(company)
+      const { service } = create()
+      expect(() => service.deleteDraft(9999)).toThrow(InvoiceNotFoundError)
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      expect(() => service.deleteDraft(id)).toThrow('PDF保存済みの請求書は削除できません')
+      expect(service.getInvoice(id).id).toBe(id)
+    })
+  })
 })

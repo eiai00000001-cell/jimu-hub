@@ -41,6 +41,9 @@ export class QuotesIpcHandler {
     ipcMain.handle(IPC_CHANNELS.quotesList, async (_event, filter?: unknown) =>
       this.service.listQuotes(parseFilter(filter))
     )
+    ipcMain.handle(IPC_CHANNELS.quotesDeleteDraft, async (_event, id: unknown) =>
+      this.service.deleteDraft(parseId(id))
+    )
     ipcMain.handle(IPC_CHANNELS.quotesGet, async (_event, id: unknown) =>
       this.service.getQuote(parseId(id))
     )

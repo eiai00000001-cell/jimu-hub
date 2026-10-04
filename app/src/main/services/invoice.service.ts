@@ -29,6 +29,13 @@ export class InvoiceFinalizedError extends Error {
   }
 }
 
+export class InvoiceNotDeletableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvoiceNotDeletableError'
+  }
+}
+
 function parseOrThrow(input: InvoiceInput): InvoiceInput {
   const result = InvoiceInputSchema.safeParse(input)
   if (!result.success) {
@@ -181,6 +188,24 @@ export class InvoiceService {
       parsed.data.paymentStatus,
       parsed.data.paymentDate ?? null
     )
+    return { success: true }
+  }
+
+  /**
+   * [F-26]下書きの請求書を完全に削除する(詳細設計書4.26章)。PDF保存済みは削除しない。
+   * 紐づく入金記録(`cash_records.invoice_id`)のガードは、入出金記録(F-18)の実装時に追加する。
+   */
+  deleteDraft(id: number): { success: true } {
+    const existing = this.deps.repository.findById(id)
+    if (!existing) {
+      throw new InvoiceNotFoundError()
+    }
+    if (existing.status === 'finalized') {
+      throw new InvoiceNotDeletableError(INVOICE_MESSAGES.finalizedNotDeletable)
+    }
+    this.deps.database.transaction(() => {
+      this.deps.repository.delete(id)
+    })
     return { success: true }
   }
 

@@ -159,6 +159,17 @@ describe('QuotesIpcHandler', () => {
     expect(result.id).toEqual(expect.any(Number))
   })
 
+  it('[F-26]quotes:deleteDraftは下書きを削除し、不正なidはエラーになる', async () => {
+    const created = (await handlers.get(IPC_CHANNELS.quotesSaveDraft)!(
+      {},
+      { ...baseInput, clientId }
+    )) as { id: number }
+    const handler = handlers.get(IPC_CHANNELS.quotesDeleteDraft)!
+    await expect(handler({}, 'abc')).rejects.toThrow()
+    expect(await handler({}, created.id)).toEqual({ success: true })
+    await expect(handlers.get(IPC_CHANNELS.quotesGet)!({}, created.id)).rejects.toThrow()
+  })
+
   it('quotes:listはQuoteServiceへ委譲し一覧を返す', async () => {
     const saveHandler = handlers.get(IPC_CHANNELS.quotesSaveDraft)!
     await saveHandler({}, { ...baseInput, clientId })

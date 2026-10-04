@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, like, lte, type SQL } from 'drizzle-orm'
 import type { Database } from '../db/db'
-import { clients, quotes, quoteLineItems } from '../db/schema'
+import { clients, invoices, quotes, quoteLineItems } from '../db/schema'
 import { calculateLineAmount, calculateTaxBreakdown } from '@shared/calculations/tax-calculation'
 import type { Quote, QuoteLineItem, QuoteSummary, QuoteListFilter } from '@shared/types/quote'
 import type { QuoteInput } from '@shared/schemas/quote.schema'
@@ -291,5 +291,23 @@ export class QuoteRepository {
       .set({ quoteNumber: null, invoiceFormat: null, status: 'draft', updatedAt: nowIso() })
       .where(eq(quotes.id, id))
       .run()
+  }
+
+  /** 下書きの削除。明細行も合わせて完全に削除する(詳細設計書4.26章手順4)。呼び出しはService層のトランザクション内で行う */
+  delete(id: number): { changes: number } {
+    this.database.orm.delete(quoteLineItems).where(eq(quoteLineItems.quoteId, id)).run()
+    const result = this.database.orm.delete(quotes).where(eq(quotes.id, id)).run()
+    return { changes: result.changes }
+  }
+
+  /** この見積書を元に作成された請求書が存在するか(`invoices.source_quote_id`) */
+  hasDerivedInvoices(id: number): boolean {
+    const row = this.database.orm
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(eq(invoices.sourceQuoteId, id))
+      .limit(1)
+      .get()
+    return row !== undefined
   }
 }

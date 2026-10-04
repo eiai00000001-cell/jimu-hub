@@ -41,6 +41,9 @@ export class InvoicesIpcHandler {
     ipcMain.handle(IPC_CHANNELS.invoicesList, async (_event, filter?: unknown) =>
       this.service.listInvoices(parseFilter(filter))
     )
+    ipcMain.handle(IPC_CHANNELS.invoicesDeleteDraft, async (_event, id: unknown) =>
+      this.service.deleteDraft(parseId(id))
+    )
     ipcMain.handle(IPC_CHANNELS.invoicesGet, async (_event, id: unknown) =>
       this.service.getInvoice(parseId(id))
     )

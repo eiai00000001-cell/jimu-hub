@@ -117,6 +117,17 @@ describe('InvoicesIpcHandler', () => {
     }
   })
 
+  it('[F-26]invoices:deleteDraftは下書きを削除し、不正なidはエラーになる', async () => {
+    const created = (await handlers.get(IPC_CHANNELS.invoicesSaveDraft)!(
+      {},
+      { ...input, clientId }
+    )) as { id: number }
+    const handler = handlers.get(IPC_CHANNELS.invoicesDeleteDraft)!
+    await expect(handler({}, 0)).rejects.toThrow()
+    expect(await handler({}, created.id)).toEqual({ success: true })
+    await expect(handlers.get(IPC_CHANNELS.invoicesGet)!({}, created.id)).rejects.toThrow()
+  })
+
   it('saveDraft→list→getが動作する', async () => {
     const created = (await handlers.get(IPC_CHANNELS.invoicesSaveDraft)!(
       {},

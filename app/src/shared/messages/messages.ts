@@ -77,7 +77,11 @@ export const QUOTE_MESSAGES = {
   notFound: '対象の見積書が見つかりません',
   finalizedNotEditable: 'PDF保存済みの見積書は編集できません',
   emptyList: '該当する見積書がありません',
-  hashMismatchWarning: 'PDFファイルの改変が疑われます'
+  hashMismatchWarning: 'PDFファイルの改変が疑われます',
+  confirmDeleteDraft: 'この下書きを削除します。削除すると元に戻せません。よろしいですか',
+  deleteDraftSuccess: '下書きを削除しました',
+  finalizedNotDeletable: 'PDF保存済みの見積書は削除できません',
+  hasDerivedInvoice: 'この見積書から作成された請求書があるため削除できません'
 } as const
 
 export const INVOICE_MESSAGES = {
@@ -91,6 +95,10 @@ export const INVOICE_MESSAGES = {
   finalizedNotEditable: 'PDF保存済みの請求書は編集できません',
   emptyList: '該当する請求書がありません',
   hashMismatchWarning: 'PDFファイルの改変が疑われます',
+  confirmDeleteDraft: 'この下書きを削除します。削除すると元に戻せません。よろしいですか',
+  deleteDraftSuccess: '下書きを削除しました',
+  finalizedNotDeletable: 'PDF保存済みの請求書は削除できません',
+  hasCashRecord: 'この請求書に紐づく入金記録があるため削除できません',
   markAsPaidSuccess: '入金済みにしました',
   markAsUnpaidSuccess: '未収に戻しました',
   markAsUnpaidTitle: '未収に戻しますか',
