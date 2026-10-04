@@ -86,7 +86,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     const exported = JSON.parse(
       new AdmZip(filePath).getEntry('data.json')!.getData().toString('utf-8')
     )
-    expect(exported.schemaVersion).toBe(3)
+    expect(exported.schemaVersion).toBe(4)
     expect(typeof exported.appVersion).toBe('string')
     expect(typeof exported.exportedAt).toBe('string')
     expect(Array.isArray(exported.data.clients)).toBe(true)
