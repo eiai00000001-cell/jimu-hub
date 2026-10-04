@@ -890,3 +890,9 @@ button {
   color: var(--color-text-secondary);
   line-height: 1.7;
 }
+
+.table td.op,
+.table th.op {
+  text-align: right;
+  white-space: nowrap;
+}

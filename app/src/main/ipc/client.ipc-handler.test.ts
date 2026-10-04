@@ -89,6 +89,23 @@ describe('ClientIpcHandler', () => {
     expect(found.status).toBe('inactive')
   })
 
+  it('clients:reactivateは利用停止の取引先を利用中へ戻す', async () => {
+    const created = (await handlers.get(IPC_CHANNELS.clientsCreate)!({}, baseInput)) as {
+      id: number
+    }
+    await handlers.get(IPC_CHANNELS.clientsDeactivate)!({}, created.id)
+    const result = await handlers.get(IPC_CHANNELS.clientsReactivate)!({}, created.id)
+    expect(result).toEqual({ success: true })
+    const found = (await handlers.get(IPC_CHANNELS.clientsGet)!({}, created.id)) as {
+      status: string
+    }
+    expect(found.status).toBe('active')
+  })
+
+  it('clients:reactivateは不正なidの場合はエラーになる', async () => {
+    await expect(handlers.get(IPC_CHANNELS.clientsReactivate)!({}, 'abc')).rejects.toThrow()
+  })
+
   describe('IPC境界での実行時バリデーション(レビュー結果報告書 No.3)', () => {
     it('clients:getは不正なid(文字列)の場合はエラーになる', async () => {
       const handler = handlers.get(IPC_CHANNELS.clientsGet)!

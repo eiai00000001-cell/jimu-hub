@@ -98,6 +98,8 @@ export interface JimuhubApi {
   createClient(input: ClientInput): Promise<CreateClientResult>
   updateClient(id: number, input: ClientInput): Promise<UpdateClientResult>
   deactivateClient(id: number): Promise<DeactivateClientResult>
+  /** 利用停止の取引先を利用中へ戻す(F-25)。存在しない・既に利用中の場合はreject */
+  reactivateClient(id: number): Promise<DeactivateClientResult>
   exportData(): Promise<ExportDataResult>
   importData(): Promise<ImportDataResult>
   getCompanyProfile(): Promise<CompanyProfile | null>

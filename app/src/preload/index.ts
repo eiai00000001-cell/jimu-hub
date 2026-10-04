@@ -26,6 +26,7 @@ const jimuhubApi: JimuhubApi = {
   updateClient: (id: number, input: ClientInput) =>
     ipcRenderer.invoke(IPC_CHANNELS.clientsUpdate, id, input),
   deactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsDeactivate, id),
+  reactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsReactivate, id),
   exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),

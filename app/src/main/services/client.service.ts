@@ -10,6 +10,13 @@ export class ClientNotFoundError extends Error {
   }
 }
 
+export class ClientAlreadyActiveError extends Error {
+  constructor() {
+    super(CLIENT_MESSAGES.alreadyActive)
+    this.name = 'ClientAlreadyActiveError'
+  }
+}
+
 function parseOrThrow(input: ClientInput): ClientInput {
   const result = ClientInputSchema.safeParse(input)
   if (!result.success) {
@@ -56,6 +63,16 @@ export class ClientService {
     if (result.changes === 0) {
       throw new ClientNotFoundError()
     }
+    return { success: true }
+  }
+
+  /** [F-25]利用停止の取引先を利用中へ戻す(詳細設計書4.25章) */
+  reactivateClient(id: number): { success: true } {
+    const client = this.getClient(id)
+    if (client.status === 'active') {
+      throw new ClientAlreadyActiveError()
+    }
+    this.repository.updateStatus(id, 'active')
     return { success: true }
   }
 }

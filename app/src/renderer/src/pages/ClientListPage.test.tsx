@@ -217,4 +217,31 @@ describe('ClientListPage', () => {
 
     expect(await screen.findByText('取引先を登録しました')).toBeInTheDocument()
   })
+
+  it('[F-25]利用停止の行にのみ「利用中に戻す」を表示し、確認後に復帰して一覧を再取得する', async () => {
+    const listClients = vi
+      .fn()
+      .mockResolvedValueOnce([activeClient, inactiveClient])
+      .mockResolvedValue([activeClient, { ...inactiveClient, status: 'active' }])
+    const reactivateClient = vi.fn().mockResolvedValue({ success: true })
+    window.jimuhubApi = { listClients, reactivateClient } as unknown as Window['jimuhubApi']
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onSelectClient = vi.fn()
+    render(
+      <ClientListPage
+        onNavigateHome={vi.fn()}
+        onNavigateDocuments={vi.fn()}
+        onNewClient={vi.fn()}
+        onSelectClient={onSelectClient}
+      />
+    )
+    const buttons = await screen.findAllByText('利用中に戻す')
+    expect(buttons).toHaveLength(1)
+    await userEvent.click(buttons[0]!)
+    await waitFor(() => expect(reactivateClient).toHaveBeenCalledWith(2))
+    await waitFor(() => expect(screen.queryByText('利用中に戻す')).not.toBeInTheDocument())
+    expect(await screen.findByText('取引先を利用中に戻しました')).toBeInTheDocument()
+    expect(onSelectClient).not.toHaveBeenCalled()
+    confirm.mockRestore()
+  })
 })

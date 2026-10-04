@@ -35,6 +35,9 @@ export const CLIENT_MESSAGES = {
   updateSuccess: '取引先を更新しました',
   deactivateConfirm: '本当に利用停止にしますか',
   deactivateSuccess: '取引先を利用停止にしました',
+  confirmReactivate: 'この取引先を利用中に戻します。よろしいですか',
+  reactivateSuccess: '取引先を利用中に戻しました',
+  alreadyActive: '既に「利用中」の取引先です',
   notFound: '指定された取引先が見つかりません',
   emptyList: '該当する取引先がありません'
 } as const
