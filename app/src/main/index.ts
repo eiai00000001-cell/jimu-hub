@@ -15,6 +15,9 @@ import { NumberingService } from './services/numbering.service'
 import { cleanupLeftoverPdfTempFiles } from './services/pdf/temp-files'
 import { PdfService } from './services/pdf.service'
 import { QuoteService } from './services/quote.service'
+import { AccountsIpcHandler } from './ipc/accounts.ipc-handler'
+import { AccountService } from './services/account.service'
+import { AccountRepository } from './repositories/account.repository'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
@@ -139,6 +142,7 @@ app.whenReady().then(() => {
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
+    new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
     new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()

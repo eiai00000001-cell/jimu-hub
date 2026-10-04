@@ -2,6 +2,8 @@ import type { Client, ClientListFilter } from '../types/client'
 import type { ClientInput } from '../schemas/client.schema'
 import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
+import type { AccountView, AccountListFilter } from '../types/account'
+import type { AccountInput } from '../schemas/account.schema'
 import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
 import type { QuoteInput } from '../schemas/quote.schema'
 import type { Invoice, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
@@ -101,6 +103,12 @@ export interface JimuhubApi {
   deleteQuoteDraft(id: number): Promise<DeactivateClientResult>
   /** 下書きの請求書を削除する(F-26)。PDF保存済み等の場合はreject */
   deleteInvoiceDraft(id: number): Promise<DeactivateClientResult>
+  listAccounts(filter?: AccountListFilter): Promise<AccountView[]>
+  createAccount(input: AccountInput): Promise<{ id: number }>
+  renameAccount(id: number, name: string): Promise<DeactivateClientResult>
+  deactivateAccount(id: number): Promise<DeactivateClientResult>
+  reactivateAccount(id: number): Promise<DeactivateClientResult>
+  deleteAccount(id: number): Promise<DeactivateClientResult>
   deactivateClient(id: number): Promise<DeactivateClientResult>
   /** 利用停止の取引先を利用中へ戻す(F-25)。存在しない・既に利用中の場合はreject */
   reactivateClient(id: number): Promise<DeactivateClientResult>

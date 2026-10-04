@@ -42,6 +42,19 @@ export const CLIENT_MESSAGES = {
   emptyList: '該当する取引先がありません'
 } as const
 
+export const ACCOUNT_MESSAGES = {
+  nameRequired: '科目の名称を入力してください',
+  nameTooLong: '科目の名称は30文字以内で入力してください',
+  nameDuplicated: '同じ区分に同じ名称の科目があります',
+  deactivateBlocked: '「売上高」は請求書の入金記録で使うため、利用停止にできません',
+  inUse: '利用済みの科目は削除できません。利用停止にしてください',
+  notFound: '指定された勘定科目が見つかりません',
+  confirmDeactivateTitle: '勘定科目を利用停止にしますか',
+  confirmDeactivate: (name: string): string =>
+    `「${name}」を利用停止にします。登録済みの記録はそのまま残り、新しい記録の選択肢には表示されなくなります。`,
+  confirmDelete: (name: string): string => `「${name}」を削除します。よろしいですか`
+} as const
+
 export const BACKUP_MESSAGES = {
   pdfNotFound:
     'PDFファイルが見つかりません。データは復元されていますが、PDFファイルは別途お手元のバックアップからご用意ください',

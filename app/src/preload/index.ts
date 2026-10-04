@@ -10,6 +10,8 @@ import type {
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
+import type { AccountListFilter } from '@shared/types/account'
+import type { AccountInput } from '@shared/schemas/account.schema'
 import type { QuoteListFilter } from '@shared/types/quote'
 import type { InvoiceListFilter } from '@shared/types/invoice'
 
@@ -29,6 +31,14 @@ const jimuhubApi: JimuhubApi = {
   reactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsReactivate, id),
   deleteQuoteDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesDeleteDraft, id),
   deleteInvoiceDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesDeleteDraft, id),
+  listAccounts: (filter?: AccountListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.accountsList, filter),
+  createAccount: (input: AccountInput) => ipcRenderer.invoke(IPC_CHANNELS.accountsCreate, input),
+  renameAccount: (id: number, name: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.accountsRename, id, name),
+  deactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDeactivate, id),
+  reactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsReactivate, id),
+  deleteAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDelete, id),
   exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
