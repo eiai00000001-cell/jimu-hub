@@ -258,6 +258,7 @@ button {
   margin-left: 4px;
 }
 .field input[type='text'],
+.field input[type='date'],
 .field select,
 .field textarea {
   width: 100%;
