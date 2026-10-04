@@ -83,6 +83,20 @@ export const RECORD_MESSAGES = {
     '削除した記録は一覧・集計・CSVには表示されなくなります。履歴には残り、元に戻すことはできません。'
 } as const
 
+export const RECEIPT_MESSAGES = {
+  typeInvalid: '領収書として添付できるのは、PDF・JPEG・PNGのファイルです',
+  tooLarge: '領収書は1ファイル10MBまでです',
+  countExceeded: '領収書は1つの記録につき5件までです',
+  tokenInvalid: '選択したファイルが無効になりました。もう一度ファイルを選択してください',
+  storeFailure: '領収書の保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください',
+  notFound:
+    '領収書ファイルが見つかりません。データは復元されていますが、領収書ファイルは別途お手元のバックアップからご用意ください',
+  mismatchWarning: 'ファイルの改変が疑われます',
+  missingWarning: 'ファイルが見つかりません',
+  unreadableWarning: '画像を表示できません。「開く」でご確認ください',
+  pdfNotPreviewable: 'PDFはアプリ内では表示できません。「開く(OS標準アプリ)」でご確認ください'
+} as const
+
 export const BACKUP_MESSAGES = {
   pdfNotFound:
     'PDFファイルが見つかりません。データは復元されていますが、PDFファイルは別途お手元のバックアップからご用意ください',
