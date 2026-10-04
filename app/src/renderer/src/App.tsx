@@ -8,6 +8,9 @@ import { DocumentListPage } from './pages/DocumentListPage'
 import { QuoteFormPage } from './pages/QuoteFormPage'
 import { QuoteDetailPage } from './pages/QuoteDetailPage'
 import { InvoiceFormPage } from './pages/InvoiceFormPage'
+import { CashRecordListPage, type CashTab } from './pages/CashRecordListPage'
+import { CashRecordFormPage } from './pages/CashRecordFormPage'
+import { CashRecordDetailPage } from './pages/CashRecordDetailPage'
 import { AccountListPage } from './pages/AccountListPage'
 import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
@@ -18,7 +21,8 @@ import {
   CLIENT_MESSAGES,
   COMPANY_MESSAGES,
   QUOTE_MESSAGES,
-  INVOICE_MESSAGES
+  INVOICE_MESSAGES,
+  RECORD_MESSAGES
 } from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
 
@@ -34,6 +38,10 @@ type Route =
   | { name: 'clientList'; flashMessage?: string }
   | { name: 'clientNew' }
   | { name: 'accountList' }
+  | { name: 'cashList'; tab?: CashTab; flashMessage?: string }
+  | { name: 'cashNew'; kind: 'income' | 'expense' }
+  | { name: 'cashEdit'; id: number }
+  | { name: 'cashDetail'; id: number; from: CashTab; flashMessage?: string }
   | { name: 'clientDetail'; id: number; flashMessage?: string }
   | { name: 'clientEdit'; id: number }
   | { name: 'companyProfile'; returnTo?: CompanyProfileReturnTo }
@@ -74,7 +82,8 @@ export function App(): ReactElement {
       value={{
         goHome: () => setRoute({ name: 'top' }),
         goClients: () => setRoute({ name: 'clientList' }),
-        goDocuments: () => setRoute({ name: 'documentList' })
+        goDocuments: () => setRoute({ name: 'documentList' }),
+        goCash: () => setRoute({ name: 'cashList' })
       }}
     >
       {renderRoute()}
@@ -119,8 +128,55 @@ export function App(): ReactElement {
           />
         )
       case 'accountList':
-        // 入出金・経費一覧(T-44)の実装までは、戻り先をトップ画面とする。入口の「勘定科目の管理」ボタンはT-44で追加する
-        return <AccountListPage onBackToList={() => setRoute({ name: 'top' })} />
+        return <AccountListPage onBackToList={() => setRoute({ name: 'cashList' })} />
+      case 'cashList':
+        return (
+          <CashRecordListPage
+            key={`${route.tab ?? 'records'}-${route.flashMessage ?? ''}`}
+            initialTab={route.tab}
+            flashMessage={route.flashMessage}
+            onNewRecord={(kind) => setRoute({ name: 'cashNew', kind })}
+            onSelectRecord={(id, from) => setRoute({ name: 'cashDetail', id, from })}
+            onOpenAccounts={() => setRoute({ name: 'accountList' })}
+            onOpenInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
+          />
+        )
+      case 'cashNew':
+        return (
+          <CashRecordFormPage
+            mode="new"
+            kind={route.kind}
+            onSaved={(id, flashMessage) =>
+              setRoute({ name: 'cashDetail', id, from: 'records', flashMessage })
+            }
+            onCancel={() => setRoute({ name: 'cashList' })}
+          />
+        )
+      case 'cashEdit':
+        return (
+          <CashRecordFormPage
+            mode="edit"
+            recordId={route.id}
+            onSaved={(id, flashMessage) =>
+              setRoute({ name: 'cashDetail', id, from: 'records', flashMessage })
+            }
+            onCancel={() => setRoute({ name: 'cashDetail', id: route.id, from: 'records' })}
+          />
+        )
+      case 'cashDetail':
+        return (
+          <CashRecordDetailPage
+            key={route.id}
+            recordId={route.id}
+            flashMessage={route.flashMessage}
+            onBackToList={() => setRoute({ name: 'cashList', tab: route.from })}
+            onEdit={(id) => setRoute({ name: 'cashEdit', id })}
+            onDeleted={() =>
+              setRoute({ name: 'cashList', flashMessage: RECORD_MESSAGES.deleteSuccess })
+            }
+            onOpenInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
+          />
+        )
       case 'clientNew':
         return (
           <ClientFormPage

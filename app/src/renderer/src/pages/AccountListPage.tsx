@@ -85,7 +85,7 @@ export function AccountListPage({ onBackToList }: AccountListPageProps): ReactEl
   return (
     <AppShell
       screenName="勘定科目の管理"
-      activeMenu="home"
+      activeMenu="cash"
       pageTitle="勘定科目の管理"
       confirmLeave={() => !dirty || window.confirm(NAVIGATION_MESSAGES.confirmLeave)}
     >
