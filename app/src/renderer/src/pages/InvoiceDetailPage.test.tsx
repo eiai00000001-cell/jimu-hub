@@ -237,4 +237,26 @@ describe('InvoiceDetailPage', () => {
     await screen.findByText('2026-012')
     expect(screen.queryByText('元の見積書')).not.toBeInTheDocument()
   })
+
+  it('[F-26]下書きは「削除」を表示し、確認後にdeleteInvoiceDraftを呼んで一覧へ戻る。PDF保存済みには表示しない', async () => {
+    setup(vi.fn().mockResolvedValue(draft))
+    const deleteInvoiceDraft = vi.fn().mockResolvedValue({ success: true })
+    window.jimuhubApi = { ...window.jimuhubApi, deleteInvoiceDraft } as Window['jimuhubApi']
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onDeleted = vi.fn()
+    const { unmount } = renderPage(5, { onDeleted })
+    await userEvent.click(await screen.findByText('削除'))
+    expect(confirm).toHaveBeenCalledWith(
+      'この下書きを削除します。削除すると元に戻せません。よろしいですか'
+    )
+    await waitFor(() => expect(deleteInvoiceDraft).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled())
+    unmount()
+    confirm.mockRestore()
+
+    setup(vi.fn().mockResolvedValue(finalized))
+    renderPage(8)
+    await screen.findByText('PDFを開く')
+    expect(screen.queryByText('削除')).not.toBeInTheDocument()
+  })
 })

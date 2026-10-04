@@ -35,7 +35,7 @@ type Route =
   | { name: 'clientDetail'; id: number; flashMessage?: string }
   | { name: 'clientEdit'; id: number }
   | { name: 'companyProfile'; returnTo?: CompanyProfileReturnTo }
-  | { name: 'documentList' }
+  | { name: 'documentList'; initialTab?: 'quote' | 'invoice'; flashMessage?: string }
   | { name: 'quoteNew'; flashMessage?: string }
   | { name: 'quoteEdit'; id: number; flashMessage?: string }
   | { name: 'quoteDetail'; id: number; flashMessage?: string }
@@ -175,6 +175,9 @@ export function App(): ReactElement {
       case 'documentList':
         return (
           <DocumentListPage
+            key={`${route.initialTab ?? 'quote'}-${route.flashMessage ?? ''}`}
+            initialTab={route.initialTab}
+            flashMessage={route.flashMessage}
             onNavigateHome={() => setRoute({ name: 'top' })}
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onNewQuote={() => setRoute({ name: 'quoteNew' })}
@@ -228,6 +231,13 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onBackToList={() => setRoute({ name: 'documentList' })}
             onEdit={(id) => setRoute({ name: 'quoteEdit', id })}
+            onDeleted={() =>
+              setRoute({
+                name: 'documentList',
+                initialTab: 'quote',
+                flashMessage: QUOTE_MESSAGES.deleteDraftSuccess
+              })
+            }
             onConvertedToInvoice={(invoiceId) =>
               setRoute({
                 name: 'invoiceDetail',
@@ -299,6 +309,13 @@ export function App(): ReactElement {
             onNavigateClients={() => setRoute({ name: 'clientList' })}
             onBackToList={() => setRoute({ name: 'documentList' })}
             onEdit={(id) => setRoute({ name: 'invoiceEdit', id })}
+            onDeleted={() =>
+              setRoute({
+                name: 'documentList',
+                initialTab: 'invoice',
+                flashMessage: INVOICE_MESSAGES.deleteDraftSuccess
+              })
+            }
             onOpenQuote={(quoteId) => setRoute({ name: 'quoteDetail', id: quoteId })}
           />
         )

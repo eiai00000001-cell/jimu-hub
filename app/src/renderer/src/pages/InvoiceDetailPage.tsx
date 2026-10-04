@@ -27,6 +27,8 @@ interface InvoiceDetailPageProps {
   onEdit: (id: number) => void
   /** 「元の見積書」リンク押下時に、変換元の見積書詳細画面へ遷移する */
   onOpenQuote: (quoteId: number) => void
+  /** 下書きの削除成功時に呼ぶ。省略時は`onBackToList` */
+  onDeleted?: () => void
 }
 
 /**
@@ -42,7 +44,8 @@ export function InvoiceDetailPage({
   onNavigateClients,
   onBackToList,
   onEdit,
-  onOpenQuote
+  onOpenQuote,
+  onDeleted
 }: InvoiceDetailPageProps): ReactElement {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -98,6 +101,17 @@ export function InvoiceDetailPage({
 
   const hasWithholding = invoice?.lineItems.some((line) => line.withholdingTarget) ?? false
 
+  /** [F-26]下書きの削除(詳細設計書4.26章) */
+  async function handleDeleteDraft(): Promise<void> {
+    if (!window.confirm(INVOICE_MESSAGES.confirmDeleteDraft)) return
+    try {
+      await window.jimuhubApi.deleteInvoiceDraft(invoiceId)
+      ;(onDeleted ?? onBackToList)()
+    } catch (error) {
+      setPdfError(toErrorMessage(error, INVOICE_MESSAGES.notFound))
+    }
+  }
+
   async function handlePdfAction(action: (id: number) => Promise<OpenPdfResult>): Promise<void> {
     setPdfError(null)
     const result = await action(invoiceId)
@@ -125,7 +139,10 @@ export function InvoiceDetailPage({
       headerActions={
         invoice ? (
           invoice.status === 'draft' ? (
-            <Button onClick={() => onEdit(invoiceId)}>編集</Button>
+            <>
+              <Button onClick={() => onEdit(invoiceId)}>編集</Button>
+              <Button onClick={() => void handleDeleteDraft()}>削除</Button>
+            </>
           ) : (
             <>
               <Button onClick={() => void handlePdfAction(window.jimuhubApi.openInvoicePdf)}>

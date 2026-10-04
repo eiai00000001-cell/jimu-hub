@@ -269,4 +269,48 @@ describe('DocumentListPage', () => {
       await screen.findByText(/「案件管理」は以降のイテレーションで実装予定です/)
     ).toBeInTheDocument()
   })
+
+  it('[F-26]下書きの行にのみ「削除」を表示し、確認後に削除して一覧を再取得する', async () => {
+    const draftQuote: QuoteSummary = { ...sampleQuote, id: 2, quoteNumber: null, status: 'draft' }
+    const listQuotes = vi
+      .fn()
+      .mockResolvedValueOnce([sampleQuote, draftQuote])
+      .mockResolvedValue([sampleQuote])
+    const deleteQuoteDraft = vi.fn().mockResolvedValue({ success: true })
+    setupApi({ listQuotes, deleteQuoteDraft })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onSelectQuote = vi.fn()
+    render(<DocumentListPage {...baseProps} onSelectQuote={onSelectQuote} />)
+    const buttons = await screen.findAllByText('削除')
+    expect(buttons).toHaveLength(1)
+    await userEvent.click(buttons[0]!)
+    await waitFor(() => expect(deleteQuoteDraft).toHaveBeenCalledWith(2))
+    await waitFor(() => expect(screen.queryByText('削除')).not.toBeInTheDocument())
+    expect(await screen.findByText('下書きを削除しました')).toBeInTheDocument()
+    expect(onSelectQuote).not.toHaveBeenCalled()
+    confirm.mockRestore()
+  })
+
+  it('[F-26]請求書タブでも下書きの削除ができ、initialTabとflashMessageを受け取れる', async () => {
+    const draftInvoice = {
+      id: 3,
+      invoiceNumber: null,
+      clientId: 1,
+      clientName: 'サンプル商事株式会社',
+      issueDate: '2026-09-20',
+      totalAmount: 1000,
+      status: 'draft',
+      paymentStatus: 'unpaid'
+    }
+    const deleteInvoiceDraft = vi.fn().mockResolvedValue({ success: true })
+    setupApi({ listInvoices: vi.fn().mockResolvedValue([draftInvoice]), deleteInvoiceDraft })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(
+      <DocumentListPage {...baseProps} initialTab="invoice" flashMessage="下書きを削除しました" />
+    )
+    expect(screen.getByText('下書きを削除しました')).toBeInTheDocument()
+    await userEvent.click(await screen.findByText('削除'))
+    await waitFor(() => expect(deleteInvoiceDraft).toHaveBeenCalledWith(3))
+    confirm.mockRestore()
+  })
 })

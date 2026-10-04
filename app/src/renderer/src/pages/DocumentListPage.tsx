@@ -3,6 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
+import { toErrorMessage } from '../utils/error-message'
 import type { Client } from '@shared/types/client'
 import type { QuoteSummary } from '@shared/types/quote'
 import type { InvoiceSummary, PaymentStatusFilter } from '@shared/types/invoice'
@@ -11,6 +12,9 @@ import { QUOTE_MESSAGES, INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/m
 type Tab = 'quote' | 'invoice'
 
 interface DocumentListPageProps {
+  /** 表示するタブの初期値(削除後に請求書タブへ戻す場合等) */
+  initialTab?: Tab
+  flashMessage?: string
   onNavigateHome: () => void
   onNavigateClients: () => void
   onNewQuote: () => void
@@ -25,6 +29,8 @@ interface DocumentListPageProps {
 
  */
 export function DocumentListPage({
+  initialTab = 'quote',
+  flashMessage,
   onNavigateHome,
   onNavigateClients,
   onNewQuote,
@@ -32,7 +38,7 @@ export function DocumentListPage({
   onNewInvoice,
   onSelectInvoice
 }: DocumentListPageProps): ReactElement {
-  const [tab, setTab] = useState<Tab>('quote')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [clientId, setClientId] = useState<number | ''>('')
@@ -42,6 +48,9 @@ export function DocumentListPage({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusFilter>('all')
   const [quotes, setQuotes] = useState<QuoteSummary[] | null>(null)
   const [invoices, setInvoices] = useState<InvoiceSummary[] | null>(null)
+  const [deleted, setDeleted] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [reloadCount, setReloadCount] = useState(0)
   const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
 
   // 範囲指定の整合性(詳細設計書3.10章): 終了日<開始日、上限<下限はエラーとし、絞り込みは実行しない
@@ -83,7 +92,45 @@ export function DocumentListPage({
     return () => {
       cancelled = true
     }
-  }, [tab, clientId, dateFrom, dateTo, amountMin, amountMax, paymentStatus, hasRangeError])
+  }, [
+    tab,
+    clientId,
+    dateFrom,
+    dateTo,
+    amountMin,
+    amountMax,
+    paymentStatus,
+    hasRangeError,
+    reloadCount
+  ])
+
+  /** [F-26]下書きの削除(詳細設計書4.26章) */
+  async function handleDeleteDraft(kind: Tab, id: number): Promise<void> {
+    const message =
+      kind === 'quote' ? QUOTE_MESSAGES.confirmDeleteDraft : INVOICE_MESSAGES.confirmDeleteDraft
+    if (!window.confirm(message)) return
+    try {
+      if (kind === 'quote') await window.jimuhubApi.deleteQuoteDraft(id)
+      else await window.jimuhubApi.deleteInvoiceDraft(id)
+      setDeleteError(null)
+      setDeleted(true)
+      setReloadCount((count) => count + 1)
+    } catch (error) {
+      setDeleteError(toErrorMessage(error, QUOTE_MESSAGES.notFound))
+    }
+  }
+
+  const deleteButton = (kind: Tab, id: number): ReactElement => (
+    <Button
+      className="btn-sm"
+      onClick={(event) => {
+        event.stopPropagation()
+        void handleDeleteDraft(kind, id)
+      }}
+    >
+      削除
+    </Button>
+  )
 
   return (
     <AppShell
@@ -106,6 +153,9 @@ export function DocumentListPage({
       onNavigateDocuments={() => {}}
       onComingSoon={(label) => setComingSoonLabel(label)}
     >
+      {flashMessage && !deleted ? <Message variant="success">{flashMessage}</Message> : null}
+      {deleted ? <Message variant="success">{QUOTE_MESSAGES.deleteDraftSuccess}</Message> : null}
+      {deleteError ? <Message variant="error">{deleteError}</Message> : null}
       {comingSoonLabel ? (
         <Message variant="warning">
           「{comingSoonLabel}」は以降のイテレーションで実装予定です。
@@ -218,6 +268,9 @@ export function DocumentListPage({
                     <th className="amount">合計金額</th>
                     <th>状態</th>
                     <th>入金ステータス</th>
+                    {invoices.some((i) => i.status === 'draft') ? (
+                      <th className="op">操作</th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -237,6 +290,11 @@ export function DocumentListPage({
                       <td>
                         <Badge variant={invoice.paymentStatus === 'paid' ? 'paid' : 'unpaid'} />
                       </td>
+                      {invoices.some((i) => i.status === 'draft') ? (
+                        <td className="op">
+                          {invoice.status === 'draft' ? deleteButton('invoice', invoice.id) : null}
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -253,6 +311,7 @@ export function DocumentListPage({
                   <th>発行日</th>
                   <th className="amount">合計金額</th>
                   <th>状態</th>
+                  {quotes.some((q) => q.status === 'draft') ? <th className="op">操作</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -265,6 +324,11 @@ export function DocumentListPage({
                     <td>
                       <Badge variant={quote.status === 'finalized' ? 'finalized' : 'draft'} />
                     </td>
+                    {quotes.some((q) => q.status === 'draft') ? (
+                      <td className="op">
+                        {quote.status === 'draft' ? deleteButton('quote', quote.id) : null}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
