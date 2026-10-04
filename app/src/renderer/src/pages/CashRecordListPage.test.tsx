@@ -164,4 +164,27 @@ describe('CashRecordListPage(F-19)', () => {
     await userEvent.click(screen.getByText('記録を表示'))
     expect(p.onSelectRecord).toHaveBeenCalledWith(5, 'history')
   })
+
+  it('[F-23・F-24]集計タブへ切り替えられ、CSV出力ボタンでダイアログを開く', async () => {
+    setup(undefined, {
+      getSummary: vi.fn().mockResolvedValue({
+        years: [2026],
+        period: { income: 0, expense: 0, balance: 0 },
+        monthly: Array.from({ length: 12 }, (_, i) => ({
+          month: i + 1,
+          income: 0,
+          expense: 0,
+          balance: 0
+        })),
+        yearTotal: { income: 0, expense: 0, balance: 0 },
+        yearly: [],
+        expenseByAccount: []
+      })
+    })
+    render(<CashRecordListPage {...props()} />)
+    await userEvent.click(await screen.findByText('集計'))
+    expect(await screen.findByText('月別(行を押すと、その月を選択します)')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('CSV出力'))
+    expect(screen.getByRole('dialog', { name: 'CSV出力' })).toBeInTheDocument()
+  })
 })

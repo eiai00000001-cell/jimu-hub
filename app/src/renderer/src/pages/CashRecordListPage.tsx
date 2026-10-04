@@ -3,6 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Message } from '../components/Message'
 import { KindBadge, RecordStatusBadge } from '../components/RecordBadges'
+import { CsvExportDialog } from '../components/CsvExportDialog'
 import { SummaryPanel } from '../components/SummaryPanel'
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel'
 import { formatSignedAmount } from '../utils/format'
@@ -51,6 +52,7 @@ export function CashRecordListPage({
   const [clients, setClients] = useState<Client[]>([])
   const [accounts, setAccounts] = useState<AccountView[]>([])
   const [result, setResult] = useState<Paged<CashRecordSummary> | null>(null)
+  const [csvOpen, setCsvOpen] = useState(false)
 
   useEffect(() => {
     window.jimuhubApi.listClients({ statusFilter: 'all' }).then(setClients)
@@ -110,6 +112,7 @@ export function CashRecordListPage({
       headerActions={
         <>
           <Button onClick={onOpenAccounts}>勘定科目の管理</Button>
+          <Button onClick={() => setCsvOpen(true)}>CSV出力</Button>
           <Button onClick={() => onNewRecord('expense')}>+ 経費を登録</Button>
           <Button variant="primary" onClick={() => onNewRecord('income')}>
             + 入金を登録
@@ -327,6 +330,7 @@ export function CashRecordListPage({
           ) : null}
         </>
       )}
+      {csvOpen ? <CsvExportDialog onClose={() => setCsvOpen(false)} /> : null}
     </AppShell>
   )
 }
