@@ -5,10 +5,10 @@ import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
 
 /**
  * データベース・エクスポートファイルのスキーマバージョン(app_meta.schema_version)。
- * イテレーション1(v1.3)時点の最新値。参照元: 詳細設計書6章冒頭、4.1章手順2。
+ * 現在の最新値(スキーマv4。イテレーション2で新テーブルを追加)。参照元: 詳細設計書6章冒頭、4.1章手順2。
  *
- * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)が
- * あり、両者は、エクスポート/復元の対応(T-49)を実装するまでの間、DB側(4)が先行する。
+ * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)があり、
+ * 両者は同じ値(4)に揃えておく。スキーマを変更するときは両方を更新する。
  */
 export const CURRENT_SCHEMA_VERSION = 4
 
