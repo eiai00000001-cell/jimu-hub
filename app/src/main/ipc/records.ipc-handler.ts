@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import {
   CashRecordDeleteSchema,
-  CashRecordInputSchema,
+  CashRecordCreateSchema,
   CashRecordUpdateSchema,
   HistoryListFilterSchema,
   RecordIdSchema,
@@ -30,7 +30,7 @@ export class RecordsIpcHandler {
       this.service.getRecord(RecordIdSchema.parse(id))
     )
     ipcMain.handle(IPC_CHANNELS.recordsCreate, async (_event, input: unknown) =>
-      this.service.createRecord(CashRecordInputSchema.parse(input))
+      this.service.createRecord(CashRecordCreateSchema.parse(input))
     )
     ipcMain.handle(IPC_CHANNELS.recordsUpdate, async (_event, input: unknown) =>
       this.service.updateRecord(CashRecordUpdateSchema.parse(input))

@@ -17,6 +17,12 @@ export function formatDateTime(iso: string): string {
   )}:${pad(date.getMinutes())}`
 }
 
+/** ファイルサイズを「412 KB」「1.2 MB」形式にする */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 /** 本日を`YYYY-MM-DD`(ローカル日付)で返す */
 export function todayIso(): string {
   const date = new Date()

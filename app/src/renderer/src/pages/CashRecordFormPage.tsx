@@ -10,7 +10,9 @@ import {
   TAX_CATEGORY_LABELS
 } from '@shared/constants/cash-record'
 import { CashRecordInputSchema } from '@shared/schemas/cash-record.schema'
-import { NAVIGATION_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
+import { RECEIPT_LIMITS } from '@shared/constants/receipt'
+import { NAVIGATION_MESSAGES, RECEIPT_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
+import type { PickedReceipt, ReceiptView } from '@shared/types/receipt'
 import type { AccountView } from '@shared/types/account'
 import type { Client } from '@shared/types/client'
 import type {
@@ -19,7 +21,7 @@ import type {
   RecordKind,
   TaxCategory
 } from '@shared/types/cash-record'
-import { formatYen, todayIso } from '../utils/format'
+import { formatFileSize, formatYen, todayIso } from '../utils/format'
 import { toErrorMessage } from '../utils/error-message'
 
 type FieldName = 'recordDate' | 'amount' | 'accountId' | 'description' | 'reason'
@@ -61,6 +63,11 @@ export function CashRecordFormPage({
   const [formError, setFormError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // 領収書: 保存済み(編集時)・外す予定のID・追加予定(選択済みのファイルの識別子)
+  const [savedReceipts, setSavedReceipts] = useState<ReceiptView[]>([])
+  const [removeIds, setRemoveIds] = useState<number[]>([])
+  const [added, setAdded] = useState<PickedReceipt[]>([])
+  const [receiptErrors, setReceiptErrors] = useState<string[]>([])
 
   useEffect(() => {
     window.jimuhubApi.listAccounts({ includeInactive: true }).then(setAccounts)
@@ -83,6 +90,7 @@ export function CashRecordFormPage({
           return
         }
         setOriginal(record)
+        setSavedReceipts(record.receipts.filter((r) => !r.removed))
         setKind(record.kind)
         setRecordDate(record.recordDate)
         setAmountText(String(record.amount))
@@ -118,6 +126,19 @@ export function CashRecordFormPage({
   )
   const clientOptions = clients.filter((c) => c.status === 'active' || String(c.id) === clientId)
 
+  const activeReceiptCount = savedReceipts.length - removeIds.length + added.length
+
+  /** 「ファイルを追加」: Mainがダイアログを開く。有効な領収書が上限を超える分は追加しない */
+  async function handleAddReceipts(): Promise<void> {
+    const picked = await window.jimuhubApi.pickReceipts()
+    const errors = picked.errors.map((e) => `${e.fileName}: ${e.error}`)
+    const room = RECEIPT_LIMITS.maxPerRecord - activeReceiptCount
+    const accepted = picked.files.slice(0, Math.max(0, room))
+    if (picked.files.length > accepted.length) errors.push(RECEIPT_MESSAGES.countExceeded)
+    setAdded((prev) => [...prev, ...accepted])
+    setReceiptErrors(errors)
+  }
+
   function changeKind(next: RecordKind): void {
     setKind(next)
     setAccountId('')
@@ -135,6 +156,7 @@ export function CashRecordFormPage({
       paymentMethod: paymentMethod === '' ? null : paymentMethod,
       taxCategory: taxCategory === '' ? null : taxCategory
     }
+    const addTokens = added.map((file) => file.token)
     const parsed = CashRecordInputSchema.safeParse(input)
     const nextErrors: Partial<Record<FieldName, string>> = {}
     if (!parsed.success) {
@@ -152,13 +174,18 @@ export function CashRecordFormPage({
     setSaving(true)
     try {
       if (mode === 'new') {
-        const { id } = await window.jimuhubApi.createRecord(parsed.data)
+        const { id } = await window.jimuhubApi.createRecord({
+          ...parsed.data,
+          receiptTokens: addTokens
+        })
         onSaved(id, RECORD_MESSAGES.createSuccess)
       } else {
         const result = await window.jimuhubApi.updateRecord({
           ...parsed.data,
           id: recordId as number,
-          reason: reason.trim() || undefined
+          reason: reason.trim() || undefined,
+          addReceiptTokens: addTokens,
+          removeReceiptIds: removeIds
         })
         onSaved(
           result.id,
@@ -344,6 +371,86 @@ export function CashRecordFormPage({
                     {formatYen(taxAmount)}
                   </div>
                   <div className="hint">金額と税区分から自動計算します(入力不可)</div>
+                </div>
+                <div className="field">
+                  <label>領収書</label>
+                  {savedReceipts.length + added.length === 0 ? (
+                    <div className="receipt-empty">領収書は添付されていません。</div>
+                  ) : (
+                    <div className="receipt-list">
+                      {savedReceipts.map((receipt) => {
+                        const removing = removeIds.includes(receipt.id)
+                        return (
+                          <div key={`saved-${receipt.id}`} className="receipt-item">
+                            <div
+                              className={`thumb${receipt.mimeType === 'application/pdf' ? ' pdf' : ''}`}
+                            />
+                            <div className="receipt-meta">
+                              <div
+                                className="name"
+                                style={removing ? { textDecoration: 'line-through' } : undefined}
+                              >
+                                {receipt.originalName}
+                              </div>
+                              <div className="info">
+                                {`${formatFileSize(receipt.fileSize)} · ${removing ? '外す予定(保存時に外します)' : '保存済み'}`}
+                              </div>
+                            </div>
+                            <Button
+                              className="btn-sm"
+                              onClick={() =>
+                                setRemoveIds((prev) =>
+                                  removing
+                                    ? prev.filter((x) => x !== receipt.id)
+                                    : [...prev, receipt.id]
+                                )
+                              }
+                            >
+                              {removing ? '取り消す' : '削除'}
+                            </Button>
+                          </div>
+                        )
+                      })}
+                      {added.map((file) => (
+                        <div key={file.token} className="receipt-item">
+                          <div
+                            className={`thumb${file.fileName.toLowerCase().endsWith('.pdf') ? ' pdf' : ''}`}
+                          />
+                          <div className="receipt-meta">
+                            <div className="name">{file.fileName}</div>
+                            <div className="info">
+                              {`${formatFileSize(file.fileSize)} · 追加予定(保存時に添付します)`}
+                            </div>
+                          </div>
+                          <Button
+                            className="btn-sm"
+                            onClick={() =>
+                              setAdded((prev) => prev.filter((x) => x.token !== file.token))
+                            }
+                          >
+                            削除
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <Button
+                      className="btn-sm"
+                      disabled={activeReceiptCount >= RECEIPT_LIMITS.maxPerRecord}
+                      onClick={() => void handleAddReceipts()}
+                    >
+                      ファイルを追加
+                    </Button>
+                  </div>
+                  <div className="hint">
+                    {`PDF・JPEG・PNG、1ファイル10MBまで、1つの記録につき5件まで(現在 ${activeReceiptCount} 件)`}
+                  </div>
+                  {receiptErrors.map((message) => (
+                    <div key={message} className="error-message">
+                      {message}
+                    </div>
+                  ))}
                 </div>
                 {mode === 'edit' ? (
                   <div className={fieldClass('reason')}>

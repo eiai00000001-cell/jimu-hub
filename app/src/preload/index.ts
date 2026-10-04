@@ -14,7 +14,7 @@ import type { AccountListFilter } from '@shared/types/account'
 import type { AccountInput } from '@shared/schemas/account.schema'
 import type { RecordListFilter, HistoryListFilter } from '@shared/types/cash-record'
 import type {
-  CashRecordInput,
+  CashRecordCreateInput,
   CashRecordUpdateInput,
   CashRecordDeleteInput
 } from '@shared/schemas/cash-record.schema'
@@ -52,7 +52,8 @@ const jimuhubApi: JimuhubApi = {
   getReceiptPreview: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsPreview, id),
   listRecords: (filter?: RecordListFilter) => ipcRenderer.invoke(IPC_CHANNELS.recordsList, filter),
   getRecord: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.recordsGet, id),
-  createRecord: (input: CashRecordInput) => ipcRenderer.invoke(IPC_CHANNELS.recordsCreate, input),
+  createRecord: (input: CashRecordCreateInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsCreate, input),
   updateRecord: (input: CashRecordUpdateInput) =>
     ipcRenderer.invoke(IPC_CHANNELS.recordsUpdate, input),
   deleteRecord: (input: CashRecordDeleteInput) =>

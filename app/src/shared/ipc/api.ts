@@ -14,7 +14,7 @@ import type {
   RecordListFilter
 } from '../types/cash-record'
 import type {
-  CashRecordInput,
+  CashRecordCreateInput,
   CashRecordUpdateInput,
   CashRecordDeleteInput
 } from '../schemas/cash-record.schema'
@@ -130,7 +130,7 @@ export interface JimuhubApi {
   getReceiptPreview(id: number): Promise<ReceiptPreviewResult>
   listRecords(filter?: RecordListFilter): Promise<Paged<CashRecordSummary>>
   getRecord(id: number): Promise<CashRecordDetail>
-  createRecord(input: CashRecordInput): Promise<{ id: number }>
+  createRecord(input: CashRecordCreateInput): Promise<{ id: number }>
   updateRecord(input: CashRecordUpdateInput): Promise<{ id: number; changed: boolean }>
   deleteRecord(input: CashRecordDeleteInput): Promise<DeactivateClientResult>
   listRecordHistory(filter?: HistoryListFilter): Promise<Paged<HistoryListItem>>

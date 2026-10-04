@@ -199,4 +199,98 @@ describe('CashRecordFormPage(F-18)', () => {
     )
     confirm.mockRestore()
   })
+
+  describe('領収書(F-22)', () => {
+    const picked = (n: number) => ({
+      files: Array.from({ length: n }, (_, i) => ({
+        token: `t${i}`,
+        fileName: `r${i}.pdf`,
+        fileSize: 2048
+      })),
+      errors: []
+    })
+
+    async function fillRequired(): Promise<void> {
+      await screen.findByRole('option', { name: '通信費' })
+      await userEvent.type(screen.getByLabelText(/金額/), '100')
+      await userEvent.selectOptions(screen.getByLabelText(/勘定科目/), '1')
+      await userEvent.type(screen.getByLabelText(/摘要・メモ/), 'x')
+    }
+
+    it('ファイルを追加すると追加予定として一覧表示し、登録時に識別子を渡す。削除で一覧から外せる', async () => {
+      const api = setup({ pickReceipts: vi.fn().mockResolvedValue(picked(2)) })
+      render(<CashRecordFormPage mode="new" onSaved={vi.fn()} onCancel={vi.fn()} />)
+      expect(screen.getByText('領収書は添付されていません。')).toBeInTheDocument()
+      await fillRequired()
+      await userEvent.click(screen.getByText('ファイルを追加'))
+      expect(await screen.findByText('r0.pdf')).toBeInTheDocument()
+      expect(screen.getAllByText(/追加予定/)).toHaveLength(2)
+      expect(screen.getByText(/現在 2 件/)).toBeInTheDocument()
+      await userEvent.click(screen.getAllByText('削除')[1]!)
+      expect(screen.queryByText('r1.pdf')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByText('登録'))
+      await waitFor(() =>
+        expect(api.createRecord).toHaveBeenCalledWith(
+          expect.objectContaining({ receiptTokens: ['t0'] })
+        )
+      )
+    })
+
+    it('有効な領収書が5件に達すると「ファイルを追加」を無効にし、超過分は追加せず案内する', async () => {
+      setup({ pickReceipts: vi.fn().mockResolvedValue(picked(7)) })
+      render(<CashRecordFormPage mode="new" onSaved={vi.fn()} onCancel={vi.fn()} />)
+      await userEvent.click(screen.getByText('ファイルを追加'))
+      expect(await screen.findByText('領収書は1つの記録につき5件までです')).toBeInTheDocument()
+      expect(screen.getAllByText(/追加予定/)).toHaveLength(5)
+      expect(screen.getByText('ファイルを追加')).toBeDisabled()
+    })
+
+    it('検証に通らないファイルはエラーを表示し、他のファイルは追加できる', async () => {
+      setup({
+        pickReceipts: vi.fn().mockResolvedValue({
+          files: [{ token: 't', fileName: 'ok.pdf', fileSize: 1024 }],
+          errors: [
+            {
+              fileName: 'bad.txt',
+              error: '領収書として添付できるのは、PDF・JPEG・PNGのファイルです'
+            }
+          ]
+        })
+      })
+      render(<CashRecordFormPage mode="new" onSaved={vi.fn()} onCancel={vi.fn()} />)
+      await userEvent.click(screen.getByText('ファイルを追加'))
+      expect(await screen.findByText('ok.pdf')).toBeInTheDocument()
+      expect(
+        screen.getByText('bad.txt: 領収書として添付できるのは、PDF・JPEG・PNGのファイルです')
+      ).toBeInTheDocument()
+    })
+
+    it('編集: 保存済みの領収書を「削除」で外す予定にでき、保存時にIDを渡す', async () => {
+      const receipt = {
+        id: 11,
+        originalName: 'old.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 4096,
+        removed: false,
+        state: 'ok'
+      }
+      const api = setup({
+        getRecord: vi.fn().mockResolvedValue({
+          ...record({ accountId: 1, clientId: null, clientName: null }),
+          receipts: [receipt]
+        })
+      })
+      render(<CashRecordFormPage mode="edit" recordId={5} onSaved={vi.fn()} onCancel={vi.fn()} />)
+      expect(await screen.findByText('old.pdf')).toBeInTheDocument()
+      expect(screen.getByText(/保存済み/)).toBeInTheDocument()
+      await userEvent.click(screen.getByText('削除'))
+      expect(screen.getByText(/外す予定/)).toBeInTheDocument()
+      await userEvent.click(screen.getByText('保存'))
+      await waitFor(() =>
+        expect(api.updateRecord).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 5, removeReceiptIds: [11], addReceiptTokens: [] })
+        )
+      )
+    })
+  })
 })

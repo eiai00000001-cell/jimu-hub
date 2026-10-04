@@ -55,14 +55,17 @@ const props = () => ({
   onOpenInvoice: vi.fn()
 })
 
-function setup(record: CashRecordDetail, overrides = {}) {
+function setup(
+  record: CashRecordDetail,
+  overrides: Record<string, unknown> = {}
+): Record<string, ReturnType<typeof vi.fn>> {
   const api = {
     getRecord: vi.fn().mockResolvedValue(record),
     deleteRecord: vi.fn().mockResolvedValue({ success: true }),
     ...overrides
   }
   window.jimuhubApi = api as unknown as Window['jimuhubApi']
-  return api
+  return api as unknown as Record<string, ReturnType<typeof vi.fn>>
 }
 
 describe('CashRecordDetailPage(F-18・F-20)', () => {
@@ -156,5 +159,123 @@ describe('CashRecordDetailPage(F-18・F-20)', () => {
     } as unknown as Window['jimuhubApi']
     render(<CashRecordDetailPage {...props()} />)
     expect(await screen.findByText('対象の記録が見つかりません')).toBeInTheDocument()
+  })
+
+  describe('領収書(F-22)', () => {
+    const receipt = (over = {}) => ({
+      id: 11,
+      originalName: 'receipt.jpg',
+      mimeType: 'image/jpeg' as const,
+      fileSize: 412 * 1024,
+      removed: false,
+      state: 'ok' as const,
+      ...over
+    })
+    const withReceipts = (receipts: ReturnType<typeof receipt>[]) => ({
+      ...base,
+      receipts,
+      integrity: {
+        recordHashOk: true,
+        historyHashOk: true,
+        receipts: receipts.map((r) => ({ id: r.id, state: r.state }))
+      }
+    })
+    const apiWith = (record: unknown, overrides = {}) =>
+      setup(record as CashRecordDetail, {
+        getReceiptThumbnail: vi.fn().mockResolvedValue({
+          success: true,
+          state: 'ok',
+          kind: 'image',
+          mimeType: 'image/jpeg',
+          dataUrl: 'data:image/jpeg;base64,AAAA'
+        }),
+        getReceiptPreview: vi.fn().mockResolvedValue({
+          success: true,
+          state: 'ok',
+          kind: 'image',
+          mimeType: 'image/jpeg',
+          dataUrl: 'data:image/jpeg;base64,BBBB'
+        }),
+        openReceipt: vi.fn().mockResolvedValue({ success: true }),
+        showReceiptInFolder: vi.fn().mockResolvedValue({ success: true }),
+        ...overrides
+      })
+
+    it('領収書のカード(名前・形式・サイズ・サムネイル)を表示し、開く・Finderで表示を呼べる', async () => {
+      const api = apiWith(withReceipts([receipt()]))
+      render(<CashRecordDetailPage {...props()} />)
+      expect(await screen.findByText('receipt.jpg')).toBeInTheDocument()
+      expect(screen.getByText('JPEG · 412 KB')).toBeInTheDocument()
+      const img = await screen.findByAltText('')
+      expect(img).toHaveAttribute('src', 'data:image/jpeg;base64,AAAA')
+      await userEvent.click(screen.getByText('開く'))
+      await userEvent.click(screen.getByText('Finderで表示'))
+      await waitFor(() => expect(api['openReceipt']).toHaveBeenCalledWith(11))
+      expect(api['showReceiptInFolder']).toHaveBeenCalledWith(11)
+    })
+
+    it('サムネイル押下で拡大表示ダイアログを開き、Escで閉じる。「開く(OS標準アプリ)」で外部アプリを開く', async () => {
+      const api = apiWith(withReceipts([receipt()]))
+      render(<CashRecordDetailPage {...props()} />)
+      await userEvent.click(await screen.findByLabelText('receipt.jpgを拡大表示'))
+      const dialog = await screen.findByRole('dialog')
+      expect(await screen.findByAltText('receipt.jpg')).toHaveAttribute(
+        'src',
+        'data:image/jpeg;base64,BBBB'
+      )
+      await userEvent.click(screen.getByText('開く(OS標準アプリ)'))
+      expect(api['openReceipt']).toHaveBeenCalledWith(11)
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    })
+
+    it('PDFは拡大せず案内を表示する', async () => {
+      apiWith(withReceipts([receipt({ originalName: 'a.pdf', mimeType: 'application/pdf' })]), {
+        getReceiptThumbnail: vi.fn().mockResolvedValue({ success: true, state: 'ok', kind: 'pdf' }),
+        getReceiptPreview: vi.fn().mockResolvedValue({ success: true, state: 'ok', kind: 'pdf' })
+      })
+      render(<CashRecordDetailPage {...props()} />)
+      await userEvent.click(await screen.findByLabelText('a.pdfを拡大表示'))
+      expect(
+        await screen.findByText(
+          'PDFはアプリ内では表示できません。「開く(OS標準アプリ)」でご確認ください'
+        )
+      ).toBeInTheDocument()
+    })
+
+    it('改変・欠落の領収書は警告を表示し、サムネイルは警告アイコン、拡大表示も警告のみ(画像を表示しない)', async () => {
+      apiWith(
+        withReceipts([
+          receipt({ state: 'mismatch' }),
+          receipt({ id: 12, originalName: 'm.png', state: 'missing' })
+        ]),
+        {
+          getReceiptThumbnail: vi.fn().mockResolvedValue({ success: false, state: 'mismatch' }),
+          getReceiptPreview: vi.fn().mockResolvedValue({ success: false, state: 'mismatch' })
+        }
+      )
+      render(<CashRecordDetailPage {...props()} />)
+      expect(
+        await screen.findByText('ファイルの改変が疑われます', { selector: '.badge' })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('ファイルが見つかりません', { selector: '.badge' })
+      ).toBeInTheDocument()
+      await userEvent.click(screen.getByLabelText('receipt.jpgを拡大表示'))
+      expect(await screen.findByRole('alert')).toHaveTextContent('ファイルの改変が疑われます')
+      expect(screen.queryByAltText('receipt.jpg')).not.toBeInTheDocument()
+    })
+
+    it('外した領収書も表示し(「外した領収書」)、領収書を開けない場合は文言を表示する', async () => {
+      apiWith(withReceipts([receipt({ removed: true })]), {
+        openReceipt: vi
+          .fn()
+          .mockResolvedValue({ success: false, error: '領収書ファイルが見つかりません。案内' })
+      })
+      render(<CashRecordDetailPage {...props()} />)
+      expect(await screen.findByText('外した領収書')).toBeInTheDocument()
+      await userEvent.click(screen.getByText('開く'))
+      expect(await screen.findByText('領収書ファイルが見つかりません。案内')).toBeInTheDocument()
+    })
   })
 })

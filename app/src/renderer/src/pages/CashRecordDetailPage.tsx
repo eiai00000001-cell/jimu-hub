@@ -8,9 +8,12 @@ import {
   PAYMENT_METHOD_LABELS,
   TAX_CATEGORY_LABELS
 } from '@shared/constants/cash-record'
-import { RECORD_MESSAGES } from '@shared/messages/messages'
+import { RECEIPT_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
+import { ReceiptThumbnail } from '../components/ReceiptThumbnail'
+import { ReceiptPreviewDialog } from '../components/ReceiptPreviewDialog'
+import type { ReceiptView } from '@shared/types/receipt'
 import type { CashRecordDetail } from '@shared/types/cash-record'
-import { formatDateTime, formatSignedAmount, formatYen } from '../utils/format'
+import { formatDateTime, formatFileSize, formatSignedAmount, formatYen } from '../utils/format'
 import { toErrorMessage } from '../utils/error-message'
 
 interface CashRecordDetailPageProps {
@@ -40,6 +43,7 @@ export function CashRecordDetailPage({
   const [actionMessage, setActionMessage] = useState<{ error: boolean; text: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [reason, setReason] = useState('')
+  const [previewing, setPreviewing] = useState<ReceiptView | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,6 +70,15 @@ export function CashRecordDetailPage({
     }
     setActionMessage(null)
     setDeleting(true)
+  }
+
+  /** 領収書を開く・Finderで表示する。失敗時(ファイルが見つからない等)は画面に表示する */
+  async function handleReceiptAction(
+    action: (id: number) => Promise<{ success: true } | { success: false; error: string }>,
+    id: number
+  ): Promise<void> {
+    const result = await action(id)
+    setActionMessage(result.success ? null : { error: true, text: result.error })
   }
 
   async function handleConfirmDelete(): Promise<void> {
@@ -163,6 +176,62 @@ export function CashRecordDetailPage({
               <dd>{formatDateTime(record.updatedAt)}</dd>
             </dl>
 
+            {record.receipts.length > 0 ? (
+              <>
+                <div className="section-title">
+                  領収書(サムネイルをクリックすると拡大して確認できます)
+                </div>
+                <div className="receipt-cards">
+                  {record.receipts.map((receipt) => (
+                    <div
+                      key={receipt.id}
+                      className={`receipt-card${receipt.removed ? ' removed' : ''}`}
+                    >
+                      <ReceiptThumbnail receipt={receipt} onClick={() => setPreviewing(receipt)} />
+                      <div className="name">{receipt.originalName}</div>
+                      <div className="info">
+                        {`${receipt.mimeType === 'application/pdf' ? 'PDF' : receipt.mimeType === 'image/png' ? 'PNG' : 'JPEG'} · ${formatFileSize(receipt.fileSize)}`}
+                        {receipt.removed ? (
+                          <>
+                            {' · '}
+                            <span className="badge badge-cancelled">外した領収書</span>
+                          </>
+                        ) : null}
+                      </div>
+                      {receipt.state !== 'ok' ? (
+                        <span className="badge badge-warning">
+                          {receipt.state === 'mismatch'
+                            ? RECEIPT_MESSAGES.mismatchWarning
+                            : RECEIPT_MESSAGES.missingWarning}
+                        </span>
+                      ) : null}
+                      <div className="btns">
+                        <Button
+                          className="btn-sm"
+                          onClick={() =>
+                            void handleReceiptAction(window.jimuhubApi.openReceipt, receipt.id)
+                          }
+                        >
+                          開く
+                        </Button>
+                        <Button
+                          className="btn-sm"
+                          onClick={() =>
+                            void handleReceiptAction(
+                              window.jimuhubApi.showReceiptInFolder,
+                              receipt.id
+                            )
+                          }
+                        >
+                          Finderで表示
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
             <div className="section-title">履歴</div>
             <table className="table">
               <thead>
@@ -203,6 +272,17 @@ export function CashRecordDetailPage({
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>
         </>
+      ) : null}
+
+      {previewing ? (
+        <ReceiptPreviewDialog
+          receiptId={previewing.id}
+          fileName={previewing.originalName}
+          onOpenExternal={() =>
+            void handleReceiptAction(window.jimuhubApi.openReceipt, previewing.id)
+          }
+          onClose={() => setPreviewing(null)}
+        />
       ) : null}
 
       {deleting ? (
