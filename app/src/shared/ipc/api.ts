@@ -19,7 +19,7 @@ import type {
 } from '../schemas/cash-record.schema'
 import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
 import type { QuoteInput } from '../schemas/quote.schema'
-import type { Invoice, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
+import type { InvoiceDetail, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
 import type { InvoiceInput } from '../schemas/invoice.schema'
 
 /**
@@ -146,7 +146,7 @@ export interface JimuhubApi {
   convertQuoteToInvoice(quoteId: number): Promise<ConvertQuoteToInvoiceResult>
   listInvoices(filter?: InvoiceListFilter): Promise<InvoiceSummary[]>
   /** 対象が存在しない場合はPromiseがreject(例外)される(InvoiceService.getInvoice()参照) */
-  getInvoice(id: number): Promise<Invoice>
+  getInvoice(id: number): Promise<InvoiceDetail>
   saveInvoiceDraft(request: SaveInvoiceDraftRequest): Promise<SaveInvoiceDraftResult>
   finalizeInvoice(request: FinalizeInvoiceRequest): Promise<FinalizeInvoiceResult>
   updateInvoicePaymentStatus(

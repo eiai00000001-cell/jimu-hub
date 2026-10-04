@@ -140,6 +140,8 @@ export const INVOICE_MESSAGES = {
   deleteDraftSuccess: '下書きを削除しました',
   finalizedNotDeletable: 'PDF保存済みの請求書は削除できません',
   hasCashRecord: 'この請求書に紐づく入金記録があるため削除できません',
+  paymentRecordCreateFailure: '入金記録を作成できなかったため、入金済みにできませんでした',
+  paymentRecordCancelFailure: '入金記録を取消できなかったため、未収に戻せませんでした',
   markAsPaidSuccess: '入金済みにしました',
   markAsUnpaidSuccess: '未収に戻しました',
   markAsUnpaidTitle: '未収に戻しますか',

@@ -134,17 +134,18 @@ app.whenReady().then(() => {
       pdfService
     })
 
+    const recordServices = createRecordServices(database)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
       quoteRepository,
       companyProfileRepository,
       numberingService,
-      pdfService
+      pdfService,
+      paymentRecorder: recordServices.cashRecordService
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
-    const recordServices = createRecordServices(database)
     new RecordsIpcHandler(
       recordServices.cashRecordService,
       recordServices.historyService
