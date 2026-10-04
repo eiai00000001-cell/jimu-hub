@@ -4,6 +4,19 @@ import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
 import type { AccountView, AccountListFilter } from '../types/account'
 import type { AccountInput } from '../schemas/account.schema'
+import type {
+  CashRecordDetail,
+  CashRecordSummary,
+  HistoryListFilter,
+  HistoryListItem,
+  Paged,
+  RecordListFilter
+} from '../types/cash-record'
+import type {
+  CashRecordInput,
+  CashRecordUpdateInput,
+  CashRecordDeleteInput
+} from '../schemas/cash-record.schema'
 import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
 import type { QuoteInput } from '../schemas/quote.schema'
 import type { Invoice, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
@@ -109,6 +122,12 @@ export interface JimuhubApi {
   deactivateAccount(id: number): Promise<DeactivateClientResult>
   reactivateAccount(id: number): Promise<DeactivateClientResult>
   deleteAccount(id: number): Promise<DeactivateClientResult>
+  listRecords(filter?: RecordListFilter): Promise<Paged<CashRecordSummary>>
+  getRecord(id: number): Promise<CashRecordDetail>
+  createRecord(input: CashRecordInput): Promise<{ id: number }>
+  updateRecord(input: CashRecordUpdateInput): Promise<{ id: number; changed: boolean }>
+  deleteRecord(input: CashRecordDeleteInput): Promise<DeactivateClientResult>
+  listRecordHistory(filter?: HistoryListFilter): Promise<Paged<HistoryListItem>>
   deactivateClient(id: number): Promise<DeactivateClientResult>
   /** 利用停止の取引先を利用中へ戻す(F-25)。存在しない・既に利用中の場合はreject */
   reactivateClient(id: number): Promise<DeactivateClientResult>

@@ -12,6 +12,12 @@ import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
 import type { AccountListFilter } from '@shared/types/account'
 import type { AccountInput } from '@shared/schemas/account.schema'
+import type { RecordListFilter, HistoryListFilter } from '@shared/types/cash-record'
+import type {
+  CashRecordInput,
+  CashRecordUpdateInput,
+  CashRecordDeleteInput
+} from '@shared/schemas/cash-record.schema'
 import type { QuoteListFilter } from '@shared/types/quote'
 import type { InvoiceListFilter } from '@shared/types/invoice'
 
@@ -39,6 +45,15 @@ const jimuhubApi: JimuhubApi = {
   deactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDeactivate, id),
   reactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsReactivate, id),
   deleteAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDelete, id),
+  listRecords: (filter?: RecordListFilter) => ipcRenderer.invoke(IPC_CHANNELS.recordsList, filter),
+  getRecord: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.recordsGet, id),
+  createRecord: (input: CashRecordInput) => ipcRenderer.invoke(IPC_CHANNELS.recordsCreate, input),
+  updateRecord: (input: CashRecordUpdateInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsUpdate, input),
+  deleteRecord: (input: CashRecordDeleteInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsDelete, input),
+  listRecordHistory: (filter?: HistoryListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordHistoryList, filter),
   exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
