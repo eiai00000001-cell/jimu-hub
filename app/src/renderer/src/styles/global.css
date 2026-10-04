@@ -896,3 +896,42 @@ button {
   text-align: right;
   white-space: nowrap;
 }
+
+/* 勘定科目管理画面(F-17) */
+.block-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.inline-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.inline-form .field {
+  margin-bottom: 0;
+}
+.account-name-field {
+  width: 280px;
+}
+.account-kind-field {
+  width: 140px;
+}
+.account-name-field input,
+.account-kind-field select {
+  width: 100%;
+}
+.account-add {
+  margin-bottom: 16px;
+}
+.account-add .hint {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+}
+.account-system-badge {
+  margin-left: 8px;
+}
+.account-op {
+  margin-left: 6px;
+}

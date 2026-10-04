@@ -8,6 +8,7 @@ import { DocumentListPage } from './pages/DocumentListPage'
 import { QuoteFormPage } from './pages/QuoteFormPage'
 import { QuoteDetailPage } from './pages/QuoteDetailPage'
 import { InvoiceFormPage } from './pages/InvoiceFormPage'
+import { AccountListPage } from './pages/AccountListPage'
 import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { NavigationContext } from './layout/NavigationContext'
@@ -32,6 +33,7 @@ type Route =
   | { name: 'top' }
   | { name: 'clientList'; flashMessage?: string }
   | { name: 'clientNew' }
+  | { name: 'accountList' }
   | { name: 'clientDetail'; id: number; flashMessage?: string }
   | { name: 'clientEdit'; id: number }
   | { name: 'companyProfile'; returnTo?: CompanyProfileReturnTo }
@@ -116,6 +118,9 @@ export function App(): ReactElement {
             onSelectClient={(id) => setRoute({ name: 'clientDetail', id })}
           />
         )
+      case 'accountList':
+        // 入出金・経費一覧(T-44)の実装までは、戻り先をトップ画面とする。入口の「勘定科目の管理」ボタンはT-44で追加する
+        return <AccountListPage onBackToList={() => setRoute({ name: 'top' })} />
       case 'clientNew':
         return (
           <ClientFormPage
