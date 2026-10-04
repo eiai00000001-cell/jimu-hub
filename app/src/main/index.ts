@@ -18,6 +18,9 @@ import { QuoteService } from './services/quote.service'
 import { AccountsIpcHandler } from './ipc/accounts.ipc-handler'
 import { AccountService } from './services/account.service'
 import { AccountRepository } from './repositories/account.repository'
+import { ReportsIpcHandler } from './ipc/reports.ipc-handler'
+import { SummaryRepository } from './repositories/summary.repository'
+import { SummaryService } from './services/summary.service'
 import { ReceiptsIpcHandler } from './ipc/receipts.ipc-handler'
 import { RecordsIpcHandler } from './ipc/records.ipc-handler'
 import { createRecordServices } from './services/record-services'
@@ -147,6 +150,7 @@ app.whenReady().then(() => {
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
+    new ReportsIpcHandler(new SummaryService(new SummaryRepository(database))).registerHandlers()
     new ReceiptsIpcHandler(
       recordServices.receiptService,
       recordServices.receiptRepository,

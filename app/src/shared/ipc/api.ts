@@ -4,6 +4,8 @@ import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
 import type { AccountView, AccountListFilter } from '../types/account'
 import type { AccountInput } from '../schemas/account.schema'
+import type { SummaryInput } from '../schemas/summary.schema'
+import type { SummaryResult } from '../types/summary'
 import type { PickReceiptsResult, ReceiptPreviewResult } from '../types/receipt'
 import type {
   CashRecordDetail,
@@ -123,6 +125,7 @@ export interface JimuhubApi {
   deactivateAccount(id: number): Promise<DeactivateClientResult>
   reactivateAccount(id: number): Promise<DeactivateClientResult>
   deleteAccount(id: number): Promise<DeactivateClientResult>
+  getSummary(input: SummaryInput): Promise<SummaryResult>
   pickReceipts(): Promise<PickReceiptsResult>
   openReceipt(id: number): Promise<OpenPdfResult>
   showReceiptInFolder(id: number): Promise<OpenPdfResult>

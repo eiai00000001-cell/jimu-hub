@@ -12,6 +12,7 @@ import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
 import type { AccountListFilter } from '@shared/types/account'
 import type { AccountInput } from '@shared/schemas/account.schema'
+import type { SummaryInput } from '@shared/schemas/summary.schema'
 import type { RecordListFilter, HistoryListFilter } from '@shared/types/cash-record'
 import type {
   CashRecordCreateInput,
@@ -45,6 +46,7 @@ const jimuhubApi: JimuhubApi = {
   deactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDeactivate, id),
   reactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsReactivate, id),
   deleteAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDelete, id),
+  getSummary: (input: SummaryInput) => ipcRenderer.invoke(IPC_CHANNELS.summaryGet, input),
   pickReceipts: () => ipcRenderer.invoke(IPC_CHANNELS.receiptsPick),
   openReceipt: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsOpen, id),
   showReceiptInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsShowInFolder, id),

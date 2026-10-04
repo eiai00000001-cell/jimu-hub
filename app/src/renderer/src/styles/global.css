@@ -1162,3 +1162,41 @@ button {
   max-height: 60vh;
   display: block;
 }
+
+/* 集計(F-23)。表のみで、グラフは使わない */
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.summary-card {
+  flex: 1;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 16px 20px;
+}
+.summary-card .label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.summary-card .value {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.table tr.selected td {
+  background: var(--color-bg);
+  font-weight: 600;
+}
+.table tr.total td {
+  background: var(--color-bg);
+  font-weight: 600;
+  border-top: 1px solid var(--color-border);
+}

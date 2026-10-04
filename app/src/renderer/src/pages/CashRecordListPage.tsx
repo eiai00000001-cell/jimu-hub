@@ -3,6 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Message } from '../components/Message'
 import { KindBadge, RecordStatusBadge } from '../components/RecordBadges'
+import { SummaryPanel } from '../components/SummaryPanel'
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel'
 import { formatSignedAmount } from '../utils/format'
 import type { Client } from '@shared/types/client'
@@ -15,7 +16,7 @@ import type {
 } from '@shared/types/cash-record'
 import { RECORD_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 
-export type CashTab = 'records' | 'history'
+export type CashTab = 'records' | 'summary' | 'history'
 
 interface CashRecordListPageProps {
   initialTab?: CashTab
@@ -27,7 +28,7 @@ interface CashRecordListPageProps {
 }
 
 /**
- * 入出金・経費一覧画面[F-19]。タブ(記録一覧/履歴)を持つ。集計タブ(F-23)・CSV出力(F-24)は後続で追加する。
+ * 入出金・経費一覧画面[F-19]。タブ(記録一覧/集計/履歴)を持つ。
  * 参照元: 詳細設計書3.15章・3.18章・4.19章、5章(`CashRecordListPage`)
  */
 export function CashRecordListPage({
@@ -128,6 +129,13 @@ export function CashRecordListPage({
         </button>
         <button
           type="button"
+          className={`tab${tab === 'summary' ? ' active' : ''}`}
+          onClick={() => setTab('summary')}
+        >
+          集計
+        </button>
+        <button
+          type="button"
           className={`tab${tab === 'history' ? ' active' : ''}`}
           onClick={() => setTab('history')}
         >
@@ -135,7 +143,9 @@ export function CashRecordListPage({
         </button>
       </div>
 
-      {tab === 'history' ? (
+      {tab === 'summary' ? (
+        <SummaryPanel />
+      ) : tab === 'history' ? (
         <RecordHistoryPanel onShowRecord={(id) => onSelectRecord(id, 'history')} />
       ) : (
         <>
