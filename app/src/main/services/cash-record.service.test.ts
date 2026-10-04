@@ -6,7 +6,12 @@ import { CashRecordRepository } from '../repositories/cash-record.repository'
 import { ClientRepository } from '../repositories/client.repository'
 import { ReceiptRepository } from '../repositories/receipt.repository'
 import { CashRecordService, RecordError } from './cash-record.service'
+import { mkdtempSync, readdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { IntegrityService } from './integrity/integrity.service'
+import { ReceiptService } from './receipts/receipt.service'
+import { ReceiptStagingStore } from './receipts/receipt-staging-store'
 import { RecordHistoryService } from './record-history.service'
 import type { CashRecordInput } from '@shared/schemas/cash-record.schema'
 
@@ -15,6 +20,8 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
   let service: CashRecordService
   let accounts: AccountRepository
   let clients: ClientRepository
+  let work: string
+  let receiptService: ReceiptService
   let expenseId: number
   let incomeId: number
   let clientId: number
@@ -39,6 +46,8 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
     const recordRepo = new CashRecordRepository(db)
     const historyRepo = new CashRecordHistoryRepository(db)
     const receiptRepo = new ReceiptRepository(db)
+    work = mkdtempSync(join(tmpdir(), 'jimuhub-crs-'))
+    receiptService = new ReceiptService(join(work, 'documents'), new ReceiptStagingStore())
     service = new CashRecordService({
       database: db,
       repository: recordRepo,
@@ -46,7 +55,13 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       accountRepository: accounts,
       clientRepository: clients,
       historyService: new RecordHistoryService(historyRepo),
-      integrityService: new IntegrityService(recordRepo, receiptRepo, historyRepo)
+      integrityService: new IntegrityService(
+        recordRepo,
+        receiptRepo,
+        historyRepo,
+        join(work, 'documents')
+      ),
+      receiptService
     })
     expenseId = accounts.findAll({ kind: 'expense' })[0]!.id
     incomeId = accounts.findAll({ kind: 'income' })[0]!.id
@@ -80,7 +95,7 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       })
       expect(detail.history).toHaveLength(1)
       expect(detail.history[0]).toMatchObject({ operation: 'create', reason: null })
-      expect(detail.integrity).toEqual({ recordHashOk: true, historyHashOk: true })
+      expect(detail.integrity).toMatchObject({ recordHashOk: true, historyHashOk: true })
       const row = db.sqlite
         .prepare('SELECT record_hash FROM cash_records WHERE id = ?')
         .get(id) as { record_hash: string }
@@ -349,7 +364,7 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       })
       expect(detail.history).toHaveLength(1)
       expect(detail.history[0]).toMatchObject({ operation: 'create', reason: null })
-      expect(detail.integrity).toEqual({ recordHashOk: true, historyHashOk: true })
+      expect(detail.integrity).toMatchObject({ recordHashOk: true, historyHashOk: true })
     })
 
     it('売上高の名称を変更していても、default_keyで参照して作成できる。科目が無ければ例外', () => {
@@ -385,7 +400,7 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
         operation: 'cancel',
         reason: '請求書の入金済みを取り消しました'
       })
-      expect(cancelled.integrity).toEqual({ recordHashOk: true, historyHashOk: true })
+      expect(cancelled.integrity).toMatchObject({ recordHashOk: true, historyHashOk: true })
       expect(service.listRecords({}).items[0]).toMatchObject({ id: first, status: 'cancelled' })
 
       const second = service.createFromInvoicePayment(source()).id
@@ -440,6 +455,158 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
       expect(service.hasRecordsForInvoice(invoiceId)).toBe(false)
       service.createFromInvoicePayment(source())
       expect(service.hasRecordsForInvoice(invoiceId)).toBe(true)
+    })
+  })
+
+  describe('領収書の添付・取り外し(F-22。詳細設計書4.18・4.22章)', () => {
+    /** ダミーの領収書(実ファイルは使わない) */
+    const pdf = (tag: string): Buffer => Buffer.from(`%PDF-1.4\n${tag}`)
+    const stage = (name: string, content: Buffer): string => {
+      const p = join(work, name)
+      writeFileSync(p, content)
+      return receiptService.pickAndStage([p]).files[0]!.token
+    }
+    const receiptDir = (): string => join(work, 'documents', 'receipts')
+    const countFiles = (): number =>
+      existsSync(receiptDir())
+        ? readdirSync(receiptDir(), { recursive: true, withFileTypes: true }).filter((e) =>
+            e.isFile()
+          ).length
+        : 0
+
+    it('登録時に領収書を添付すると、receipts・履歴・記録ハッシュに反映され、詳細で照合結果okを返す', () => {
+      const token = stage('a.pdf', pdf('a'))
+      const { id } = service.createRecord({ ...input(), receiptTokens: [token] })
+      const detail = service.getRecord(id)
+      expect(detail.receipts).toEqual([
+        {
+          id: expect.any(Number),
+          originalName: 'a.pdf',
+          mimeType: 'application/pdf',
+          fileSize: pdf('a').length,
+          removed: false,
+          state: 'ok'
+        }
+      ])
+      expect(detail.integrity.receipts).toEqual([{ id: detail.receipts[0]!.id, state: 'ok' }])
+      expect(detail.integrity).toMatchObject({ recordHashOk: true, historyHashOk: true })
+      expect(service.listRecords({}).items[0]!.receiptCount).toBe(1)
+      expect(countFiles()).toBe(1)
+    })
+
+    it('更新で領収書を追加・外すと、外した領収書はファイルを残して履歴に記録される(★E13)', () => {
+      const first = stage('a.pdf', pdf('a'))
+      const { id } = service.createRecord({ ...input(), receiptTokens: [first] })
+      const receiptId = service.getRecord(id).receipts[0]!.id
+      const second = stage('b.pdf', pdf('b'))
+      const result = service.updateRecord({
+        ...input(),
+        id,
+        addReceiptTokens: [second],
+        removeReceiptIds: [receiptId],
+        reason: '差し替え'
+      })
+      expect(result.changed).toBe(true)
+      const detail = service.getRecord(id)
+      expect(detail.receipts.map((r) => [r.originalName, r.removed])).toEqual([
+        ['a.pdf', true],
+        ['b.pdf', false]
+      ])
+      expect(detail.history[0]!.changes).toContainEqual({
+        label: '領収書',
+        before: '(なし)',
+        after: '追加: b.pdf、外した: a.pdf'
+      })
+      expect(detail.integrity).toMatchObject({ recordHashOk: true, historyHashOk: true })
+      expect(detail.integrity.receipts.every((r) => r.state === 'ok')).toBe(true)
+      expect(service.listRecords({}).items[0]!.receiptCount).toBe(1)
+      expect(countFiles()).toBe(2)
+    })
+
+    it('領収書は1つの記録につき有効5件まで(登録・更新とも)。超過時はファイルを保存しない', () => {
+      const tokens = Array.from({ length: 6 }, (_, i) => stage(`r${i}.pdf`, pdf(String(i))))
+      expect(() => service.createRecord({ ...input(), receiptTokens: tokens })).toThrow(
+        '領収書は1つの記録につき5件までです'
+      )
+      expect(countFiles()).toBe(0)
+      const { id } = service.createRecord({ ...input(), receiptTokens: tokens.slice(0, 5) })
+      const extra = stage('x.pdf', pdf('x'))
+      expect(() => service.updateRecord({ ...input(), id, addReceiptTokens: [extra] })).toThrow(
+        '領収書は1つの記録につき5件までです'
+      )
+      expect(countFiles()).toBe(5)
+      const ids = service.getRecord(id).receipts.map((r) => r.id)
+      expect(() =>
+        service.updateRecord({
+          ...input(),
+          id,
+          addReceiptTokens: [extra],
+          removeReceiptIds: [ids[0]!]
+        })
+      ).not.toThrow()
+    })
+
+    it('他の記録の領収書・既に外した領収書は外せない', () => {
+      const a = service.createRecord({ ...input(), receiptTokens: [stage('a.pdf', pdf('a'))] }).id
+      const b = service.createRecord({ ...input(), receiptTokens: [stage('b.pdf', pdf('b'))] }).id
+      const aReceipt = service.getRecord(a).receipts[0]!.id
+      expect(() =>
+        service.updateRecord({ ...input(), id: b, removeReceiptIds: [aReceipt] })
+      ).toThrow('外す領収書の指定が正しくありません')
+      service.updateRecord({ ...input(), id: a, removeReceiptIds: [aReceipt] })
+      expect(() =>
+        service.updateRecord({ ...input(), id: a, removeReceiptIds: [aReceipt] })
+      ).toThrow('外す領収書の指定が正しくありません')
+    })
+
+    it('無効な識別子は拒否する。履歴の記録に失敗した場合は、保存した領収書ファイルも削除する', () => {
+      expect(() => service.createRecord({ ...input(), receiptTokens: ['unknown'] })).toThrow(
+        '選択したファイルが無効になりました。もう一度ファイルを選択してください'
+      )
+      const token = stage('a.pdf', pdf('a'))
+      db.sqlite.exec('DROP TABLE cash_record_history')
+      expect(() => service.createRecord({ ...input(), receiptTokens: [token] })).toThrow(
+        '履歴を記録できなかったため、変更できませんでした'
+      )
+      expect(countFiles()).toBe(0)
+      const rows = db.sqlite.prepare('SELECT COUNT(*) AS c FROM receipts').get() as { c: number }
+      expect(rows.c).toBe(0)
+    })
+
+    it('領収書ファイルの改変・欠落を検知する(外した領収書も照合する)', () => {
+      const { id } = service.createRecord({
+        ...input(),
+        receiptTokens: [stage('a.pdf', pdf('a')), stage('b.pdf', pdf('b'))]
+      })
+      const row = db.sqlite
+        .prepare('SELECT id, file_path FROM receipts ORDER BY id')
+        .all() as Array<{ id: number; file_path: string }>
+      writeFileSync(join(work, 'documents', row[0]!.file_path), Buffer.from('%PDF-1.4\ntampered'))
+      rmSync(join(work, 'documents', row[1]!.file_path))
+      const integrity = service.getRecord(id).integrity
+      expect(integrity.receipts).toEqual([
+        { id: row[0]!.id, state: 'mismatch' },
+        { id: row[1]!.id, state: 'missing' }
+      ])
+      expect(integrity.recordHashOk).toBe(true)
+    })
+
+    it('保存先がreceipts配下でない(改ざんされたfile_path)領収書はmissingとして扱う', () => {
+      const { id } = service.createRecord({ ...input(), receiptTokens: [stage('a.pdf', pdf('a'))] })
+      db.sqlite.exec("UPDATE receipts SET file_path = '../../etc/hosts.pdf'")
+      expect(service.getRecord(id).integrity.receipts[0]!.state).toBe('missing')
+      expect(existsSync(join(work, 'documents'))).toBe(true)
+      expect(
+        readFileSync(
+          join(
+            work,
+            'documents',
+            'receipts',
+            String(new Date().getFullYear()),
+            readdirSync(join(work, 'documents', 'receipts', String(new Date().getFullYear())))[0]!
+          )
+        ).length
+      ).toBeGreaterThan(0)
     })
   })
 })

@@ -134,7 +134,7 @@ app.whenReady().then(() => {
       pdfService
     })
 
-    const recordServices = createRecordServices(database)
+    const recordServices = createRecordServices(database, documentsDir)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),

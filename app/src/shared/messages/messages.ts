@@ -87,6 +87,7 @@ export const RECEIPT_MESSAGES = {
   typeInvalid: '領収書として添付できるのは、PDF・JPEG・PNGのファイルです',
   tooLarge: '領収書は1ファイル10MBまでです',
   countExceeded: '領収書は1つの記録につき5件までです',
+  removeInvalid: '外す領収書の指定が正しくありません',
   tokenInvalid: '選択したファイルが無効になりました。もう一度ファイルを選択してください',
   storeFailure: '領収書の保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください',
   notFound:

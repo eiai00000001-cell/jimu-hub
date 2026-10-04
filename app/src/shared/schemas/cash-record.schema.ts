@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { RECORD_MESSAGES } from '../messages/messages'
+import { RECEIPT_MESSAGES, RECORD_MESSAGES } from '../messages/messages'
+import { RECEIPT_LIMITS } from '../constants/receipt'
 import { VALIDATION_MESSAGES } from '../messages/messages'
 import {
   HISTORY_OPERATIONS,
@@ -54,16 +55,28 @@ export const CashRecordInputSchema = z.object({
 })
 export type CashRecordInput = z.infer<typeof CashRecordInputSchema>
 
+const receiptTokens = z
+  .array(z.string().min(1))
+  .max(RECEIPT_LIMITS.maxPerRecord, RECEIPT_MESSAGES.countExceeded)
+
+/** records:createの入力(領収書の識別子の配列を含む。`receipts:pick`が返したもの) */
+export const CashRecordCreateSchema = CashRecordInputSchema.extend({
+  receiptTokens: receiptTokens.default([])
+})
+export type CashRecordCreateInput = z.input<typeof CashRecordCreateSchema>
+
 const reason = z.string().trim().max(RECORD_REASON_MAX, RECORD_MESSAGES.reasonTooLong).optional()
 
 export const RecordIdSchema = z.number().int().positive()
 
-/** records:updateの入力(領収書の追加・外す指定はT-46で追加する) */
+/** records:updateの入力(領収書の追加・外す指定を含む) */
 export const CashRecordUpdateSchema = CashRecordInputSchema.extend({
   id: RecordIdSchema,
-  reason
+  reason,
+  addReceiptTokens: receiptTokens.default([]),
+  removeReceiptIds: z.array(z.number().int().positive()).default([])
 })
-export type CashRecordUpdateInput = z.infer<typeof CashRecordUpdateSchema>
+export type CashRecordUpdateInput = z.input<typeof CashRecordUpdateSchema>
 
 export const CashRecordDeleteSchema = z.object({ id: RecordIdSchema, reason })
 export type CashRecordDeleteInput = z.infer<typeof CashRecordDeleteSchema>

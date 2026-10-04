@@ -43,7 +43,8 @@ const base: CashRecordDetail = {
       changes: []
     }
   ],
-  integrity: { recordHashOk: true, historyHashOk: true }
+  receipts: [],
+  integrity: { recordHashOk: true, historyHashOk: true, receipts: [] }
 }
 
 const props = () => ({
@@ -83,7 +84,11 @@ describe('CashRecordDetailPage(F-18・F-20)', () => {
   })
 
   it('記録ハッシュ不一致の場合は改変の警告を表示する', async () => {
-    setup({ ...base, integrity: { recordHashOk: false, historyHashOk: true } })
+    setup({
+      ...base,
+      receipts: [],
+      integrity: { recordHashOk: false, historyHashOk: true, receipts: [] }
+    })
     render(<CashRecordDetailPage {...props()} />)
     expect(await screen.findByText('この記録の改変が疑われます')).toBeInTheDocument()
   })

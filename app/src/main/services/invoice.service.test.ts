@@ -277,7 +277,7 @@ describe('InvoiceService', () => {
   describe('入金記録の自動作成・取消(F-21。詳細設計書4.15・4.21章)', () => {
     function createWithRecords() {
       companyRepo.upsert(company)
-      const records = createRecordServices(db).cashRecordService
+      const records = createRecordServices(db, '/tmp/jimuhub-unused').cashRecordService
       const service = new InvoiceService({
         database: db,
         repository: new InvoiceRepository(db),

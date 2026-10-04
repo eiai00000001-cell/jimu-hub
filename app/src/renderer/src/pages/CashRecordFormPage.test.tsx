@@ -127,7 +127,8 @@ describe('CashRecordFormPage(F-18)', () => {
     createdAt: 'x',
     updatedAt: 'x',
     history: [],
-    integrity: { recordHashOk: true, historyHashOk: true },
+    receipts: [],
+    integrity: { recordHashOk: true, historyHashOk: true, receipts: [] },
     ...over
   })
 

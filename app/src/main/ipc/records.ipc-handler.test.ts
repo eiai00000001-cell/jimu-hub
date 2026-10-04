@@ -12,6 +12,9 @@ vi.mock('electron', () => ({
   }
 }))
 
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { RecordsIpcHandler } from './records.ipc-handler'
 import { Database } from '../db/db'
 import { createRecordServices } from '../services/record-services'
@@ -32,7 +35,7 @@ describe('RecordsIpcHandler(F-18〜F-20)', () => {
     handlers.clear()
     const db = new Database(':memory:')
     db.initialize()
-    const s = createRecordServices(db)
+    const s = createRecordServices(db, mkdtempSync(join(tmpdir(), 'jimuhub-ipc-')))
     new RecordsIpcHandler(s.cashRecordService, s.historyService).registerHandlers()
   })
 

@@ -1,3 +1,4 @@
+import type { ReceiptCheckState, ReceiptView } from './receipt'
 import type {
   HISTORY_OPERATIONS,
   PAYMENT_METHODS,
@@ -128,10 +129,11 @@ export interface HistoryListFilter {
   page?: number
 }
 
-/** 記録の改変検知の結果(領収書の照合はT-46・T-49で`receipts`へ追加する) */
+/** 記録の改変検知の結果。領収書は外した領収書を含む全件の照合結果 */
 export interface RecordIntegrity {
   recordHashOk: boolean
   historyHashOk: boolean
+  receipts: Array<{ id: number; state: ReceiptCheckState }>
 }
 
 export interface CashRecordDetail {
@@ -154,6 +156,7 @@ export interface CashRecordDetail {
   isDeleted: boolean
   createdAt: string
   updatedAt: string
+  receipts: ReceiptView[]
   history: HistoryEntryView[]
   integrity: RecordIntegrity
 }

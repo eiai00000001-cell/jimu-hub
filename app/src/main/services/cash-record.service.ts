@@ -1,10 +1,12 @@
 import { SALES_REVENUE_KEY } from '@shared/constants/accounts'
 import { calculateIncludedTax } from '@shared/calculations/included-tax'
-import { CLIENT_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
+import { RECEIPT_LIMITS } from '@shared/constants/receipt'
+import { CLIENT_MESSAGES, RECEIPT_MESSAGES, RECORD_MESSAGES } from '@shared/messages/messages'
 import {
+  CashRecordCreateSchema,
   CashRecordDeleteSchema,
-  CashRecordInputSchema,
   CashRecordUpdateSchema,
+  type CashRecordCreateInput,
   type CashRecordDeleteInput,
   type CashRecordInput,
   type CashRecordUpdateInput
@@ -22,6 +24,8 @@ import type { AccountRepository } from '../repositories/account.repository'
 import type { CashRecordRepository, CashRecordValues } from '../repositories/cash-record.repository'
 import type { ClientRepository } from '../repositories/client.repository'
 import type { ReceiptRepository } from '../repositories/receipt.repository'
+import type { ReceiptView } from '@shared/types/receipt'
+import type { ReceiptService, StoredReceiptFile } from './receipts/receipt.service'
 import type { IntegrityService } from './integrity/integrity.service'
 import { computeRecordHash } from './integrity/record-hash'
 import type { RecordHistoryService } from './record-history.service'
@@ -62,6 +66,8 @@ export interface CashRecordServiceDeps {
   clientRepository: ClientRepository
   historyService: RecordHistoryService
   integrityService: IntegrityService
+  /** 領収書の保存(F-22)。未指定の場合、領収書の添付はできない */
+  receiptService?: ReceiptService
 }
 
 function parseOrThrow<T>(
@@ -92,6 +98,7 @@ export class CashRecordService implements InvoicePaymentRecorder {
     const record = this.deps.repository.findById(id)
     if (!record) throw new RecordError(RECORD_MESSAGES.notFound)
     const names = this.deps.repository.findNames(record)
+    const integrity = this.deps.integrityService.checkRecord(id)
     return {
       id: record.id,
       recordDate: record.recordDate,
@@ -112,30 +119,43 @@ export class CashRecordService implements InvoicePaymentRecorder {
       isDeleted: record.isDeleted,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      receipts: this.toReceiptViews(id, integrity),
       history: this.deps.historyService.listByRecord(id),
-      integrity: this.deps.integrityService.checkRecord(id)
+      integrity
     }
   }
 
-  createRecord(rawInput: CashRecordInput): { id: number } {
-    const input = parseOrThrow(CashRecordInputSchema.safeParse(rawInput))
+  createRecord(rawInput: CashRecordCreateInput): { id: number } {
+    const { receiptTokens, ...input } = parseOrThrow(CashRecordCreateSchema.safeParse(rawInput))
     this.assertAccount(input.accountId, input.kind, null)
     this.assertClient(input.clientId, null)
-    return this.deps.database.transaction(() => {
-      const { id } = this.deps.repository.insert({
-        ...this.toValues(input),
-        withholdingTaxAmount: 0,
-        invoiceId: null,
-        status: 'active',
-        isDeleted: false
+    // 領収書のファイル保存はトランザクションの前に行い、失敗時は保存済みのファイルを削除する
+    const stored = this.storeReceipts(receiptTokens)
+    try {
+      const result = this.deps.database.transaction(() => {
+        const { id } = this.deps.repository.insert({
+          ...this.toValues(input),
+          withholdingTaxAmount: 0,
+          invoiceId: null,
+          status: 'active',
+          isDeleted: false
+        })
+        for (const file of stored) this.deps.receiptRepository.insert({ recordId: id, ...file })
+        this.commit(id, 'create', null, null)
+        return { id }
       })
-      this.commit(id, 'create', null, null)
-      return { id }
-    })
+      this.deps.receiptService?.releaseTokens(receiptTokens)
+      return result
+    } catch (error) {
+      this.deps.receiptService?.discard(stored)
+      throw error
+    }
   }
 
   updateRecord(rawInput: CashRecordUpdateInput): { id: number; changed: boolean } {
-    const { id, reason, ...input } = parseOrThrow(CashRecordUpdateSchema.safeParse(rawInput))
+    const { id, reason, addReceiptTokens, removeReceiptIds, ...input } = parseOrThrow(
+      CashRecordUpdateSchema.safeParse(rawInput)
+    )
     const current = this.deps.repository.findById(id)
     if (!current || current.isDeleted) throw new RecordError(RECORD_MESSAGES.notFound)
     if (current.status === 'cancelled') throw new RecordError(RECORD_MESSAGES.notEditable)
@@ -150,25 +170,48 @@ export class CashRecordService implements InvoicePaymentRecorder {
     this.assertAccount(input.accountId, input.kind, current.accountId)
     this.assertClient(input.clientId, current.clientId)
 
-    return this.deps.database.transaction(() => {
-      const before = this.snapshotOf(current)
-      this.deps.repository.update(id, {
-        ...this.toValues(input),
-        withholdingTaxAmount: current.withholdingTaxAmount,
-        invoiceId: current.invoiceId,
-        status: current.status,
-        isDeleted: false
+    // 外す領収書は、この記録の、外していない領収書のみ。更新後の有効件数が上限を超える場合は拒否する
+    const active = this.deps.receiptRepository
+      .findByRecordId(id)
+      .filter((r) => r.removedAt === null)
+    const removeIds = [...new Set(removeReceiptIds)]
+    if (removeIds.some((rid) => !active.some((r) => r.id === rid))) {
+      throw new RecordError(RECEIPT_MESSAGES.removeInvalid)
+    }
+    if (active.length - removeIds.length + addReceiptTokens.length > RECEIPT_LIMITS.maxPerRecord) {
+      throw new RecordError(RECEIPT_MESSAGES.countExceeded)
+    }
+    const stored = this.storeReceipts(addReceiptTokens)
+
+    try {
+      const result = this.deps.database.transaction(() => {
+        const before = this.snapshotOf(current)
+        this.deps.repository.update(id, {
+          ...this.toValues(input),
+          withholdingTaxAmount: current.withholdingTaxAmount,
+          invoiceId: current.invoiceId,
+          status: current.status,
+          isDeleted: false
+        })
+        const removedAt = new Date().toISOString()
+        for (const rid of removeIds) this.deps.receiptRepository.markRemoved(rid, removedAt)
+        for (const file of stored) this.deps.receiptRepository.insert({ recordId: id, ...file })
+        const after = this.snapshotOf(this.requireRecord(id))
+        if (JSON.stringify(before) === JSON.stringify(after)) {
+          // 変更なし: 更新をロールバックして履歴を作らない(`updated_at`も変更しない)
+          this.deps.repository.update(id, this.valuesOf(current))
+          this.deps.repository.restoreUpdatedAt(id, current.updatedAt)
+          return { id, changed: false }
+        }
+        this.commit(id, 'update', reason || null, before)
+        return { id, changed: true }
       })
-      const after = this.snapshotOf(this.requireRecord(id))
-      if (JSON.stringify(before) === JSON.stringify(after)) {
-        // 変更なし: 更新をロールバックして履歴を作らない(`updated_at`も変更しない)
-        this.deps.repository.update(id, this.valuesOf(current))
-        this.deps.repository.restoreUpdatedAt(id, current.updatedAt)
-        return { id, changed: false }
-      }
-      this.commit(id, 'update', reason || null, before)
-      return { id, changed: true }
-    })
+      this.deps.receiptService?.releaseTokens(addReceiptTokens)
+      return result
+    } catch (error) {
+      this.deps.receiptService?.discard(stored)
+      throw error
+    }
   }
 
   deleteRecord(rawInput: CashRecordDeleteInput): { success: true } {
@@ -232,6 +275,30 @@ export class CashRecordService implements InvoicePaymentRecorder {
 
   hasRecordsForInvoice(invoiceId: number): boolean {
     return this.deps.repository.existsByInvoiceId(invoiceId)
+  }
+
+  private storeReceipts(tokens: string[]): StoredReceiptFile[] {
+    if (tokens.length === 0) return []
+    if (!this.deps.receiptService) throw new RecordError(RECEIPT_MESSAGES.tokenInvalid)
+    try {
+      return this.deps.receiptService.storeFromTokens(tokens)
+    } catch (error) {
+      throw new RecordError(error instanceof Error ? error.message : RECEIPT_MESSAGES.storeFailure)
+    }
+  }
+
+  private toReceiptViews(
+    recordId: number,
+    integrity: CashRecordDetail['integrity']
+  ): ReceiptView[] {
+    return this.deps.receiptRepository.findByRecordId(recordId).map((r) => ({
+      id: r.id,
+      originalName: r.originalName,
+      mimeType: r.mimeType as ReceiptView['mimeType'],
+      fileSize: r.fileSize,
+      removed: r.removedAt !== null,
+      state: integrity.receipts.find((x) => x.id === r.id)?.state ?? 'missing'
+    }))
   }
 
   private toValues(
