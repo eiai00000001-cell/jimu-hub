@@ -152,6 +152,16 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
     .mini-header { display: flex; align-items: center; gap: 10px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 18px; max-width: 500px; }
+
+    /* イテレーション2(v2.1)追加: 一覧行内の小ボタン・確認ダイアログ用の暗幕 */
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .overlay-ref { position: relative; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .overlay-ref .modal { margin-bottom: 0; }
+    .table td.op, .table th.op { text-align: right; white-space: nowrap; }
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .table tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -172,7 +182,7 @@
           <li class="sidebar-item active"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item"><span>見積書・請求書</span></li>
-          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
       </div>
@@ -227,6 +237,26 @@
               <span class="badge badge-inactive">利用停止</span>
               <span style="margin-left:auto; font-size:11px; color:var(--color-text-secondary);">「編集」ボタンは非活性となり、「利用停止にする」ボタンは表示されません</span>
             </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 利用停止済みの取引先の詳細(「編集」は非活性、「利用停止にする」に代えて「利用中に戻す」を表示)</div>
+            <div class="mini-header" style="max-width:none;">
+              <span style="font-weight:600;">有限会社テスト工業</span>
+              <span class="badge badge-inactive">利用停止</span>
+              <span style="margin-left:auto; display:flex; gap:8px;">
+                <button class="btn btn-secondary" style="opacity:0.45;">編集</button>
+                <button class="btn btn-secondary">利用中に戻す</button>
+              </span>
+            </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 「利用中に戻す」押下時の確認ダイアログ</div>
+            <div class="overlay-ref"><div class="modal">
+              <h2>取引先を利用中に戻しますか</h2>
+              <p>この取引先を利用中に戻します。よろしいですか。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div></div>
           </div>
         </div>
       </div>

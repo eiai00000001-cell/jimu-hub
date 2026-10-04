@@ -78,6 +78,20 @@
     .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; max-width: 900px; }
     .message-warning, .message-error { border-left-color: var(--color-red); }
     .message-icon { font-weight: 700; flex-shrink: 0; }
+
+    /* イテレーション2(v2.1)追加: 一覧行内の小ボタン・確認ダイアログ用の暗幕 */
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .overlay-ref { position: relative; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .overlay-ref .modal { margin-bottom: 0; }
+    .table td.op, .table th.op { text-align: right; white-space: nowrap; }
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .table tr:last-child td { border-bottom: none; }
+    .modal { width: 380px; background: var(--color-white); border: 1px solid var(--color-border); box-shadow: 0 12px 40px rgba(0,0,0,0.35); padding: 22px 24px; }
+    .modal h2 { font-size: 15px; margin: 0 0 10px; color: var(--color-text); }
+    .modal p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 16px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 </style>
 </head>
 <body>
@@ -98,7 +112,7 @@
           <li class="sidebar-item"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item active"><span>見積書・請求書</span></li>
-          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
       </div>
@@ -150,12 +164,13 @@
           </div>
 
           <div class="reference-block">
-            <div class="reference-label">参考: 状態が「下書き」の場合(「編集」ボタンのみ表示)</div>
+            <div class="reference-label">参考: 状態が「下書き」の場合(「編集」「削除」ボタンを表示。PDF保存済みでは「削除」は表示しない)</div>
             <div class="mini-header">
               <span class="badge badge-draft">下書き</span>
               <span style="font-weight:600;">2026-09-25発行分(未採番)</span>
               <span style="margin-left:auto; display:flex; gap:8px;">
                 <button class="btn btn-secondary">編集</button>
+                <button class="btn btn-secondary">削除</button>
               </span>
             </div>
 
@@ -164,6 +179,16 @@
               <span class="badge badge-finalized">PDF保存済み</span>
               <span class="badge badge-warning">PDFファイルの改変が疑われます</span>
             </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 下書きの「削除」押下時の確認ダイアログ(「はい」で一覧へ遷移)</div>
+            <div class="overlay-ref"><div class="modal">
+              <h2>下書きを削除しますか</h2>
+              <p>この下書きを削除します。削除すると元に戻せません。よろしいですか。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div></div>
           </div>
         </div>
       </div>

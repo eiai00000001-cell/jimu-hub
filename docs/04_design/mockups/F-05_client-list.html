@@ -160,6 +160,19 @@
     .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; }
     .message-success { border-left-color: var(--color-text); }
     .message-icon { font-weight: 700; flex-shrink: 0; }
+
+    /* イテレーション2(v2.1)追加: 一覧行内の小ボタン・確認ダイアログ用の暗幕 */
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .overlay-ref { position: relative; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .overlay-ref .modal { margin-bottom: 0; }
+    .table td.op, .table th.op { text-align: right; white-space: nowrap; }
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+    .modal { width: 380px; background: var(--color-white); border: 1px solid var(--color-border); box-shadow: 0 12px 40px rgba(0,0,0,0.35); padding: 22px 24px; }
+    .modal h2 { font-size: 15px; margin: 0 0 10px; color: var(--color-text); }
+    .modal p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 16px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .reference-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -180,7 +193,7 @@
           <li class="sidebar-item active"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item"><span>見積書・請求書</span></li>
-          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
       </div>
@@ -220,6 +233,7 @@
                 <th>担当者名</th>
                 <th>電話番号</th>
                 <th>状態</th>
+                <th class="op">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -230,6 +244,7 @@
                 <td>サンプル 太郎</td>
                 <td>03-1111-2222</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
               <tr>
                 <td>オレンジ物産株式会社</td>
@@ -238,6 +253,7 @@
                 <td>サンプル 花子</td>
                 <td>03-2222-3333</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
               <tr>
                 <td>サンプル商事株式会社</td>
@@ -246,6 +262,7 @@
                 <td>サンプル 次郎</td>
                 <td>03-3333-4444</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
               <tr>
                 <td>サンプルデザイン合同会社</td>
@@ -254,6 +271,7 @@
                 <td>サンプル 三郎</td>
                 <td>03-4444-5555</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
               <tr class="inactive">
                 <td>有限会社テスト工業</td>
@@ -262,6 +280,7 @@
                 <td>サンプル 四郎</td>
                 <td>03-5555-6666</td>
                 <td><span class="badge badge-inactive">利用停止</span></td>
+                <td class="op"><button class="btn btn-secondary btn-sm">利用中に戻す</button></td>
               </tr>
               <tr>
                 <td>わかば商会</td>
@@ -270,6 +289,7 @@
                 <td>サンプル 五郎</td>
                 <td>03-6666-7777</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
               <tr>
                 <td>合同会社ミライ工房</td>
@@ -278,10 +298,23 @@
                 <td>サンプル 六郎</td>
                 <td>03-7777-8888</td>
                 <td><span class="badge badge-active">利用中</span></td>
+                <td class="op"></td>
               </tr>
             </tbody>
           </table>
-          <p class="table-note">フリガナ昇順で並べ替えた場合、フリガナが未入力の取引先は五十音順対象から外し、一覧の末尾にまとめて表示します(上記「合同会社ミライ工房」参照)。</p>
+          <p class="table-note">フリガナ昇順で並べ替えた場合、フリガナが未入力の取引先は五十音順対象から外し、一覧の末尾にまとめて表示します(上記「合同会社ミライ工房」参照)。「利用中に戻す」ボタンは、状態が「利用停止」の行にのみ表示します。</p>
+
+          <div class="reference-block">
+            <div class="reference-label">参考: 「利用中に戻す」押下時の確認ダイアログ</div>
+            <div class="overlay-ref"><div class="modal">
+              <h2>取引先を利用中に戻しますか</h2>
+              <p>この取引先を利用中に戻します。よろしいですか。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div></div>
+          </div>
         </div>
       </div>
     </div>

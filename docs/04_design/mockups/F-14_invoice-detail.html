@@ -90,6 +90,16 @@
     .modal h2 { font-size: 15px; margin: 0 0 10px; color: var(--color-text); }
     .modal p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 16px; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* イテレーション2(v2.1)追加: 一覧行内の小ボタン・確認ダイアログ用の暗幕 */
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .overlay-ref { position: relative; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .overlay-ref .modal { margin-bottom: 0; }
+    .table td.op, .table th.op { text-align: right; white-space: nowrap; }
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .table tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -110,7 +120,7 @@
           <li class="sidebar-item"><span>取引先管理</span></li>
           <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
           <li class="sidebar-item active"><span>見積書・請求書</span></li>
-          <li class="sidebar-item disabled"><span>入出金・経費</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
         </ul>
       </div>
@@ -167,6 +177,17 @@
             <button class="btn btn-secondary" style="margin-left:auto;">入金済みにする</button>
           </div>
 
+          <div class="payment-block" style="display:block;">
+            <div class="payment-label" style="margin-bottom:8px;">紐づく入金記録</div>
+            <table class="table">
+              <thead><tr><th>入金日</th><th class="amount" style="text-align:right;">金額</th><th>状態</th><th class="op">詳細</th></tr></thead>
+              <tbody>
+                <tr><td>2026-09-26</td><td style="text-align:right; font-variant-numeric:tabular-nums;">+¥332,370</td><td><span class="badge badge-draft" style="text-decoration:line-through;">取消済</span></td><td class="op"><button class="link">入金記録を見る</button></td></tr>
+              </tbody>
+            </table>
+            <div style="font-size:11px; color:var(--color-text-secondary); margin-top:8px;">紐づく入金記録がある場合のみ表示します(取消済を含む。新しい順)。上の例は、入金済みを一度取り消して未収に戻した請求書です。入金済み状態では「有効」の行が表示されます。</div>
+          </div>
+
           <div class="back-link">
             <button class="link">&larr; 一覧へ戻る</button>
           </div>
@@ -195,7 +216,7 @@
             <div class="overlay">
               <div class="modal">
                 <h2>未収に戻しますか</h2>
-                <p>入金日の記録はクリアされます。この操作は「はい」を押すと確定します。</p>
+                <p>入金済みを取り消します。連動する入金記録は「取消済」として残ります。</p>
                 <div class="modal-actions">
                   <button class="btn btn-secondary">いいえ</button>
                   <button class="btn btn-primary">はい</button>
@@ -209,14 +230,25 @@
               <span class="badge badge-warning">PDFファイルの改変が疑われます</span>
             </div>
 
-            <div class="reference-label">参考: 状態が「下書き」の場合(「編集」ボタンのみ表示、入金ステータス欄は表示しない)</div>
+            <div class="reference-label">参考: 状態が「下書き」の場合(「編集」「削除」ボタンを表示、入金ステータス欄は表示しない)</div>
             <div class="mini-header" style="margin-bottom:0;">
               <span class="badge badge-draft">下書き</span>
               <span style="font-weight:600;">2026-09-25発行分(未採番)</span>
               <span style="margin-left:auto;">
                 <button class="btn btn-secondary">編集</button>
+                <button class="btn btn-secondary">削除</button>
               </span>
             </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 下書きの「削除」押下時の確認ダイアログ(「はい」で一覧の請求書タブへ遷移)</div>
+            <div class="overlay-ref"><div class="modal">
+              <h2>下書きを削除しますか</h2>
+              <p>この下書きを削除します。削除すると元に戻せません。よろしいですか。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div></div>
           </div>
         </div>
       </div>
