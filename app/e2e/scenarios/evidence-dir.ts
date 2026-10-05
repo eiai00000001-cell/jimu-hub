@@ -74,7 +74,16 @@ function nextSeq(tc: string): number {
 export async function shot(page: Page, tc: string, description: string): Promise<string> {
   const seq = String(nextSeq(tc)).padStart(2, '0')
   const file = `${tc}_${seq}.png`
-  await page.screenshot({ path: join(evidenceRunDir(), file) })
+  // 非表示ウィンドウでは、まれにスクリーンショットの取得が応答しないことがあるため、短い待機時間で再試行する
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.screenshot({ path: join(evidenceRunDir(), file), timeout: 8000 })
+      break
+    } catch (error) {
+      if (attempt >= 3) throw error
+      await page.waitForTimeout(500)
+    }
+  }
   appendIndex(file, description)
   return file
 }

@@ -1,0 +1,7 @@
+受理: receipt_sample.pdf, receipt_sample.png, receipt_sample.jpg, UPPER.PDF
+拒否:
+fake.png: 領収書として添付できるのは、PDF・JPEG・PNGのファイルです
+empty.pdf: 領収書として添付できるのは、PDF・JPEG・PNGのファイルです
+memo.txt: 領収書として添付できるのは、PDF・JPEG・PNGのファイルです
+too_big.pdf: 領収書は1ファイル10MBまでです
+png_as.jpg: 領収書として添付できるのは、PDF・JPEG・PNGのファイルです

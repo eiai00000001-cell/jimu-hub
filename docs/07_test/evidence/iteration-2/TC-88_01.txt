@@ -1,0 +1,360 @@
+{
+ "y2026": {
+  "years": [
+   2025,
+   2026,
+   2027
+  ],
+  "period": {
+   "income": 5000,
+   "expense": 7500,
+   "balance": -2500
+  },
+  "monthly": [
+   {
+    "month": 1,
+    "income": 5000,
+    "expense": 1000,
+    "balance": 4000
+   },
+   {
+    "month": 2,
+    "income": 0,
+    "expense": 2500,
+    "balance": -2500
+   },
+   {
+    "month": 3,
+    "income": 0,
+    "expense": 2000,
+    "balance": -2000
+   },
+   {
+    "month": 4,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 5,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 6,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 7,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 8,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 9,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 10,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 11,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 12,
+    "income": 0,
+    "expense": 2000,
+    "balance": -2000
+   }
+  ],
+  "yearTotal": {
+   "income": 5000,
+   "expense": 7500,
+   "balance": -2500
+  },
+  "yearly": [
+   {
+    "year": 2025,
+    "income": 7000,
+    "expense": 0,
+    "balance": 7000
+   },
+   {
+    "year": 2026,
+    "income": 5000,
+    "expense": 7500,
+    "balance": -2500
+   },
+   {
+    "year": 2027,
+    "income": 0,
+    "expense": 300,
+    "balance": -300
+   }
+  ],
+  "expenseByAccount": [
+   {
+    "accountId": 1,
+    "accountName": "通信費",
+    "total": 4000
+   },
+   {
+    "accountId": 3,
+    "accountName": "消耗品費",
+    "total": 3500
+   }
+  ]
+ },
+ "m3": {
+  "years": [
+   2025,
+   2026,
+   2027
+  ],
+  "period": {
+   "income": 0,
+   "expense": 2000,
+   "balance": -2000
+  },
+  "monthly": [
+   {
+    "month": 1,
+    "income": 5000,
+    "expense": 1000,
+    "balance": 4000
+   },
+   {
+    "month": 2,
+    "income": 0,
+    "expense": 2500,
+    "balance": -2500
+   },
+   {
+    "month": 3,
+    "income": 0,
+    "expense": 2000,
+    "balance": -2000
+   },
+   {
+    "month": 4,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 5,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 6,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 7,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 8,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 9,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 10,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 11,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 12,
+    "income": 0,
+    "expense": 2000,
+    "balance": -2000
+   }
+  ],
+  "yearTotal": {
+   "income": 5000,
+   "expense": 7500,
+   "balance": -2500
+  },
+  "yearly": [
+   {
+    "year": 2025,
+    "income": 7000,
+    "expense": 0,
+    "balance": 7000
+   },
+   {
+    "year": 2026,
+    "income": 5000,
+    "expense": 7500,
+    "balance": -2500
+   },
+   {
+    "year": 2027,
+    "income": 0,
+    "expense": 300,
+    "balance": -300
+   }
+  ],
+  "expenseByAccount": [
+   {
+    "accountId": 1,
+    "accountName": "通信費",
+    "total": 500
+   },
+   {
+    "accountId": 3,
+    "accountName": "消耗品費",
+    "total": 1500
+   }
+  ]
+ },
+ "empty": {
+  "years": [
+   2025,
+   2026,
+   2027
+  ],
+  "period": {
+   "income": 0,
+   "expense": 0,
+   "balance": 0
+  },
+  "monthly": [
+   {
+    "month": 1,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 2,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 3,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 4,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 5,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 6,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 7,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 8,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 9,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 10,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 11,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   },
+   {
+    "month": 12,
+    "income": 0,
+    "expense": 0,
+    "balance": 0
+   }
+  ],
+  "yearTotal": {
+   "income": 0,
+   "expense": 0,
+   "balance": 0
+  },
+  "yearly": [
+   {
+    "year": 2025,
+    "income": 7000,
+    "expense": 0,
+    "balance": 7000
+   },
+   {
+    "year": 2026,
+    "income": 5000,
+    "expense": 7500,
+    "balance": -2500
+   },
+   {
+    "year": 2027,
+    "income": 0,
+    "expense": 300,
+    "balance": -300
+   }
+  ],
+  "expenseByAccount": []
+ }
+}

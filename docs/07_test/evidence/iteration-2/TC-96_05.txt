@@ -1,0 +1,3 @@
+1|income|299370|cancelled|0|請求書 2026-001 の入金
+2|expense|11000|active|0|外注デザイン費
+3|income|299370|active|0|請求書 2026-001 の入金

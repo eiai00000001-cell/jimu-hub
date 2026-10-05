@@ -1,0 +1,4 @@
+領収書108件(約1.05GiB)
+警告: あり
+書き出し: {"success":true,"filePath":"/var/folders/n_/954kj2xj2rg2jx_c1h0w3fzm0000gn/T/jimuhub-i2-huge-1FdpUi/huge.zip"}、19.6秒、ZIP=1080MB(上限1024MB)、Mainメモリ(RSS)ピーク約3485MB
+復元: {"success":false,"error":"選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください"}(0.0秒)

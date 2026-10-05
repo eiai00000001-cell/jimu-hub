@@ -1,0 +1,2 @@
+  ✓  1 e2e/scenarios/i2-capacity.spec.ts:190:1 › TC-99c: [任意・I2_CAP_HUGE=1] 1GiB超のZIPを実際に書き出した場合の挙動(書き出し後に復元できるか) (21.9s)
+  1 passed (22.2s)
