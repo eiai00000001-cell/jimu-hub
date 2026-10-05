@@ -334,6 +334,19 @@ describe('InvoiceService', () => {
       ])
     })
 
+    it('入金済みの請求書に再度「入金済み」を指定すると、専用の文言で拒否しデータは変わらない(R-14)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-10-10' })
+      ).toThrow('この請求書はすでに入金済みです')
+      expect(service.getInvoice(id)).toMatchObject({
+        paymentStatus: 'paid',
+        paymentDate: '2026-09-30'
+      })
+    })
+
     it('入金記録を作成できない場合は、請求書も入金済みにならない(ロールバック)', async () => {
       const { service } = createWithRecords()
       const { id } = await service.finalizeInvoice({ ...baseInput, clientId })

@@ -191,6 +191,9 @@ export class InvoiceService {
       throw new Error(INVOICE_MESSAGES.paymentRequiresFinalized)
     }
     const { paymentStatus, paymentDate } = parsed.data
+    if (paymentStatus === 'paid' && invoice.paymentStatus === 'paid') {
+      throw new Error(INVOICE_MESSAGES.alreadyPaid)
+    }
     // 請求書の状態変更と入金記録(・履歴)の作成/取消を同一トランザクションで行う(詳細設計書4.15・4.21章)。
     // どちらかが失敗した場合は全体をロールバックする
     this.deps.database.transaction(() => {
