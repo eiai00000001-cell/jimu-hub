@@ -1,0 +1,2 @@
+2026-10-20|income|99790|10210|13|1|1|請求書 2026-001 の入金|NULL|NULL|0|active|0|64
+create|NULL|NULL

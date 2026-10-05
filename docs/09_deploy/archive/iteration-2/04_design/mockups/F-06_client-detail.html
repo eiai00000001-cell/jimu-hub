@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 取引先詳細(モックアップ v1.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --shadow-modal: 0 12px 40px rgba(0,0,0,0.35);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実アプリには存在しない) */
+      font-family: var(--font-family);
+      color: var(--color-text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .window {
+      width: 1280px;
+      margin: 24px auto;
+      background: var(--color-bg);
+      border-radius: var(--radius-window); /* 例外: ウィンドウ外枠はOS表現として角丸を維持 */
+      overflow: hidden;
+      box-shadow: var(--shadow-window);
+      border: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .titlebar {
+      height: 38px;
+      min-height: 38px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; } /* 例外: OS標準の信号ボタン */
+    .tl-close { background: #FF5F57; }
+    .tl-min { background: #FFBD2E; }
+    .tl-zoom { background: #28C840; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-right: 56px;
+    }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 0;
+    }
+    .sidebar-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center;
+      padding: 0 18px;
+      font-size: 18px; font-weight: 600; color: var(--color-text);
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item {
+      padding: 7px 18px;
+      margin-bottom: 2px;
+      border-radius: 0;
+      font-size: 13px;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item.active .badge-soon { display: none; }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+      background: var(--color-bg);
+    }
+    .page-header {
+      height: var(--header-height);
+      box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+    .page-title-group { display: flex; align-items: center; gap: 10px; }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--color-text); }
+    .page-content { padding: 24px 28px; flex: 1; }
+
+    /* ボタン(押せる物): 角丸6px・高さ32px */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: var(--control-height); padding: 0 16px;
+      border-radius: var(--radius-button);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* テキストリンク(押せる物): 枠なし */
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+
+    /* バッジ(表示だけの物): 丸型(例外) */
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-active { background: var(--color-bg); color: var(--color-text); }
+    .badge-inactive { background: var(--color-text); color: var(--color-white); }
+
+    /* 入れ物(パネル): 角丸なし、影なし */
+    .panel { background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; max-width: 720px; }
+    .info-grid { display: grid; grid-template-columns: 160px 1fr; row-gap: 14px; column-gap: 16px; }
+    .info-grid dt { color: var(--color-text-secondary); font-size: 12px; margin: 0; }
+    .info-grid dd { margin: 0; font-size: 13px; white-space: pre-line; }
+    .back-link { margin-top: 20px; }
+
+    .reference-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin-bottom: 12px; }
+
+    /* 入れ物(ダイアログ): 角丸なし、影あり(ダイアログのみ) */
+    .modal { width: 380px; background: var(--color-white); border: 1px solid var(--color-border); box-shadow: var(--shadow-modal); padding: 22px 24px; margin-bottom: 24px; }
+    .modal h2 { font-size: 15px; margin: 0 0 10px; color: var(--color-text); }
+    .modal p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 16px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .mini-header { display: flex; align-items: center; gap: 10px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 18px; max-width: 500px; }
+
+    /* イテレーション2(v2.1)追加: 一覧行内の小ボタン・確認ダイアログ用の暗幕 */
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .overlay-ref { position: relative; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .overlay-ref .modal { margin-bottom: 0; }
+    .table td.op, .table th.op { text-align: right; white-space: nowrap; }
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-zoom"></div>
+      </div>
+      <div class="titlebar-title">事務HUB - 取引先詳細</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item active"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>見積書・請求書</span></li>
+          <li class="sidebar-item"><span>入出金・経費</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">取引先詳細</h1>
+            <span class="badge badge-active">利用中</span>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-secondary">編集</button>
+            <button class="btn btn-secondary">利用停止にする</button>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="panel">
+            <dl class="info-grid">
+              <dt>取引先ID</dt><dd>3</dd>
+              <dt>取引先名称</dt><dd>サンプル商事株式会社</dd>
+              <dt>フリガナ</dt><dd>サンプルショウジカブシキガイシャ</dd>
+              <dt>敬称</dt><dd>御中</dd>
+              <dt>担当者名</dt><dd>サンプル 次郎</dd>
+              <dt>郵便番号</dt><dd>100-0001</dd>
+              <dt>住所</dt><dd>東京都千代田区千代田1-1-1</dd>
+              <dt>電話番号</dt><dd>03-3333-4444</dd>
+              <dt>メールアドレス</dt><dd>contact@example.com</dd>
+              <dt>インボイス登録番号</dt><dd>T1234567890123</dd>
+              <dt>メモ</dt><dd>年に数回、定例の打ち合わせあり。</dd>
+              <dt>状態</dt><dd><span class="badge badge-active">利用中</span></dd>
+              <dt>登録日時</dt><dd>2026-04-01 10:00</dd>
+              <dt>更新日時</dt><dd>2026-08-15 15:30</dd>
+            </dl>
+          </div>
+          <div class="back-link">
+            <button class="link">&larr; 一覧へ戻る</button>
+          </div>
+
+          <div class="reference-block">
+            <div class="reference-label">参考: 「利用停止にする」押下時の確認ダイアログ</div>
+            <div class="modal">
+              <h2>本当に利用停止にしますか</h2>
+              <p>利用停止にすると、一覧の既定表示から非表示になります(データは削除されません。「利用停止も表示」をONにすると引き続き確認できます)。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div>
+
+            <div class="reference-label">参考: 利用停止済みの取引先を表示した場合</div>
+            <div class="mini-header">
+              <span style="font-weight:600;">有限会社テスト工業</span>
+              <span class="badge badge-inactive">利用停止</span>
+              <span style="margin-left:auto; font-size:11px; color:var(--color-text-secondary);">「編集」ボタンは非活性となり、「利用停止にする」ボタンは表示されません</span>
+            </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 利用停止済みの取引先の詳細(「編集」は非活性、「利用停止にする」に代えて「利用中に戻す」を表示)</div>
+            <div class="mini-header" style="max-width:none;">
+              <span style="font-weight:600;">有限会社テスト工業</span>
+              <span class="badge badge-inactive">利用停止</span>
+              <span style="margin-left:auto; display:flex; gap:8px;">
+                <button class="btn btn-secondary" style="opacity:0.45;">編集</button>
+                <button class="btn btn-secondary">利用中に戻す</button>
+              </span>
+            </div>
+
+            <div class="reference-label" style="margin-top:24px;">参考: 「利用中に戻す」押下時の確認ダイアログ</div>
+            <div class="overlay-ref"><div class="modal">
+              <h2>取引先を利用中に戻しますか</h2>
+              <p>この取引先を利用中に戻します。よろしいですか。</p>
+              <div class="modal-actions">
+                <button class="btn btn-secondary">いいえ</button>
+                <button class="btn btn-primary">はい</button>
+              </div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

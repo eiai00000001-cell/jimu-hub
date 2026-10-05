@@ -1,0 +1,103 @@
+{
+ "id": 1,
+ "recordDate": "2026-10-01",
+ "kind": "expense",
+ "amount": 5000,
+ "withholdingTaxAmount": 0,
+ "accountId": 15,
+ "accountName": "研修・セミナー費",
+ "description": "研修費の記録",
+ "clientId": null,
+ "clientName": null,
+ "paymentMethod": null,
+ "taxCategory": null,
+ "taxAmount": 0,
+ "invoiceId": null,
+ "invoiceNumber": null,
+ "status": "active",
+ "isDeleted": false,
+ "createdAt": "2026-10-05T11:08:55.759Z",
+ "updatedAt": "2026-10-05T11:08:55.759Z",
+ "receipts": [],
+ "history": [
+  {
+   "id": 1,
+   "recordId": 1,
+   "operation": "create",
+   "operatedAt": "2026-10-05T11:08:55.760Z",
+   "reason": null,
+   "changes": [
+    {
+     "label": "日付",
+     "before": "(なし)",
+     "after": "2026-10-01"
+    },
+    {
+     "label": "種別",
+     "before": "(なし)",
+     "after": "経費"
+    },
+    {
+     "label": "金額",
+     "before": "(なし)",
+     "after": "¥5,000"
+    },
+    {
+     "label": "源泉徴収税額",
+     "before": "(なし)",
+     "after": "¥0"
+    },
+    {
+     "label": "勘定科目",
+     "before": "(なし)",
+     "after": "研修費"
+    },
+    {
+     "label": "摘要・メモ",
+     "before": "(なし)",
+     "after": "研修費の記録"
+    },
+    {
+     "label": "取引先",
+     "before": "(なし)",
+     "after": "(なし)"
+    },
+    {
+     "label": "支払方法",
+     "before": "(なし)",
+     "after": "(未選択)"
+    },
+    {
+     "label": "税区分",
+     "before": "(なし)",
+     "after": "(未選択)"
+    },
+    {
+     "label": "消費税額",
+     "before": "(なし)",
+     "after": "¥0"
+    },
+    {
+     "label": "請求書番号",
+     "before": "(なし)",
+     "after": "(なし)"
+    },
+    {
+     "label": "状態",
+     "before": "(なし)",
+     "after": "有効"
+    },
+    {
+     "label": "削除",
+     "before": "(なし)",
+     "after": "なし"
+    }
+   ]
+  }
+ ],
+ "integrity": {
+  "recordHashOk": true,
+  "historyHashOk": true,
+  "receipts": []
+ }
+}

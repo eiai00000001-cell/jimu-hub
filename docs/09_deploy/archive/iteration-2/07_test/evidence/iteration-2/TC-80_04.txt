@@ -1,0 +1,8 @@
+amount=1100 cat=standard_10 -> 100 (期待 100)
+amount=999 cat=standard_10 -> 90 (期待 90)
+amount=1080 cat=reduced_8 -> 80 (期待 80)
+amount=1000 cat=reduced_8 -> 74 (期待 74)
+amount=5000 cat=tax_exempt -> 0 (期待 0)
+amount=5000 cat=not_applicable -> 0 (期待 0)
+amount=5000 cat=null -> 0 (期待 0)
+amount=9999999999 cat=standard_10 -> 909090909 (期待 909090909)
