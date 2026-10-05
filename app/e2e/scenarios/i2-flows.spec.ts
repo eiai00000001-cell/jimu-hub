@@ -261,6 +261,7 @@ test('TC-98: [R-14] すでに入金済みの請求書へ再度「入金済み」
   )
   // 期待: データは変化しない(トランザクション全体が戻る)。エラー文言が汎用文言であることはR-14の記録事項(不合格にはしない)
   expect(r.ok).toBe(false)
+  expect(r.error).toBe('この請求書はすでに入金済みです') // R-14対応(コミット3de4abf)
   expect(after).toBe(before)
   expect(recAfter).toBe(recBefore)
 })

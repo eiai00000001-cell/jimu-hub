@@ -86,14 +86,28 @@ test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(
         w.__p.push({ t: Math.round(performance.now() - t0), ...p })
       )
       // 画面に実際に表示された進捗文言(role=status)を記録する
-      const wl = window as unknown as { __shown: Array<{ t: number; text: string }> }
+      const wl = window as unknown as {
+        __shown: Array<{ t: number; text: string; visible?: boolean; modal?: string }>
+      }
       wl.__shown = []
       new MutationObserver(() => {
         const el = document.querySelector('[role=status]')
         if (el && el.textContent) {
           const last = wl.__shown[wl.__shown.length - 1]
-          if (!last || last.text !== el.textContent)
-            wl.__shown.push({ t: Math.round(performance.now() - t0), text: el.textContent })
+          if (!last || last.text !== el.textContent) {
+            const r = el.getBoundingClientRect()
+            const cs = getComputedStyle(el)
+            wl.__shown.push({
+              t: Math.round(performance.now() - t0),
+              text: el.textContent,
+              visible:
+                r.width > 0 && r.height > 0 && cs.visibility === 'visible' && cs.display !== 'none',
+              modal: ((el.closest('.modal') as HTMLElement | null)?.innerText ?? '').replace(
+                /\n+/g,
+                ' / '
+              )
+            })
+          }
         }
       }).observe(document.body, { subtree: true, childList: true, characterData: true })
       let last = performance.now()
@@ -111,15 +125,9 @@ test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(
     await window.getByRole('button', { name: 'データをエクスポート' }).click()
     const e0 = Date.now()
     await window.getByRole('button', { name: 'エクスポート実行' }).click()
+    // ZIP生成中はMainプロセスが同期処理でブロックされ、Playwright(ブラウザプロセス経由)のスクリーンショット・問い合わせも
+    // 完了まで返らないため、画面表示の確認はRenderer内の観測(MutationObserver)で行う
     let shotTaken = false
-    for (let i = 0; i < 600 && !shotTaken; i++) {
-      const txt = await window.locator('.modal').innerText()
-      if (/書き出しています\(\d+\/\d+\)/.test(txt)) {
-        await shot(window, 'TC-99', 'エクスポート中の進捗表示(領収書を書き出しています(n/total))')
-        shotTaken = true
-      } else if (/保存しました/.test(txt)) break
-      await window.waitForTimeout(100)
-    }
     await expect(window.getByText(/保存しました/)).toBeVisible({ timeout: 300_000 })
     const exportSec = (Date.now() - e0) / 1000
     const exportPeak = peak
@@ -128,7 +136,21 @@ test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(
       () => (window as unknown as { __p: Array<{ t: number }> }).__p
     )
     const exportShown = await window.evaluate(
-      () => (window as unknown as { __shown: Array<{ t: number; text: string }> }).__shown
+      () =>
+        (
+          window as unknown as {
+            __shown: Array<{ t: number; text: string; visible?: boolean; modal?: string }>
+          }
+        ).__shown
+    )
+    const pack = exportShown.filter((x) => x.text.includes('整理'))
+    expect(pack.length).toBeGreaterThan(0)
+    expect(pack[0].visible).toBe(true)
+    const lastWrite = exportShown.filter((x) => x.text.includes('書き出')).at(-1)
+    noteEvidence(
+      'TC-104',
+      'エクスポート中にRendererへ実際に表示された進捗文言(R-22。ZIP生成中はスクリーンショットが取得できないためDOMを観測)',
+      `最後のファイル書き出し表示: ${lastWrite?.text}(${lastWrite?.t}ms)\n「ファイルを整理しています…」の表示開始: ${pack[0].t}ms、表示中(visible=${pack[0].visible})\nモーダル全体の文言: ${pack[0].modal}\n完了までの処理時間: ${(exportSec * 1000).toFixed(0)}ms`
     )
     await shot(window, 'TC-99', 'エクスポート完了')
     await window.getByLabel('閉じる').click()
@@ -162,9 +184,11 @@ test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(
       () => (window as unknown as { __p: Array<{ t: number; current: number; total: number }> }).__p
     )
     const importShown = await window.evaluate(() =>
-      (window as unknown as { __shown: Array<{ t: number; text: string }> }).__shown.filter((x) =>
-        x.text.includes('復元')
-      )
+      (
+        window as unknown as {
+          __shown: Array<{ t: number; text: string; visible?: boolean; modal?: string }>
+        }
+      ).__shown.filter((x) => x.text.includes('復元'))
     )
     const gap = await window.evaluate(() => (window as unknown as { __gap: number }).__gap)
     await shot(window, 'TC-99', '復元完了(改変の警告なし)')
@@ -216,6 +240,35 @@ test('TC-99b: 見込みサイズが復元上限の80%を超える場合の警告
       'exportData'
     )
     expect(direct).toMatchObject({ success: false, warnLargeBackup: true })
+    // ★T3: 見込みサイズが復元上限(1GiB)を超える場合は、保存ダイアログの前に中止される(confirmLarge付きでも)
+    dbExec(dataDir, 'update receipts set file_size=1073741825 where id=1')
+    const tooLarge = await mustApi<{ success: boolean; error?: string }>(window, 'exportData')
+    const tooLarge2 = await mustApi<{ success: boolean; error?: string }>(window, 'exportData', {
+      confirmLarge: true
+    })
+    for (const r of [tooLarge, tooLarge2]) {
+      expect(r.success).toBe(false)
+      expect(r.error).toBe(
+        '領収書・PDFの容量が復元できる上限(1GB)を超えるため、エクスポートを中止しました。復元できないファイルになってしまうため、書き出していません'
+      )
+    }
+    expect(() => statSync(zipPath)).toThrow()
+    noteEvidence(
+      'TC-104',
+      '1GiB超のエクスポートの中止(IPC。confirmLarge付きも同じ)',
+      `${JSON.stringify(tooLarge)}\n${JSON.stringify(tooLarge2)}\nZIPは作られない`
+    )
+    await window.getByRole('button', { name: 'データをエクスポート' }).click()
+    await window.getByRole('button', { name: 'エクスポート実行' }).click()
+    await expect(window.getByText('エクスポートを中止しました')).toBeVisible()
+    await shot(window, 'TC-104', '画面: 1GiB超のエクスポートは中止され専用文言が表示される')
+    await window.getByLabel('閉じる').click()
+    // 上限ちょうど(1GiB)は中止せず、従来どおり警告+続行
+    dbExec(dataDir, 'update receipts set file_size=1073741824 where id=1')
+    expect(await mustApi(window, 'exportData')).toMatchObject({
+      success: false,
+      warnLargeBackup: true
+    })
     // 境界: 80%ちょうど(858,993,459)は警告なし、+1で警告(PDFが無いためfile_sizeのみが対象)
     dbExec(dataDir, 'update receipts set file_size=858993459 where id=1')
     expect((await mustApi<{ success: boolean }>(window, 'exportData')).success).toBe(true)
@@ -271,15 +324,15 @@ test('TC-99c: [任意・I2_CAP_HUGE=1] 1GiB超のZIPを実際に書き出した�
     const sampler = setInterval(() => {
       peak = Math.max(peak, rssMb(pid))
     }, 500)
-    const warn = await mustApi<{ success: boolean; warnLargeBackup?: boolean }>(
-      window,
-      'exportData'
-    )
-    expect(warn.warnLargeBackup).toBe(true)
+    const warn = await mustApi<{ success: boolean; error?: string }>(window, 'exportData')
+    expect(warn.success).toBe(false)
+    expect(warn.error).toContain('上限(1GB)を超える')
     const e0 = Date.now()
     const res = await mustApi<{ success: boolean; error?: string }>(window, 'exportData', {
       confirmLarge: true
     })
+    expect(res.success).toBe(false) // ★T3対応: confirmLarge付きでも書き出さない
+    expect(() => statSync(zipPath)).toThrow()
     const exportSec = (Date.now() - e0) / 1000
     const zipBytes = res.success ? statSync(zipPath).size : 0
     let importResult = '(書き出し失敗のため未実施)'
@@ -290,9 +343,9 @@ test('TC-99c: [任意・I2_CAP_HUGE=1] 1GiB超のZIPを実際に書き出した�
     }
     clearInterval(sampler)
     noteEvidence(
-      'TC-99',
-      '1GiB超のZIPの実測',
-      `領収書108件(約1.05GiB)\n警告: あり\n書き出し: ${JSON.stringify(res)}、${exportSec.toFixed(1)}秒、ZIP=${(zipBytes / 1024 / 1024).toFixed(0)}MB(上限1024MB)、Mainメモリ(RSS)ピーク約${peak}MB\n復元: ${importResult}`
+      'TC-104',
+      '1GiB超(実データ約1.05GiB)のエクスポートの中止',
+      `領収書108件(約1.05GiB)\n中止応答(confirmLarge付きでも): ${JSON.stringify(warn)}\n書き出し: ${JSON.stringify(res)}、${exportSec.toFixed(1)}秒、ZIP=${(zipBytes / 1024 / 1024).toFixed(0)}MB(上限1024MB)、Mainメモリ(RSS)ピーク約${peak}MB\n復元: ${importResult}`
     )
   } finally {
     await closeApp(l).catch(() => rmSync(l.dataDir, { recursive: true, force: true }))

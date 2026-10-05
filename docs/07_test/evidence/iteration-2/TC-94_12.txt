@@ -1,0 +1,2 @@
+結果: {"success":true,"importedCount":3,"pdfHashMismatchCount":0,"receiptHashMismatchCount":0,"recordHashMismatchCount":0}
+accounts=14(売上高あり) cash_records=0 receipts=0 documents/receipts=削除(退避にのみ残る)

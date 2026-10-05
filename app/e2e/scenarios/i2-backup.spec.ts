@@ -477,7 +477,7 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   await setImport(huge)
   const r3 = await mustApi<ImportRes>(window, 'importData')
   expect(r3.success).toBe(false)
-  expect(r3.error).toContain('読み込めませんでした')
+  expect(r3.error).toContain('復元できる上限(1GB)を超えているため、読み込めませんでした') // ★T3対応: 容量超過の専用文言
   rmSync(huge)
   const txt = join(workDir, 'notzip.zip')
   writeFileSync(txt, 'plain text, not a zip')
