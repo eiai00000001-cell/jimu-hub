@@ -5,6 +5,7 @@ export interface NavigationActions {
   goHome: () => void
   goClients: () => void
   goDocuments: () => void
+  goCash: () => void
 }
 
 const noop = (): void => {}
@@ -12,5 +13,6 @@ const noop = (): void => {}
 export const NavigationContext = createContext<NavigationActions>({
   goHome: noop,
   goClients: noop,
-  goDocuments: noop
+  goDocuments: noop,
+  goCash: noop
 })

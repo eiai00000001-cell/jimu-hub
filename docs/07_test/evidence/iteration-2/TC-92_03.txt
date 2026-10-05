@@ -1,0 +1,3 @@
+全テーブルのダンプ一致(49行)
+領収書ファイル3件のSHA-256一致
+進捗通知: [{"phase":"import","current":1,"total":5},{"phase":"import","current":2,"total":5},{"phase":"import","current":3,"total":5},{"phase":"import","current":4,"total":5},{"phase":"import","current":5,"total":5}]

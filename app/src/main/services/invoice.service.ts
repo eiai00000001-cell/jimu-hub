@@ -5,7 +5,7 @@ import {
   type PaymentStatusInput
 } from '@shared/schemas/invoice.schema'
 import { INVOICE_MESSAGES } from '@shared/messages/messages'
-import type { Invoice, InvoiceListFilter, InvoiceSummary } from '@shared/types/invoice'
+import type { InvoiceDetail, InvoiceListFilter, InvoiceSummary } from '@shared/types/invoice'
 import type { InvoiceFormat } from '@shared/types/quote'
 import type { Database } from '../db/db'
 import type { QuoteRepository } from '../repositories/quote.repository'
@@ -13,6 +13,7 @@ import type { InvoiceRepository } from '../repositories/invoice.repository'
 import type { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import type { NumberingService } from './numbering.service'
 import type { PdfService } from './pdf.service'
+import type { InvoicePaymentRecorder } from './cash-record.service'
 import { CompanyProfileNotSetError, PdfSaveError, QuoteNotFoundError } from './quote.service'
 
 export class InvoiceNotFoundError extends Error {
@@ -26,6 +27,13 @@ export class InvoiceFinalizedError extends Error {
   constructor() {
     super(INVOICE_MESSAGES.finalizedNotEditable)
     this.name = 'InvoiceFinalizedError'
+  }
+}
+
+export class InvoiceNotDeletableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvoiceNotDeletableError'
   }
 }
 
@@ -50,6 +58,8 @@ export interface InvoiceServiceDeps {
   companyProfileRepository: CompanyProfileRepository
   numberingService: NumberingService
   pdfService: PdfService
+  /** 入金記録の自動作成・取消(F-21)。入金ステータス変更と不可分のため必須。本番では`CashRecordService`を渡す */
+  paymentRecorder: InvoicePaymentRecorder
 }
 
 /**
@@ -64,12 +74,16 @@ export class InvoiceService {
     return this.deps.repository.findAll(filter)
   }
 
-  getInvoice(id: number): Invoice {
+  /** 請求書と、紐づく入金記録(取消済を含む。新しい順)を返す(詳細設計書4.21章) */
+  getInvoice(id: number): InvoiceDetail {
     const invoice = this.deps.repository.findById(id)
     if (!invoice) {
       throw new InvoiceNotFoundError()
     }
-    return invoice
+    return {
+      ...invoice,
+      linkedRecords: this.deps.paymentRecorder.findLinkedByInvoice(id)
+    }
   }
 
   saveDraft(input: InvoiceInput, id?: number): { id: number } {
@@ -176,11 +190,57 @@ export class InvoiceService {
     if (invoice.status !== 'finalized') {
       throw new Error(INVOICE_MESSAGES.paymentRequiresFinalized)
     }
-    this.deps.repository.updatePaymentStatus(
-      id,
-      parsed.data.paymentStatus,
-      parsed.data.paymentDate ?? null
-    )
+    const { paymentStatus, paymentDate } = parsed.data
+    if (paymentStatus === 'paid' && invoice.paymentStatus === 'paid') {
+      throw new Error(INVOICE_MESSAGES.alreadyPaid)
+    }
+    // 請求書の状態変更と入金記録(・履歴)の作成/取消を同一トランザクションで行う(詳細設計書4.15・4.21章)。
+    // どちらかが失敗した場合は全体をロールバックする
+    this.deps.database.transaction(() => {
+      this.deps.repository.updatePaymentStatus(id, paymentStatus, paymentDate ?? null)
+      const recorder = this.deps.paymentRecorder
+      if (paymentStatus === 'paid') {
+        try {
+          recorder.createFromInvoicePayment({
+            id,
+            invoiceNumber: invoice.invoiceNumber,
+            clientId: invoice.clientId,
+            paymentDate: paymentDate ?? null,
+            billingAmount: invoice.billingAmount,
+            withholdingTaxAmount: invoice.withholdingTaxAmount
+          })
+        } catch {
+          throw new Error(INVOICE_MESSAGES.paymentRecordCreateFailure)
+        }
+      } else {
+        try {
+          recorder.cancelByInvoice(id)
+        } catch {
+          throw new Error(INVOICE_MESSAGES.paymentRecordCancelFailure)
+        }
+      }
+    })
+    return { success: true }
+  }
+
+  /**
+   * [F-26]下書きの請求書を完全に削除する(詳細設計書4.26章)。PDF保存済みは削除しない。
+   * 紐づく入金記録(`cash_records.invoice_id`)が存在する場合も削除しない。
+   */
+  deleteDraft(id: number): { success: true } {
+    const existing = this.deps.repository.findById(id)
+    if (!existing) {
+      throw new InvoiceNotFoundError()
+    }
+    if (existing.status === 'finalized') {
+      throw new InvoiceNotDeletableError(INVOICE_MESSAGES.finalizedNotDeletable)
+    }
+    if (this.deps.paymentRecorder.hasRecordsForInvoice(id)) {
+      throw new InvoiceNotDeletableError(INVOICE_MESSAGES.hasCashRecord)
+    }
+    this.deps.database.transaction(() => {
+      this.deps.repository.delete(id)
+    })
     return { success: true }
   }
 

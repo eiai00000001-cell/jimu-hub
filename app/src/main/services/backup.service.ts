@@ -23,7 +23,17 @@ import { BACKUP_MESSAGES } from '@shared/messages/messages'
 import type { Database } from '../db/db'
 import type { ClientRepository } from '../repositories/client.repository'
 import type { MigrationService } from './migration.service'
+import { CASH_RECORD_HISTORY_TRIGGERS_SQL, CASH_RECORD_HISTORY_TRIGGER_NAMES } from '../db/db'
+import { CashRecordHistoryRepository } from '../repositories/cash-record-history.repository'
+import { CashRecordRepository } from '../repositories/cash-record.repository'
+import { ReceiptRepository } from '../repositories/receipt.repository'
+import { IntegrityService } from './integrity/integrity.service'
+import { resolveReceiptPath } from './receipts/receipt-path'
 import {
+  ACCOUNTS_TABLE,
+  CASH_RECORD_HISTORY_TABLE,
+  CASH_RECORDS_TABLE,
+  RECEIPTS_TABLE,
   COMPANY_PROFILE_TABLE,
   INVOICE_LINE_ITEMS_TABLE,
   INVOICES_TABLE,
@@ -65,18 +75,40 @@ export function hasPdfExtension(path: string): boolean {
   return extname(path).toLowerCase() === PDF_EXTENSION
 }
 
+/** 進捗の通知(ファイル1件ごと。`data:progress`としてRendererへ渡す) */
+export type BackupProgressCallback = (progress: {
+  phase: 'export' | 'import'
+  current: number
+  total: number
+  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
+  stage?: 'packing'
+}) => void
+
 export interface ExportDataResult {
   success: boolean
   filePath?: string
   error?: string
+  /** 見込みサイズが復元上限の80%を超える場合の警告(基本設計書8.1章★E12。利用者が続行を選んだ場合のみ書き出す) */
+  warnLargeBackup?: boolean
 }
 
 export interface ImportDataResult {
   success: boolean
   importedCount?: number
   pdfHashMismatchCount?: number
+  /** 領収書のハッシュ不一致・欠落の件数(新形式のみ) */
+  receiptHashMismatchCount?: number
+  /** 記録ハッシュ・履歴ハッシュの不一致の件数(新形式のみ) */
+  recordHashMismatchCount?: number
   error?: string
 }
+
+/** 見込みサイズが復元上限(ファイルサイズ)のこの割合を超える場合に、エクスポート前に警告する */
+const LARGE_BACKUP_RATIO = 0.8
+
+/** 領収書の保存先(`documents/`からの相対パス)の形式。これに一致しないパスは採用しない(SEC-10) */
+const RECEIPT_PATH_PATTERN =
+  /^receipts\/\d{4}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png)$/i
 
 export interface BackupServiceDeps {
   database: Database
@@ -99,11 +131,14 @@ type FileFormat = 'zip' | 'json'
 interface ParsedBackup {
   format: FileFormat
   json: unknown
-  /** ZIP内のPDFエントリ(キー: `documents/...`形式のエントリ名) */
+  /** ZIP内のPDF・領収書エントリ(キー: `documents/...`形式のエントリ名) */
   pdfEntries: Map<string, Buffer>
 }
 
 class BackupParseError extends Error {}
+
+/** 容量上限の超過(復元ファイルの大きさ・展開後の合計サイズ) */
+class BackupSizeLimitError extends BackupParseError {}
 
 function sha256(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex')
@@ -124,11 +159,50 @@ export class BackupService {
     this.limits = { ...DEFAULT_RESTORE_LIMITS, ...deps.restoreLimits }
   }
 
-  exportData(filePath: string): ExportDataResult {
+  /**
+   * エクスポートの見込みサイズ(領収書の合計サイズ+PDFの合計サイズ)が、復元上限の80%を超えるか。
+   * 超える場合は、書き出しの前に利用者へ確認する(基本設計書8.1章★E12。詳細設計書4.2章手順5)。
+   */
+  isLargeBackup(): boolean {
+    return this.estimateExportBytes() > this.limits.maxFileBytes * LARGE_BACKUP_RATIO
+  }
+
+  /** 見込みサイズが復元上限を超え、書き出しても復元できないか(超える場合は書き出しを中止する) */
+  isTooLargeBackup(): boolean {
+    return this.estimateExportBytes() > this.limits.maxFileBytes
+  }
+
+  private estimateExportBytes(): number {
+    const sqlite = this.deps.database.sqlite
+    const receipts = sqlite
+      .prepare('SELECT COALESCE(SUM(file_size), 0) AS s FROM receipts')
+      .get() as {
+      s: number
+    }
+    let pdfBytes = 0
+    for (const table of ['quotes', 'invoices']) {
+      const rows = sqlite
+        .prepare(`SELECT pdf_path FROM ${table} WHERE pdf_path IS NOT NULL`)
+        .all() as Array<{ pdf_path: string }>
+      for (const row of rows) {
+        if (existsSync(row.pdf_path)) pdfBytes += statSync(row.pdf_path).size
+      }
+    }
+    return receipts.s + pdfBytes
+  }
+
+  exportData(filePath: string, onProgress?: BackupProgressCallback): ExportDataResult {
     try {
       const sqlite = this.deps.database.sqlite
       const zip = new AdmZip()
       const addedEntries = new Set<string>()
+      // 進捗: 書き出す対象のファイル件数(PDF保存済みの書類+領収書の行)を総数とする
+      const total = this.countExportFiles()
+      let current = 0
+      const progress = (): void => {
+        current += 1
+        onProgress?.({ phase: 'export', current, total })
+      }
 
       const toRelativePdfPath = (row: BackupRow): BackupRow => {
         const pdfPath = row.pdfPath
@@ -143,7 +217,21 @@ export class BackupService {
           zip.addFile(relative, readFileSync(pdfPath))
           addedEntries.add(relative)
         }
+        progress()
         return { ...row, pdfPath: relative }
+      }
+
+      // 領収書: DBの`file_path`(`receipts/...`)を、`documents/`始まりのパスで書き出す。実ファイルが無い領収書は書き出さない
+      const toRelativeReceiptPath = (row: BackupRow): BackupRow => {
+        const filePathValue = typeof row.filePath === 'string' ? row.filePath : ''
+        const absolute = resolveReceiptPath(this.deps.documentsDir, filePathValue)
+        const entryName = `${DOCUMENTS_ENTRY_PREFIX}${filePathValue}`
+        if (absolute && !addedEntries.has(entryName)) {
+          zip.addFile(entryName, readFileSync(absolute))
+          addedEntries.add(entryName)
+        }
+        progress()
+        return { ...row, filePath: filePathValue === '' ? '' : entryName }
       }
 
       const payload: BackupFile = {
@@ -156,10 +244,16 @@ export class BackupService {
           quotes: readRows(sqlite, QUOTES_TABLE).map(toRelativePdfPath),
           quoteLineItems: readRows(sqlite, QUOTE_LINE_ITEMS_TABLE),
           invoices: readRows(sqlite, INVOICES_TABLE).map(toRelativePdfPath),
-          invoiceLineItems: readRows(sqlite, INVOICE_LINE_ITEMS_TABLE)
+          invoiceLineItems: readRows(sqlite, INVOICE_LINE_ITEMS_TABLE),
+          accounts: readRows(sqlite, ACCOUNTS_TABLE),
+          cashRecords: readRows(sqlite, CASH_RECORDS_TABLE),
+          receipts: readRows(sqlite, RECEIPTS_TABLE).map(toRelativeReceiptPath),
+          cashRecordHistory: readRows(sqlite, CASH_RECORD_HISTORY_TABLE)
         }
       }
       zip.addFile(DATA_JSON_ENTRY, Buffer.from(JSON.stringify(payload, null, 2), 'utf-8'))
+      // ZIPの生成・書き込みは時間がかかるため、画面が止まって見えないよう開始前に通知する
+      onProgress?.({ phase: 'export', current: total, total, stage: 'packing' })
       writeFileSync(filePath, zip.toBuffer())
       return { success: true, filePath }
     } catch {
@@ -167,17 +261,34 @@ export class BackupService {
     }
   }
 
+  /** 書き出し対象のファイル件数(PDF保存済みの書類+領収書の行) */
+  private countExportFiles(): number {
+    const sqlite = this.deps.database.sqlite
+    const count = (sql: string): number => (sqlite.prepare(sql).get() as { c: number }).c
+    return (
+      count('SELECT COUNT(*) AS c FROM quotes WHERE pdf_path IS NOT NULL') +
+      count('SELECT COUNT(*) AS c FROM invoices WHERE pdf_path IS NOT NULL') +
+      count('SELECT COUNT(*) AS c FROM receipts')
+    )
+  }
+
   /** ファイルの先頭バイトがZIPシグネチャ(`PK`)かどうかで形式を判定する(詳細設計書4.3章手順3) */
   detectFormat(buffer: Buffer): FileFormat {
     return buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4b ? 'zip' : 'json'
   }
 
-  importData(filePath: string): ImportDataResult {
+  importData(filePath: string, onProgress?: BackupProgressCallback): ImportDataResult {
     let parsed: ParsedBackup
     try {
       parsed = this.parseFile(filePath)
-    } catch {
-      return { success: false, error: BACKUP_MESSAGES.importParseFailure }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof BackupSizeLimitError
+            ? BACKUP_MESSAGES.importTooLarge
+            : BACKUP_MESSAGES.importParseFailure
+      }
     }
 
     const validated = BackupFileSchema.safeParse(parsed.json)
@@ -204,14 +315,15 @@ export class BackupService {
     }
 
     try {
-      const pdfHashMismatchCount = this.deps.database.transaction(() =>
-        this.replaceAllData(backupFile, restorePdfs ? parsed.pdfEntries : null)
+      const counts = this.deps.database.transaction(() =>
+        this.replaceAllData(backupFile, restorePdfs ? parsed.pdfEntries : null, onProgress)
       )
       const d = backupFile.data
       return {
         success: true,
-        importedCount: d.clients.length + d.quotes.length + d.invoices.length,
-        ...(restorePdfs ? { pdfHashMismatchCount } : {})
+        importedCount:
+          d.clients.length + d.quotes.length + d.invoices.length + d.cashRecords.length,
+        ...(restorePdfs ? counts : {})
       }
     } catch {
       const restoreResult = this.restoreFromLatestSafeguardCopy(documentsBackupPath)
@@ -225,7 +337,7 @@ export class BackupService {
   /** ファイルを読み込み、形式(ZIP/JSON)に応じてdata.jsonとPDFエントリを取り出す */
   private parseFile(filePath: string): ParsedBackup {
     if (statSync(filePath).size > this.limits.maxFileBytes) {
-      throw new BackupParseError('file too large')
+      throw new BackupSizeLimitError('file too large')
     }
     const buffer = readFileSync(filePath)
     if (this.detectFormat(buffer) === 'json') {
@@ -245,7 +357,7 @@ export class BackupService {
     }
     const declaredTotal = entries.reduce((sum, entry) => sum + entry.header.size, 0)
     if (declaredTotal > this.limits.maxTotalUncompressedBytes) {
-      throw new BackupParseError('uncompressed size too large')
+      throw new BackupSizeLimitError('uncompressed size too large')
     }
     const pdfEntries = new Map<string, Buffer>()
     for (const entry of entries) {
@@ -257,8 +369,13 @@ export class BackupService {
       if (name.split('/').includes('..') || isAbsolute(name)) {
         continue
       }
-      // PDF以外のファイル(実行可能な種類のファイル等)は書き出さない(SEC-10)
-      if (!hasPdfExtension(name)) {
+      // 領収書(`documents/receipts/`配下)は、エントリ名が所定の形式に一致するものだけを採用する(SEC-10)
+      if (name.startsWith(`${DOCUMENTS_ENTRY_PREFIX}receipts/`)) {
+        if (!RECEIPT_PATH_PATTERN.test(name.slice(DOCUMENTS_ENTRY_PREFIX.length))) {
+          continue
+        }
+      } else if (!hasPdfExtension(name)) {
+        // PDF以外のファイル(実行可能な種類のファイル等)は書き出さない(SEC-10)
         continue
       }
       pdfEntries.set(name, entry.getData())
@@ -300,13 +417,30 @@ export class BackupService {
   /**
    * 全テーブルを削除して復元データで置き換える(トランザクション内で呼び出す。詳細設計書4.3章手順6・7)。
    * PDFを復元する場合は、documentsフォルダを全置換して書き出し、SHA-256を再照合する。
-   * @returns ハッシュ不一致の書類件数(PDFを復元しない場合は0)
+   * @returns ハッシュ不一致の件数(PDFを復元しない場合は0)
    */
-  private replaceAllData(backup: BackupFile, pdfEntries: Map<string, Buffer> | null): number {
+  private replaceAllData(
+    backup: BackupFile,
+    pdfEntries: Map<string, Buffer> | null,
+    onProgress?: BackupProgressCallback
+  ): {
+    pdfHashMismatchCount: number
+    receiptHashMismatchCount: number
+    recordHashMismatchCount: number
+  } {
     const sqlite = this.deps.database.sqlite
     const d = backup.data
 
+    // 履歴テーブルの更新・削除を拒否するトリガーは、全件削除・再投入のため一時的に削除し、コミット前に再作成する
+    // (SQLiteのDDLはトランザクション内で巻き戻せるため、失敗時はトリガーも元に戻る)
+    for (const name of CASH_RECORD_HISTORY_TRIGGER_NAMES) {
+      sqlite.exec(`DROP TRIGGER IF EXISTS ${name}`)
+    }
     for (const table of [
+      'cash_record_history',
+      'receipts',
+      'cash_records',
+      'accounts',
       'invoice_line_items',
       'invoices',
       'quote_line_items',
@@ -341,12 +475,47 @@ export class BackupService {
     for (const row of d.invoiceLineItems) {
       insertRow(sqlite, INVOICE_LINE_ITEMS_TABLE, row)
     }
+    for (const row of d.accounts) {
+      insertRow(sqlite, ACCOUNTS_TABLE, row)
+    }
+    for (const row of d.cashRecords) {
+      insertRow(sqlite, CASH_RECORDS_TABLE, row)
+    }
+    // 領収書の保存先は、所定の形式に一致するものだけを採用し、一致しないものは空文字とする(照合で欠落扱いになる)
+    for (const row of d.receipts) {
+      insertRow(sqlite, RECEIPTS_TABLE, row, { filePath: this.toReceiptDbPath(row.filePath) })
+    }
+    for (const row of d.cashRecordHistory) {
+      insertRow(sqlite, CASH_RECORD_HISTORY_TABLE, row)
+    }
+    sqlite.exec(CASH_RECORD_HISTORY_TRIGGERS_SQL)
     this.rebuildNumberSequences(d.quotes, d.invoices)
 
     if (!pdfEntries) {
-      return 0
+      return { pdfHashMismatchCount: 0, receiptHashMismatchCount: 0, recordHashMismatchCount: 0 }
     }
-    return this.restorePdfFiles(pdfEntries, d.quotes, d.invoices)
+    const pdfHashMismatchCount = this.restorePdfFiles(pdfEntries, d.quotes, d.invoices, onProgress)
+    return { pdfHashMismatchCount, ...this.verifyRecords() }
+  }
+
+  /** エクスポートファイルの領収書パス(`documents/receipts/...`)を、DBの`file_path`(`receipts/...`)へ変換する */
+  private toReceiptDbPath(value: unknown): string {
+    if (typeof value !== 'string') return ''
+    const relative = value.startsWith(DOCUMENTS_ENTRY_PREFIX)
+      ? value.slice(DOCUMENTS_ENTRY_PREFIX.length)
+      : value
+    return RECEIPT_PATH_PATTERN.test(relative) ? relative : ''
+  }
+
+  /** 復元後の記録ハッシュ・領収書ファイルの照合(`IntegrityService.verifyAllAfterRestore`)。復元は中断しない */
+  private verifyRecords(): { receiptHashMismatchCount: number; recordHashMismatchCount: number } {
+    const database = this.deps.database
+    return new IntegrityService(
+      new CashRecordRepository(database),
+      new ReceiptRepository(database),
+      new CashRecordHistoryRepository(database),
+      this.deps.documentsDir
+    ).verifyAllAfterRestore()
   }
 
   /** 復元後の見積書・請求書の最大採番値から`document_number_sequences`を再計算する(詳細設計書4.3章手順6) */
@@ -381,10 +550,12 @@ export class BackupService {
   restorePdfFiles(
     entries: Map<string, Buffer>,
     quotes: BackupRow[],
-    invoices: BackupRow[]
+    invoices: BackupRow[],
+    onProgress?: BackupProgressCallback
   ): number {
     const root = resolve(this.deps.documentsDir)
     rmSync(root, { recursive: true, force: true })
+    let written = 0
     for (const [name, data] of entries) {
       const target = resolve(dirname(root), name)
       if (!target.startsWith(root + sep)) {
@@ -392,6 +563,8 @@ export class BackupService {
       }
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, data)
+      written += 1
+      onProgress?.({ phase: 'import', current: written, total: entries.size })
     }
 
     const sqlite = this.deps.database.sqlite

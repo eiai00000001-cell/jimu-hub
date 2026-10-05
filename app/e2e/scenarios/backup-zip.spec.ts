@@ -163,7 +163,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
       .map((e) => e.entryName)
       .sort()
     const dataJson = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    expect(dataJson.schemaVersion).toBe(3)
+    expect(dataJson.schemaVersion).toBe(4)
     expect(names).toContain('data.json')
     expect(names.filter((n) => n.startsWith('documents/') && n.endsWith('.pdf'))).toHaveLength(3)
     expect(

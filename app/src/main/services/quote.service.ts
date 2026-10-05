@@ -35,6 +35,13 @@ export class PdfSaveError extends Error {
   }
 }
 
+export class QuoteNotDeletableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'QuoteNotDeletableError'
+  }
+}
+
 function parseOrThrow(input: QuoteInput): QuoteInput {
   const result = QuoteInputSchema.safeParse(input)
   if (!result.success) {
@@ -132,6 +139,24 @@ export class QuoteService {
       this.deps.repository.revertToDraft(quoteId)
       throw new PdfSaveError()
     }
+  }
+
+  /** [F-26]下書きの見積書を完全に削除する(詳細設計書4.26章)。PDF保存済み・請求書の元になっている場合は削除しない */
+  deleteDraft(id: number): { success: true } {
+    const existing = this.deps.repository.findById(id)
+    if (!existing) {
+      throw new QuoteNotFoundError()
+    }
+    if (existing.status === 'finalized') {
+      throw new QuoteNotDeletableError(QUOTE_MESSAGES.finalizedNotDeletable)
+    }
+    if (this.deps.repository.hasDerivedInvoices(id)) {
+      throw new QuoteNotDeletableError(QUOTE_MESSAGES.hasDerivedInvoice)
+    }
+    this.deps.database.transaction(() => {
+      this.deps.repository.delete(id)
+    })
+    return { success: true }
   }
 
   private assertEditable(id: number): void {

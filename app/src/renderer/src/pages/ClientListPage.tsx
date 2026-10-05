@@ -37,6 +37,8 @@ export function ClientListPage({
   const [sort, setSort] = useState<ClientSortKey>('furigana_asc')
   const [showInactive, setShowInactive] = useState(false)
   const [clients, setClients] = useState<Client[] | null>(null)
+  const [reactivated, setReactivated] = useState(false)
+  const [reloadCount, setReloadCount] = useState(0)
   const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
 
   useEffect(() => {
@@ -51,7 +53,16 @@ export function ClientListPage({
     return () => {
       cancelled = true
     }
-  }, [keyword, sort, showInactive])
+  }, [keyword, sort, showInactive, reloadCount])
+
+  async function handleReactivate(id: number): Promise<void> {
+    if (!window.confirm(CLIENT_MESSAGES.confirmReactivate)) return
+    await window.jimuhubApi.reactivateClient(id)
+    setReactivated(true)
+    setReloadCount((count) => count + 1)
+  }
+
+  const hasInactive = clients?.some((client) => client.status === 'inactive') ?? false
 
   return (
     <AppShell
@@ -69,6 +80,9 @@ export function ClientListPage({
       onComingSoon={(label) => setComingSoonLabel(label)}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
+      {reactivated ? (
+        <Message variant="success">{CLIENT_MESSAGES.reactivateSuccess}</Message>
+      ) : null}
       {comingSoonLabel ? (
         <Message variant="warning">
           「{comingSoonLabel}」は以降のイテレーションで実装予定です。
@@ -120,6 +134,7 @@ export function ClientListPage({
               <th>担当者名</th>
               <th>電話番号</th>
               <th>状態</th>
+              {hasInactive ? <th className="op">操作</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -139,6 +154,21 @@ export function ClientListPage({
                 <td>
                   <Badge variant={client.status === 'active' ? 'active' : 'inactive'} />
                 </td>
+                {hasInactive ? (
+                  <td className="op">
+                    {client.status === 'inactive' ? (
+                      <Button
+                        className="btn-sm"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void handleReactivate(client.id)
+                        }}
+                      >
+                        利用中に戻す
+                      </Button>
+                    ) : null}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

@@ -310,6 +310,13 @@ export class InvoiceRepository {
     return { changes: result.changes }
   }
 
+  /** 下書きの削除。明細行も合わせて完全に削除する(詳細設計書4.26章手順4)。呼び出しはService層のトランザクション内で行う */
+  delete(id: number): { changes: number } {
+    this.database.orm.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, id)).run()
+    const result = this.database.orm.delete(invoices).where(eq(invoices.id, id)).run()
+    return { changes: result.changes }
+  }
+
   /** PDF生成後、保存先パス・ハッシュ値を記録する */
   updatePdfInfo(id: number, params: { pdfPath: string; pdfHash: string }): void {
     this.database.orm

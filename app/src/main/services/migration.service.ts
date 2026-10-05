@@ -1,4 +1,5 @@
 import { CURRENT_SCHEMA_VERSION, type BackupFile } from '@shared/backup/backup-file'
+import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
 import { CURRENT_SCHEMA_VERSION as CURRENT_DB_SCHEMA_VERSION } from '../db/db'
 import type { Database } from '../db/db'
 
@@ -20,6 +21,21 @@ export class MigrationService {
     if (fromVersion >= CURRENT_SCHEMA_VERSION) {
       return data
     }
+    // schemaVersion 3以前: 勘定科目は初期科目14件、入出金・領収書・履歴は空として扱う(詳細設計書4.3章手順4)
+    const withInitialAccounts: BackupFile['data']['accounts'] =
+      fromVersion < 4
+        ? INITIAL_ACCOUNTS.map((account, index) => ({
+            id: index + 1,
+            name: account.name,
+            kind: account.kind,
+            status: 'active',
+            isDefault: true,
+            defaultKey: account.defaultKey,
+            sortOrder: account.sortOrder,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }))
+        : data.data.accounts
     const withMismatchDefault = (
       rows: BackupFile['data']['quotes']
     ): BackupFile['data']['quotes'] => rows.map((row) => ({ pdfHashMismatch: false, ...row }))
@@ -29,7 +45,11 @@ export class MigrationService {
       data: {
         ...data.data,
         quotes: withMismatchDefault(data.data.quotes),
-        invoices: withMismatchDefault(data.data.invoices)
+        invoices: withMismatchDefault(data.data.invoices),
+        accounts: withInitialAccounts,
+        cashRecords: fromVersion < 4 ? [] : data.data.cashRecords,
+        receipts: fromVersion < 4 ? [] : data.data.receipts,
+        cashRecordHistory: fromVersion < 4 ? [] : data.data.cashRecordHistory
       }
     }
   }
@@ -60,6 +80,18 @@ export class MigrationService {
       )
     }
 
+    // schema_version 3→4: 新規4テーブル・トリガーはDatabase.initialize()で作成済み。
+    // 初期科目14件の投入とschema_versionの更新は1つのトランザクションで行い、失敗時は更新しない
+    // (詳細設計書4.1章手順2)。
+    database.transaction(() => {
+      if (fromVersion < 4) {
+        database.seedInitialAccounts()
+      }
+      this.updateSchemaVersion(database)
+    })
+  }
+
+  private updateSchemaVersion(database: Database): void {
     database.sqlite
       .prepare(
         "INSERT INTO app_meta (key, value) VALUES ('schema_version', ?) " +

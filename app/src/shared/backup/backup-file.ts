@@ -7,9 +7,10 @@ import { z } from 'zod'
 
 /**
  * エクスポートファイルの最新スキーマバージョン(DBのschema_versionと同一の値)。
- * 1: 取引先のみ / 2: フリガナ・自社情報・見積書・請求書を追加 / 3: pdfHashMismatchを追加(ZIP形式)
+ * 1: 取引先のみ / 2: フリガナ・自社情報・見積書・請求書を追加 / 3: pdfHashMismatchを追加(ZIP形式) /
+ * 4: 勘定科目・入出金経費の記録・領収書・履歴を追加(領収書ファイルはZIPの`documents/receipts/`に同梱)
  */
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4
 
 export const BackupClientRecordSchema = z.object({
   id: z.number().int(),
@@ -48,7 +49,11 @@ export const BackupFileSchema = z.object({
     quotes: z.array(BackupRowSchema).default([]),
     quoteLineItems: z.array(BackupRowSchema).default([]),
     invoices: z.array(BackupRowSchema).default([]),
-    invoiceLineItems: z.array(BackupRowSchema).default([])
+    invoiceLineItems: z.array(BackupRowSchema).default([]),
+    accounts: z.array(BackupRowSchema).default([]),
+    cashRecords: z.array(BackupRowSchema).default([]),
+    receipts: z.array(BackupRowSchema).default([]),
+    cashRecordHistory: z.array(BackupRowSchema).default([])
   })
 })
 /** 検証・正規化後のバックアップ構造(省略可能なテーブルは既定値で補われている) */

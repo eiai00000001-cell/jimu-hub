@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - 入出金・経費の編集(モックアップ v2.1)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF; --color-bg: #F2F2F4; --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73; --color-text: #3A3A3C; --color-red: #B3453A;
+      --radius-window: 10px; --radius-button: 6px; --radius-badge: 999px;
+      --control-height: 32px; --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28); --shadow-modal: 0 12px 40px rgba(0,0,0,0.35);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #DCDCE0; font-family: var(--font-family); color: var(--color-text); font-size: 13px; -webkit-font-smoothing: antialiased; }
+    .window { width: 1280px; margin: 24px auto; background: var(--color-bg); border-radius: var(--radius-window); overflow: hidden; box-shadow: var(--shadow-window); border: 1px solid var(--color-border); display: flex; flex-direction: column; position: relative; }
+    .titlebar { height: 38px; min-height: 38px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; }
+    .tl-close { background: #FF5F57; } .tl-min { background: #FFBD2E; } .tl-zoom { background: #28C840; }
+    .titlebar-title { flex: 1; text-align: center; font-size: 12px; color: var(--color-text-secondary); margin-right: 56px; }
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar { width: 220px; flex-shrink: 0; background: var(--color-bg); border-right: 1px solid var(--color-border); padding: 0; }
+    .sidebar-header { height: var(--header-height); display: flex; align-items: center; padding: 0 18px; font-size: 18px; font-weight: 600; background: var(--color-white); border-bottom: 1px solid var(--color-border); }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0; }
+    .sidebar-item { padding: 7px 18px; margin-bottom: 2px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-item.disabled { color: var(--color-text-secondary); }
+    .sidebar-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--color-bg); }
+    .page-header { height: var(--header-height); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--color-white); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .page-title-group { display: flex; align-items: center; gap: 10px; }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0; }
+    .header-actions { display: flex; gap: 8px; }
+    .page-content { padding: 24px 28px; flex: 1; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: var(--control-height); padding: 0 16px; border-radius: var(--radius-button); border: 1px solid transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+    .btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+    .btn-off { opacity: 0.45; }
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+
+    .tabs { display: flex; margin-bottom: 18px; border-bottom: 1px solid var(--color-border); }
+    .tab { padding: 8px 20px; font-size: 13px; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--color-text); font-weight: 600; border-bottom-color: var(--color-text); }
+
+    .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin-bottom: 16px; background: var(--color-white); border: 1px solid var(--color-border); padding: 16px; }
+    .filter-field { display: flex; flex-direction: column; gap: 4px; }
+    .filter-field label { font-size: 11px; color: var(--color-text-secondary); }
+    input[type=text], input[type=date], input[type=number], input[type=month], select, textarea {
+      height: var(--control-height); padding: 0 10px; border: 1px solid var(--color-border); border-radius: 0; font-family: inherit; font-size: 13px; background: var(--color-white); color: var(--color-text); }
+    textarea { height: auto; padding: 8px 10px; }
+    .filter-range { display: flex; align-items: center; gap: 6px; }
+    .filter-range span { font-size: 12px; color: var(--color-text-secondary); }
+    .filter-range input { width: 130px; }
+    .filter-range.amount input { width: 100px; }
+    .filter-field.error input { border-color: var(--color-red); }
+    .error-message { font-size: 11px; color: var(--color-red); margin-top: 4px; }
+
+    .table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+    .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; vertical-align: middle; }
+    .table tr:last-child td { border-bottom: none; }
+    .table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .table .op { text-align: right; white-space: nowrap; }
+    .table tr.cancelled td { color: var(--color-text-secondary); background: var(--color-bg); }
+    .table tr.cancelled td.num { text-decoration: line-through; }
+    .table tr.selected td { background: var(--color-bg); font-weight: 600; }
+    .table tr.total td { background: var(--color-bg); font-weight: 600; border-top: 1px solid var(--color-border); }
+    .sub { display: block; font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+    .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
+    .badge-income { background: var(--color-text); color: var(--color-white); }
+    .badge-expense { background: var(--color-bg); color: var(--color-text); }
+    .badge-active { background: var(--color-bg); color: var(--color-text); }
+    .badge-inactive { background: var(--color-text); color: var(--color-white); }
+    .badge-cancelled { background: var(--color-bg); color: var(--color-text-secondary); text-decoration: line-through; }
+    .badge-deleted { background: var(--color-text); color: var(--color-white); }
+    .badge-warning { background: var(--color-red); color: var(--color-white); }
+    .badge-op-minor { background: var(--color-bg); color: var(--color-text); }
+    .badge-op-major { background: var(--color-text); color: var(--color-white); }
+    .sign { font-weight: 600; }
+
+    .pager { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; font-size: 12px; color: var(--color-text-secondary); }
+    .pager .btns { display: flex; gap: 8px; }
+    .empty-state { padding: 48px; text-align: center; color: var(--color-text-secondary); font-size: 12px; background: var(--color-white); border: 1px solid var(--color-border); }
+
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); margin-bottom: 16px; }
+    .message-success { border-left-color: var(--color-text); }
+    .message-error { border-left-color: var(--color-red); }
+    .message-icon { font-weight: 700; flex-shrink: 0; }
+    .message-error .message-icon { color: var(--color-red); }
+
+    .panel { background: var(--color-white); border: 1px solid var(--color-border); padding: 24px; }
+    .info-grid { display: grid; grid-template-columns: 160px 1fr; row-gap: 14px; column-gap: 16px; margin: 0; }
+    .info-grid dt { color: var(--color-text-secondary); font-size: 12px; }
+    .info-grid dd { margin: 0; font-size: 13px; }
+    .section-title { font-size: 13px; font-weight: 600; margin: 24px 0 10px; }
+    .back-link { margin-top: 20px; }
+
+    .field { margin-bottom: 16px; }
+    .field > label { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+    .field .required { font-size: 11px; margin-left: 4px; }
+    .field input[type=text], .field input[type=date], .field select, .field textarea { width: 100%; }
+    .field .hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 4px; }
+    .field.error input, .field.error select, .field.error textarea { border-color: var(--color-red); }
+    .field .readonly { height: var(--control-height); display: flex; align-items: center; padding: 0 10px; background: var(--color-bg); border: 1px solid var(--color-border); font-size: 13px; }
+    .radio-row { display: flex; gap: 20px; height: var(--control-height); align-items: center; }
+    .radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text); margin: 0; }
+    input[type=radio] { accent-color: var(--color-text); margin: 0; }
+    .form-columns { display: flex; gap: 48px; }
+    .form-columns > div { flex: 1 1 0; min-width: 0; }
+    .form-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    .receipt-list { border: 1px solid var(--color-border); background: var(--color-white); }
+    .receipt-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+    .receipt-item:last-child { border-bottom: none; }
+    .receipt-meta { flex: 1; min-width: 0; font-size: 12px; }
+    .receipt-meta .name { font-size: 13px; }
+    .receipt-meta .info { color: var(--color-text-secondary); font-size: 11px; margin-top: 2px; }
+    .receipt-item.removed .name { text-decoration: line-through; color: var(--color-text-secondary); }
+    .receipt-empty { padding: 14px 12px; font-size: 12px; color: var(--color-text-secondary); background: var(--color-white); border: 1px solid var(--color-border); }
+    /* 領収書のダミー画像(HTML/CSSで描いた見本。支給素材ではない) */
+    .thumb { width: 40px; height: 52px; flex-shrink: 0; background: linear-gradient(var(--color-white), var(--color-white)); border: 1px solid var(--color-border); position: relative; }
+    .thumb::before { content: ''; position: absolute; left: 6px; right: 6px; top: 8px; height: 3px; background: var(--color-text-secondary); box-shadow: 0 7px 0 var(--color-border), 0 13px 0 var(--color-border), 0 19px 0 var(--color-border), 0 29px 0 var(--color-text); }
+    .thumb.pdf::after { content: 'PDF'; position: absolute; right: 0; bottom: 0; font-size: 8px; background: var(--color-text); color: var(--color-white); padding: 1px 3px; }
+    .thumb.lg { width: 120px; height: 156px; }
+    .thumb.lg::before { left: 16px; right: 16px; top: 22px; height: 6px; box-shadow: 0 16px 0 var(--color-border), 0 30px 0 var(--color-border), 0 44px 0 var(--color-border), 0 66px 0 var(--color-text); }
+    .thumb.xl { width: 360px; height: 468px; }
+    .thumb.xl::before { left: 40px; right: 40px; top: 60px; height: 12px; box-shadow: 0 40px 0 var(--color-border), 0 76px 0 var(--color-border), 0 112px 0 var(--color-border), 0 190px 0 var(--color-text); }
+    .receipt-cards { display: flex; gap: 16px; flex-wrap: wrap; }
+    .receipt-card { width: 200px; border: 1px solid var(--color-border); background: var(--color-white); padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .receipt-card .name { font-size: 12px; word-break: break-all; text-align: center; }
+    .receipt-card .info { font-size: 11px; color: var(--color-text-secondary); }
+    .receipt-card .btns { display: flex; gap: 6px; }
+
+    .modal { width: 440px; background: var(--color-white); border: 1px solid var(--color-border); box-shadow: var(--shadow-modal); padding: 22px 24px; }
+    .modal h2 { font-size: 15px; margin: 0 0 10px; }
+    .modal p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; margin: 0 0 16px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .overlay { position: absolute; left: 0; right: 0; bottom: 0; top: 38px; background: rgba(0,0,0,0.30); display: flex; align-items: center; justify-content: center; }
+    .overlay-ref { background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); padding: 36px 0; display: flex; justify-content: center; margin-bottom: 8px; }
+    .reference-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+    .reference-label { display: inline-block; font-size: 11px; color: var(--color-white); background: var(--color-text); padding: 2px 8px; margin: 0 0 12px; }
+    .reference-label.again { margin-top: 24px; }
+    .mini-header { display: flex; align-items: center; gap: 10px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 18px; }
+    .summary-cards { display: flex; gap: 16px; margin-bottom: 20px; }
+    .summary-card { flex: 1; background: var(--color-white); border: 1px solid var(--color-border); padding: 16px 20px; }
+    .summary-card .label { font-size: 12px; color: var(--color-text-secondary); }
+    .summary-card .value { font-size: 22px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .summary-grid { display: flex; gap: 20px; align-items: flex-start; }
+    .summary-grid > div { flex: 1 1 0; min-width: 0; }
+    .block-title { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+    .expand-row td { background: var(--color-bg); padding: 12px 14px 16px 40px; }
+    .inline-form { display: flex; gap: 12px; align-items: flex-end; }
+    .inline-form .field { margin-bottom: 0; }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="traffic-lights"><div class="traffic-light tl-close"></div><div class="traffic-light tl-min"></div><div class="traffic-light tl-zoom"></div></div>
+      <div class="titlebar-title">事務HUB - 入出金・経費の編集</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-header">事務HUB</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item"><span>ホーム</span></li>
+          <li class="sidebar-item"><span>取引先管理</span></li>
+          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>見積書・請求書</span></li>
+          <li class="sidebar-item active"><span>入出金・経費</span></li>
+          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
+        </ul>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-title-group"><h1 class="page-title">経費の編集</h1></div>
+          <div class="header-actions"></div>
+        </div>
+        <div class="page-content">
+<div class="panel"><div class="form-columns"><div><div class="field"><label>種別<span class="required">必須</span></label><div class="readonly">経費</div><div class="hint">登録後は種別を変更できません</div></div>
+              <div class="field"><label>日付<span class="required">必須</span></label><input type="date" value="2026-09-28"></div>
+              <div class="field"><label>金額<span class="required">必須</span></label><input type="text" value="6,600" placeholder="例: 6,600"><div class="hint">税込の金額を半角数字で入力します(カンマ区切り可)</div></div>
+              <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option>消耗品費</option><option selected>通信費</option><option>旅費交通費</option><option>外注費</option><option>新聞図書費</option><option>地代家賃</option><option>支払手数料</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
+              <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="インターネット回線(9月分)" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><select><option>(未選択)</option><option>サンプル商事株式会社</option><option>アルファ商事株式会社</option><option>オレンジ物産株式会社</option></select></div>
+              <div class="field"><label>支払方法</label><select><option>現金</option><option>振込</option><option selected>クレジットカード</option><option>その他</option></select></div>
+              <div class="field"><label>税区分</label><select><option selected>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
+              <div class="field"><label>消費税額</label><div class="readonly">¥600</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>
+              <div class="field"><label>領収書</label><div class="receipt-list"><div class="receipt-item"><div class="thumb"></div><div class="receipt-meta"><div class="name">receipt_2026-09-28.jpg</div><div class="info">JPEG · 412 KB · 保存済み</div></div><button class="btn btn-secondary btn-sm">削除</button></div><div class="receipt-item removed"><div class="thumb pdf"></div><div class="receipt-meta"><div class="name">invoice_internet_sep.pdf</div><div class="info">PDF · 186 KB · 削除予定(保存時に外します)</div></div></div><div class="receipt-item"><div class="thumb pdf"></div><div class="receipt-meta"><div class="name">invoice_internet_oct.pdf</div><div class="info">PDF · 201 KB · 追加予定(保存時に添付します)</div></div><button class="btn btn-secondary btn-sm">削除</button></div></div>
+              <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm">ファイルを追加</button></div>
+              <div class="hint">PDF・JPEG・PNG、1ファイル10MBまで、1つの記録につき5件まで(現在 3 件)</div></div><div class="field"><label>変更理由</label><input type="text" placeholder="例: 金額の訂正(200文字まで)"><div class="hint">履歴に残ります(任意)</div></div></div></div></div>
+          <div class="form-actions"><button class="btn btn-primary">保存</button><button class="btn btn-secondary">キャンセル</button></div><div class="reference-block"><div class="reference-label">参考: 請求書から自動作成された入金記録の編集(種別・金額・取引先・請求書は表示のみ。日付・勘定科目・摘要・支払方法・税区分・領収書・変更理由を編集できる)</div>
+<div class="panel"><div class="form-columns"><div><div class="field"><label>種別<span class="required">必須</span></label><div class="readonly">入金</div><div class="hint">登録後は種別を変更できません</div></div>
+              <div class="field"><label>日付<span class="required">必須</span></label><input type="date" value="2026-09-30"></div>
+              <div class="field"><label>金額<span class="required">必須</span></label><div class="readonly">¥332,370</div><div class="hint">請求書から作成された入金記録の金額は変更できません</div></div>
+              <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option selected>売上高</option><option>雑収入</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
+              <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="請求書 2026-012 の入金" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><div class="readonly">サンプル商事株式会社</div></div>
+              <div class="field"><label>支払方法</label><select><option>(未選択)</option><option>現金</option><option>振込</option><option>クレジットカード</option><option>その他</option></select></div>
+              <div class="field"><label>税区分</label><select><option>(未選択)</option><option>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
+              <div class="field"><label>消費税額</label><div class="readonly">¥0</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>
+              <div class="field"><label>領収書</label><div class="receipt-empty">領収書は添付されていません。</div>
+              <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm">ファイルを追加</button></div>
+              <div class="hint">PDF・JPEG・PNG、1ファイル10MBまで、1つの記録につき5件まで</div></div><div class="field"><label>変更理由</label><input type="text" placeholder="例: 金額の訂正(200文字まで)"><div class="hint">履歴に残ります(任意)</div></div></div></div></div>
+          
+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

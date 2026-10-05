@@ -5,7 +5,11 @@ import { CompanyProfileRepository } from '../repositories/company-profile.reposi
 import { DocumentNumberSequenceRepository } from '../repositories/document-number-sequence.repository'
 import { InvoiceRepository } from '../repositories/invoice.repository'
 import { QuoteRepository } from '../repositories/quote.repository'
+import { AccountRepository } from '../repositories/account.repository'
+import { createRecordServices } from './record-services'
 import { NumberingService } from './numbering.service'
+import type { PdfService } from './pdf.service'
+import type { InvoicePaymentRecorder } from './cash-record.service'
 import { InvoiceService, InvoiceNotFoundError, InvoiceFinalizedError } from './invoice.service'
 import { CompanyProfileNotSetError, PdfSaveError } from './quote.service'
 import type { InvoiceInput } from '@shared/schemas/invoice.schema'
@@ -36,6 +40,13 @@ const baseInput: InvoiceInput = {
       withholdingTarget: true
     }
   ]
+}
+
+const noopPaymentRecorder: InvoicePaymentRecorder = {
+  createFromInvoicePayment: () => ({ id: 0 }),
+  cancelByInvoice: () => ({ cancelledCount: 0 }),
+  findLinkedByInvoice: () => [],
+  hasRecordsForInvoice: () => false
 }
 
 describe('InvoiceService', () => {
@@ -71,7 +82,8 @@ describe('InvoiceService', () => {
       companyProfileRepository: companyRepo,
       numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pdfService: { generateInvoicePdf: generate } as any
+      pdfService: { generateInvoicePdf: generate } as any,
+      paymentRecorder: noopPaymentRecorder
     })
     return { service, generate }
   }
@@ -246,6 +258,143 @@ describe('InvoiceService', () => {
       expect(() =>
         service.updatePaymentStatus(999, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
       ).toThrow(InvoiceNotFoundError)
+    })
+  })
+
+  describe('deleteDraft(F-26)', () => {
+    it('下書きの請求書を明細行ごと完全に削除する', () => {
+      const { service } = create()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      expect(service.deleteDraft(id)).toEqual({ success: true })
+      expect(() => service.getInvoice(id)).toThrow(InvoiceNotFoundError)
+      const lines = db.sqlite.prepare('SELECT COUNT(*) AS c FROM invoice_line_items').get() as {
+        c: number
+      }
+      expect(lines.c).toBe(0)
+    })
+
+    it('存在しない場合はInvoiceNotFoundError、PDF保存済みは削除できない', async () => {
+      companyRepo.upsert(company)
+      const { service } = create()
+      expect(() => service.deleteDraft(9999)).toThrow(InvoiceNotFoundError)
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      expect(() => service.deleteDraft(id)).toThrow('PDF保存済みの請求書は削除できません')
+      expect(service.getInvoice(id).id).toBe(id)
+    })
+  })
+
+  describe('入金記録の自動作成・取消(F-21。詳細設計書4.15・4.21章)', () => {
+    function createWithRecords() {
+      companyRepo.upsert(company)
+      const records = createRecordServices(db, '/tmp/jimuhub-unused').cashRecordService
+      const service = new InvoiceService({
+        database: db,
+        repository: new InvoiceRepository(db),
+        quoteRepository: new QuoteRepository(db),
+        companyProfileRepository: companyRepo,
+        numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
+        pdfService: {
+          generateInvoicePdf: vi.fn().mockResolvedValue({ pdfPath: '/tmp/i.pdf', pdfHash: 'h' })
+        } as unknown as PdfService,
+        paymentRecorder: records
+      })
+      return { service, records }
+    }
+
+    it('入金済みにすると、請求金額(源泉徴収後)・入金日・取引先で入金記録を同時に作成する', async () => {
+      const { service, records } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      const invoice = service.getInvoice(id)
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      const linked = service.getInvoice(id).linkedRecords
+      expect(linked).toHaveLength(1)
+      expect(linked[0]).toMatchObject({
+        recordDate: '2026-09-30',
+        amount: invoice.billingAmount,
+        status: 'active'
+      })
+      expect(records.getRecord(linked[0]!.id)).toMatchObject({
+        kind: 'income',
+        withholdingTaxAmount: invoice.withholdingTaxAmount,
+        invoiceId: id,
+        clientId
+      })
+    })
+
+    it('未収に戻すと入金記録を「取消済」で残し、再度入金済みにすると新しい記録を作る(R-29・R-30)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      service.updatePaymentStatus(id, { paymentStatus: 'unpaid', paymentDate: null })
+      expect(service.getInvoice(id).linkedRecords.map((r) => r.status)).toEqual(['cancelled'])
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-10-02' })
+      expect(service.getInvoice(id).linkedRecords.map((r) => [r.recordDate, r.status])).toEqual([
+        ['2026-10-02', 'active'],
+        ['2026-09-30', 'cancelled']
+      ])
+    })
+
+    it('入金済みの請求書に再度「入金済み」を指定すると、専用の文言で拒否しデータは変わらない(R-14)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-10-10' })
+      ).toThrow('この請求書はすでに入金済みです')
+      expect(service.getInvoice(id)).toMatchObject({
+        paymentStatus: 'paid',
+        paymentDate: '2026-09-30'
+      })
+    })
+
+    it('入金記録を作成できない場合は、請求書も入金済みにならない(ロールバック)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      db.sqlite.exec("UPDATE accounts SET default_key = NULL WHERE default_key = 'sales_revenue'")
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      ).toThrow('入金記録を作成できなかったため、入金済みにできませんでした')
+      expect(service.getInvoice(id)).toMatchObject({ paymentStatus: 'unpaid', paymentDate: null })
+    })
+
+    it('入金記録を取消できない場合は、請求書も未収に戻らない(ロールバック)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      service.updatePaymentStatus(id, { paymentStatus: 'paid', paymentDate: '2026-09-30' })
+      db.sqlite.exec('DROP TABLE cash_record_history')
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'unpaid', paymentDate: null })
+      ).toThrow('入金記録を取消できなかったため、未収に戻せませんでした')
+      expect(service.getInvoice(id).paymentStatus).toBe('paid')
+    })
+
+    it('入金記録が無い入金済みの請求書(イテレーション1で入金済みにしたもの)は、未収に戻せ、記録は作られない(★E14)', async () => {
+      const { service } = createWithRecords()
+      const { id } = await service.finalizeInvoice({ ...baseInput, clientId })
+      db.sqlite
+        .prepare(
+          "UPDATE invoices SET payment_status = 'paid', payment_date = '2026-09-01' WHERE id = ?"
+        )
+        .run(id)
+      expect(service.getInvoice(id).linkedRecords).toEqual([])
+      expect(() =>
+        service.updatePaymentStatus(id, { paymentStatus: 'unpaid', paymentDate: null })
+      ).not.toThrow()
+      expect(service.getInvoice(id).linkedRecords).toEqual([])
+    })
+
+    it('入金記録に紐づく請求書の下書き削除は拒否する(ガード)', () => {
+      const { service } = createWithRecords()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      db.sqlite
+        .prepare(
+          "INSERT INTO cash_records (record_date, kind, amount, account_id, description, invoice_id) VALUES ('2026-09-30', 'income', 1, ?, 'x', ?)"
+        )
+        .run(new AccountRepository(db).findAll({ kind: 'income' })[0]!.id, id)
+      expect(() => service.deleteDraft(id)).toThrow(
+        'この請求書に紐づく入金記録があるため削除できません'
+      )
+      expect(service.getInvoice(id).id).toBe(id)
     })
   })
 })

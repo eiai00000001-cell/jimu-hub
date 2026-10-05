@@ -15,6 +15,17 @@ import { NumberingService } from './services/numbering.service'
 import { cleanupLeftoverPdfTempFiles } from './services/pdf/temp-files'
 import { PdfService } from './services/pdf.service'
 import { QuoteService } from './services/quote.service'
+import { AccountsIpcHandler } from './ipc/accounts.ipc-handler'
+import { AccountService } from './services/account.service'
+import { AccountRepository } from './repositories/account.repository'
+import { ReportsIpcHandler } from './ipc/reports.ipc-handler'
+import { SummaryRepository } from './repositories/summary.repository'
+import { CashRecordRepository } from './repositories/cash-record.repository'
+import { CsvExportService } from './services/csv-export.service'
+import { SummaryService } from './services/summary.service'
+import { ReceiptsIpcHandler } from './ipc/receipts.ipc-handler'
+import { RecordsIpcHandler } from './ipc/records.ipc-handler'
+import { createRecordServices } from './services/record-services'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
@@ -129,16 +140,32 @@ app.whenReady().then(() => {
       pdfService
     })
 
+    const recordServices = createRecordServices(database, documentsDir)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
       quoteRepository,
       companyProfileRepository,
       numberingService,
-      pdfService
+      pdfService,
+      paymentRecorder: recordServices.cashRecordService
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
+    new ReportsIpcHandler(
+      new SummaryService(new SummaryRepository(database)),
+      new CsvExportService(new CashRecordRepository(database))
+    ).registerHandlers()
+    new ReceiptsIpcHandler(
+      recordServices.receiptService,
+      recordServices.receiptRepository,
+      documentsDir
+    ).registerHandlers()
+    new RecordsIpcHandler(
+      recordServices.cashRecordService,
+      recordServices.historyService
+    ).registerHandlers()
+    new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
     new DataIpcHandler(backupService).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
     new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()

@@ -6,7 +6,7 @@ import { AppShell } from './AppShell'
 import { NavigationContext } from './NavigationContext'
 
 function renderShell(props: Partial<Parameters<typeof AppShell>[0]> = {}) {
-  const actions = { goHome: vi.fn(), goClients: vi.fn(), goDocuments: vi.fn() }
+  const actions = { goHome: vi.fn(), goClients: vi.fn(), goDocuments: vi.fn(), goCash: vi.fn() }
   render(
     <NavigationContext.Provider value={actions}>
       <AppShell screenName="テスト" activeMenu="documents" pageTitle="テスト" {...props}>
@@ -25,6 +25,8 @@ describe('AppShell(サイドバーの既定動作・O2)', () => {
     await userEvent.click(screen.getByText('ホーム'))
     await userEvent.click(screen.getByText('取引先管理'))
     await userEvent.click(screen.getByText('見積書・請求書'))
+    await userEvent.click(screen.getByText('入出金・経費'))
+    expect(actions.goCash).toHaveBeenCalledTimes(1)
     expect(actions.goHome).toHaveBeenCalledTimes(1)
     expect(actions.goClients).toHaveBeenCalledTimes(1)
     expect(actions.goDocuments).toHaveBeenCalledTimes(1)

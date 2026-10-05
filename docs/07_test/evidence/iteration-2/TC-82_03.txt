@@ -1,0 +1,105 @@
+[
+ {
+  "id": 2,
+  "recordId": 1,
+  "operation": "update",
+  "operatedAt": "2026-10-05T11:09:00.793Z",
+  "reason": "金額の入力誤り",
+  "changes": [
+   {
+    "label": "金額",
+    "before": "¥2,200",
+    "after": "¥3,300"
+   },
+   {
+    "label": "摘要・メモ",
+    "before": "文房具",
+    "after": "文房具(訂正)"
+   },
+   {
+    "label": "消費税額",
+    "before": "¥200",
+    "after": "¥300"
+   }
+  ]
+ },
+ {
+  "id": 1,
+  "recordId": 1,
+  "operation": "create",
+  "operatedAt": "2026-10-05T11:09:00.353Z",
+  "reason": null,
+  "changes": [
+   {
+    "label": "日付",
+    "before": "(なし)",
+    "after": "2026-10-01"
+   },
+   {
+    "label": "種別",
+    "before": "(なし)",
+    "after": "経費"
+   },
+   {
+    "label": "金額",
+    "before": "(なし)",
+    "after": "¥2,200"
+   },
+   {
+    "label": "源泉徴収税額",
+    "before": "(なし)",
+    "after": "¥0"
+   },
+   {
+    "label": "勘定科目",
+    "before": "(なし)",
+    "after": "消耗品費"
+   },
+   {
+    "label": "摘要・メモ",
+    "before": "(なし)",
+    "after": "文房具"
+   },
+   {
+    "label": "取引先",
+    "before": "(なし)",
+    "after": "(なし)"
+   },
+   {
+    "label": "支払方法",
+    "before": "(なし)",
+    "after": "(未選択)"
+   },
+   {
+    "label": "税区分",
+    "before": "(なし)",
+    "after": "10%"
+   },
+   {
+    "label": "消費税額",
+    "before": "(なし)",
+    "after": "¥200"
+   },
+   {
+    "label": "請求書番号",
+    "before": "(なし)",
+    "after": "(なし)"
+   },
+   {
+    "label": "状態",
+    "before": "(なし)",
+    "after": "有効"
+   },
+   {
+    "label": "削除",
+    "before": "(なし)",
+    "after": "なし"
+   },
+   {
+    "label": "領収書",
+    "before": "(なし)",
+    "after": "追加: receipt_sample.pdf"
+   }
+  ]
+ }
+]

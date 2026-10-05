@@ -123,3 +123,15 @@ export const invoiceLineItems = sqliteTable('invoice_line_items', {
   withholdingTarget: integer('withholding_target').notNull().default(0),
   withholdingAmount: integer('withholding_amount').notNull().default(0)
 })
+
+export const accounts = sqliteTable('accounts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  kind: text('kind').notNull(),
+  status: text('status').notNull().default('active'),
+  isDefault: integer('is_default').notNull().default(0),
+  defaultKey: text('default_key'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+})

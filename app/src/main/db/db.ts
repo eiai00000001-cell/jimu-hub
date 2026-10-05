@@ -1,15 +1,21 @@
 import SqliteDatabase from 'better-sqlite3'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from './schema'
+import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
 
 /**
  * データベース・エクスポートファイルのスキーマバージョン(app_meta.schema_version)。
- * イテレーション1(v1.3)時点の最新値。参照元: 詳細設計書6章冒頭、4.1章手順2。
+ * 現在の最新値(スキーマv4。イテレーション2で新テーブルを追加)。参照元: 詳細設計書6章冒頭、4.1章手順2。
  *
- * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)が
- * あり、両者は同じ値(現在3)に保つこと。
+ * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)があり、
+ * 両者は同じ値(4)に揃えておく。スキーマを変更するときは両方を更新する。
  */
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4
+
+export const CASH_RECORD_HISTORY_TRIGGER_NAMES = [
+  'trg_cash_record_history_no_update',
+  'trg_cash_record_history_no_delete'
+] as const
 
 const CREATE_CLIENTS_TABLE = `
 CREATE TABLE IF NOT EXISTS clients (
@@ -190,6 +196,94 @@ const CREATE_INVOICE_LINE_ITEMS_INVOICE_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items (invoice_id);
 `
 
+const CREATE_ACCOUNTS_TABLE = `
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+  default_key TEXT UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (kind, name)
+);
+`
+
+const CREATE_CASH_RECORDS_TABLE = `
+CREATE TABLE IF NOT EXISTS cash_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  record_date TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
+  amount INTEGER NOT NULL CHECK (amount >= 0),
+  withholding_tax_amount INTEGER NOT NULL DEFAULT 0 CHECK (withholding_tax_amount >= 0),
+  account_id INTEGER NOT NULL REFERENCES accounts (id),
+  description TEXT NOT NULL,
+  client_id INTEGER REFERENCES clients (id),
+  payment_method TEXT CHECK (payment_method IN ('cash', 'transfer', 'credit_card', 'other')),
+  tax_category TEXT CHECK (tax_category IN ('standard_10', 'reduced_8', 'tax_exempt', 'not_applicable')),
+  tax_amount INTEGER NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+  invoice_id INTEGER REFERENCES invoices (id),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled')),
+  is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)),
+  record_hash TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_cash_records_date ON cash_records (is_deleted, record_date);
+CREATE INDEX IF NOT EXISTS idx_cash_records_amount ON cash_records (amount);
+CREATE INDEX IF NOT EXISTS idx_cash_records_client ON cash_records (client_id);
+CREATE INDEX IF NOT EXISTS idx_cash_records_account ON cash_records (account_id);
+CREATE INDEX IF NOT EXISTS idx_cash_records_kind ON cash_records (kind);
+CREATE INDEX IF NOT EXISTS idx_cash_records_invoice ON cash_records (invoice_id);
+`
+
+const CREATE_RECEIPTS_TABLE = `
+CREATE TABLE IF NOT EXISTS receipts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  record_id INTEGER NOT NULL REFERENCES cash_records (id),
+  original_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  mime_type TEXT NOT NULL CHECK (mime_type IN ('application/pdf', 'image/jpeg', 'image/png')),
+  file_size INTEGER NOT NULL CHECK (file_size > 0),
+  sha256 TEXT NOT NULL,
+  attached_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  removed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_receipts_record ON receipts (record_id, removed_at);
+`
+
+/** 履歴テーブルの更新・削除を拒否するトリガー(復元時は一時的に削除して再作成する。詳細設計書4.3章手順6) */
+export const CASH_RECORD_HISTORY_TRIGGERS_SQL = `
+CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_update
+BEFORE UPDATE ON cash_record_history
+BEGIN
+  SELECT RAISE(ABORT, '履歴は変更できません');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cash_record_history_no_delete
+BEFORE DELETE ON cash_record_history
+BEGIN
+  SELECT RAISE(ABORT, '履歴は削除できません');
+END;
+`
+
+const CREATE_CASH_RECORD_HISTORY_TABLE = `
+CREATE TABLE IF NOT EXISTS cash_record_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  record_id INTEGER NOT NULL REFERENCES cash_records (id),
+  operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete', 'cancel')),
+  operated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  reason TEXT,
+  snapshot_before TEXT,
+  snapshot_after TEXT NOT NULL,
+  record_hash_after TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cash_record_history_record ON cash_record_history (record_id, id);
+CREATE INDEX IF NOT EXISTS idx_cash_record_history_operated ON cash_record_history (operated_at);
+${CASH_RECORD_HISTORY_TRIGGERS_SQL}
+`
+
 /**
  * SQLite接続の初期化・テーブル作成・トランザクション管理を担うインフラ層クラス。
  * 参照元: 詳細設計書 4.1章(アプリ起動)、5章(クラス設計 `Database`)、6章(データベース詳細設計)
@@ -257,13 +351,35 @@ export class Database {
     this.sqlite.exec(CREATE_INVOICE_LINE_ITEMS_TABLE)
     this.sqlite.exec(CREATE_INVOICE_LINE_ITEMS_INVOICE_INDEX)
 
+    this.sqlite.exec(CREATE_ACCOUNTS_TABLE)
+    this.sqlite.exec(CREATE_CASH_RECORDS_TABLE)
+    this.sqlite.exec(CREATE_RECEIPTS_TABLE)
+    this.sqlite.exec(CREATE_CASH_RECORD_HISTORY_TABLE)
+
     const existing = this.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get()
     if (!existing) {
-      this.sqlite
-        .prepare("INSERT INTO app_meta (key, value) VALUES ('schema_version', ?)")
-        .run(String(CURRENT_SCHEMA_VERSION))
+      // 新規インストール: 初期科目の投入とバージョン記録を一括で行う。
+      // 既存インストールの初期科目は、MigrationService(schema_version 3→4)が投入する
+      this.transaction(() => {
+        this.seedInitialAccounts()
+        this.sqlite
+          .prepare("INSERT INTO app_meta (key, value) VALUES ('schema_version', ?)")
+          .run(String(CURRENT_SCHEMA_VERSION))
+      })
+    }
+  }
+
+  /** 初期勘定科目14件を投入する(同じ区分・名称が既にある場合は追加しない冪等な処理。詳細設計書4.17章手順1) */
+  seedInitialAccounts(): void {
+    const insert = this.sqlite.prepare(
+      `INSERT INTO accounts (name, kind, status, is_default, default_key, sort_order)
+       SELECT @name, @kind, 'active', 1, @defaultKey, @sortOrder
+       WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE kind = @kind AND name = @name)`
+    )
+    for (const account of INITIAL_ACCOUNTS) {
+      insert.run(account)
     }
   }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
+import { BACKUP_MESSAGES } from '@shared/messages/messages'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 
@@ -61,7 +62,7 @@ describe('DataIpcHandler', () => {
 
     const result = await handler({})
 
-    expect(backupService.exportData).toHaveBeenCalledWith('/tmp/chosen.json')
+    expect(backupService.exportData).toHaveBeenCalledWith('/tmp/chosen.json', expect.any(Function))
     expect(result).toEqual({ success: true, filePath: '/tmp/export.json' })
   })
 
@@ -98,7 +99,7 @@ describe('DataIpcHandler', () => {
 
     const result = await handler({})
 
-    expect(backupService.importData).toHaveBeenCalledWith('/tmp/import.json')
+    expect(backupService.importData).toHaveBeenCalledWith('/tmp/import.json', expect.any(Function))
     expect(result).toEqual({ success: true, importedCount: 2 })
   })
 
@@ -152,7 +153,10 @@ describe('DataIpcHandler', () => {
       const result = await handler({})
 
       expect(showSaveDialog).not.toHaveBeenCalled()
-      expect(backupService.exportData).toHaveBeenCalledWith('/tmp/e2e-export.json')
+      expect(backupService.exportData).toHaveBeenCalledWith(
+        '/tmp/e2e-export.json',
+        expect.any(Function)
+      )
       expect(result).toEqual({ success: true, filePath: '/tmp/export.json' })
     })
 
@@ -163,8 +167,90 @@ describe('DataIpcHandler', () => {
       const result = await handler({})
 
       expect(showOpenDialog).not.toHaveBeenCalled()
-      expect(backupService.importData).toHaveBeenCalledWith('/tmp/e2e-import.json')
+      expect(backupService.importData).toHaveBeenCalledWith(
+        '/tmp/e2e-import.json',
+        expect.any(Function)
+      )
       expect(result).toEqual({ success: true, importedCount: 2 })
+    })
+  })
+
+  describe('進捗・80%超の警告(詳細設計書4.2・4.3章、★E12)', () => {
+    const makeEvent = (): {
+      sender: { send: ReturnType<typeof vi.fn>; isDestroyed: () => boolean }
+    } => ({
+      sender: { send: vi.fn(), isDestroyed: () => false }
+    })
+
+    it('data:exportは、見込みサイズが大きい場合はダイアログを開かず警告を返し、confirmLargeで続行する', async () => {
+      const service = {
+        isLargeBackup: vi.fn().mockReturnValue(true),
+        exportData: vi.fn().mockReturnValue({ success: true, filePath: '/tmp/e.zip' }),
+        importData: vi.fn()
+      } as unknown as BackupService
+      handlers.clear()
+      new DataIpcHandler(service).registerHandlers()
+      const handler = handlers.get(IPC_CHANNELS.dataExport)!
+      expect(await handler(makeEvent(), undefined)).toEqual({
+        success: false,
+        warnLargeBackup: true
+      })
+      expect(showSaveDialog).not.toHaveBeenCalled()
+      showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/e.zip' })
+      expect(await handler(makeEvent(), { confirmLarge: true })).toEqual({
+        success: true,
+        filePath: '/tmp/e.zip'
+      })
+    })
+
+    it('data:exportは、見込みサイズが復元上限を超える場合はダイアログを開かず、書き出さずに理由を返す', async () => {
+      const service = {
+        isTooLargeBackup: vi.fn().mockReturnValue(true),
+        isLargeBackup: vi.fn().mockReturnValue(true),
+        exportData: vi.fn(),
+        importData: vi.fn()
+      } as unknown as BackupService
+      handlers.clear()
+      new DataIpcHandler(service).registerHandlers()
+      const handler = handlers.get(IPC_CHANNELS.dataExport)!
+      expect(await handler(makeEvent(), { confirmLarge: true })).toEqual({
+        success: false,
+        error: BACKUP_MESSAGES.exportTooLarge
+      })
+      expect(showSaveDialog).not.toHaveBeenCalled()
+      expect(service.exportData).not.toHaveBeenCalled()
+    })
+
+    it('進捗はdata:progressとして呼び出し元のRendererへ通知する(エクスポート・復元)', async () => {
+      const service = {
+        isLargeBackup: vi.fn().mockReturnValue(false),
+        exportData: vi.fn((_path: string, onProgress?: (p: unknown) => void) => {
+          onProgress?.({ phase: 'export', current: 1, total: 2 })
+          return { success: true, filePath: '/tmp/e.zip' }
+        }),
+        importData: vi.fn((_path: string, onProgress?: (p: unknown) => void) => {
+          onProgress?.({ phase: 'import', current: 1, total: 1 })
+          return { success: true, importedCount: 1 }
+        })
+      } as unknown as BackupService
+      handlers.clear()
+      new DataIpcHandler(service).registerHandlers()
+      const exportEvent = makeEvent()
+      showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/e.zip' })
+      await handlers.get(IPC_CHANNELS.dataExport)!(exportEvent, undefined)
+      expect(exportEvent.sender.send).toHaveBeenCalledWith(IPC_CHANNELS.dataProgress, {
+        phase: 'export',
+        current: 1,
+        total: 2
+      })
+      const importEvent = makeEvent()
+      showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/i.zip'] })
+      await handlers.get(IPC_CHANNELS.dataImport)!(importEvent)
+      expect(importEvent.sender.send).toHaveBeenCalledWith(IPC_CHANNELS.dataProgress, {
+        phase: 'import',
+        current: 1,
+        total: 1
+      })
     })
   })
 })

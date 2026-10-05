@@ -30,6 +30,7 @@ import { InvoiceRepository } from '../repositories/invoice.repository'
 import { QuoteRepository } from '../repositories/quote.repository'
 import { NumberingService } from '../services/numbering.service'
 import { InvoiceService } from '../services/invoice.service'
+import type { InvoicePaymentRecorder } from '../services/cash-record.service'
 
 const input = {
   issueDate: '2026-09-20',
@@ -45,6 +46,13 @@ const input = {
       withholdingTarget: false
     }
   ]
+}
+
+const noopPaymentRecorder: InvoicePaymentRecorder = {
+  createFromInvoicePayment: () => ({ id: 0 }),
+  cancelByInvoice: () => ({ cancelledCount: 0 }),
+  findLinkedByInvoice: () => [],
+  hasRecordsForInvoice: () => false
 }
 
 describe('InvoicesIpcHandler', () => {
@@ -98,7 +106,8 @@ describe('InvoicesIpcHandler', () => {
           .fn()
           .mockImplementation(async () => ({ pdfPath: pdfPathForService, pdfHash: 'h' }))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any
+      } as any,
+      paymentRecorder: noopPaymentRecorder
     })
     new InvoicesIpcHandler(service, documentsDir).registerHandlers()
   })
@@ -115,6 +124,17 @@ describe('InvoicesIpcHandler', () => {
     ]) {
       expect(handlers.has(ch)).toBe(true)
     }
+  })
+
+  it('[F-26]invoices:deleteDraftは下書きを削除し、不正なidはエラーになる', async () => {
+    const created = (await handlers.get(IPC_CHANNELS.invoicesSaveDraft)!(
+      {},
+      { ...input, clientId }
+    )) as { id: number }
+    const handler = handlers.get(IPC_CHANNELS.invoicesDeleteDraft)!
+    await expect(handler({}, 0)).rejects.toThrow()
+    expect(await handler({}, created.id)).toEqual({ success: true })
+    await expect(handlers.get(IPC_CHANNELS.invoicesGet)!({}, created.id)).rejects.toThrow()
   })
 
   it('saveDraft→list→getが動作する', async () => {

@@ -13,6 +13,7 @@ interface AppShellProps {
   onNavigateHome?: () => void
   onNavigateClients?: () => void
   onNavigateDocuments?: () => void
+  onNavigateCash?: () => void
   /** 「準備中」メニュー押下時の処理。未指定の場合はAppShellが案内メッセージを表示する */
   onComingSoon?: (label: string) => void
   /** 入力中の画面などで、サイドバーによる遷移の前に確認する場合に指定する(falseを返すと遷移しない) */
@@ -35,6 +36,7 @@ export function AppShell({
   onNavigateHome,
   onNavigateClients,
   onNavigateDocuments,
+  onNavigateCash,
   onComingSoon,
   confirmLeave,
   children
@@ -58,6 +60,7 @@ export function AppShell({
           onNavigateHome={guarded(onNavigateHome ?? navigation.goHome)}
           onNavigateClients={guarded(onNavigateClients ?? navigation.goClients)}
           onNavigateDocuments={guarded(onNavigateDocuments ?? navigation.goDocuments)}
+          onNavigateCash={guarded(onNavigateCash ?? navigation.goCash)}
           onComingSoon={onComingSoon ?? setComingSoonLabel}
         />
         <div className="main">

@@ -42,6 +42,7 @@ export function ClientDetailPage({
   const [client, setClient] = useState<Client | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [reactivated, setReactivated] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +60,17 @@ export function ClientDetailPage({
       cancelled = true
     }
   }, [clientId])
+
+  async function handleReactivate(): Promise<void> {
+    if (!window.confirm(CLIENT_MESSAGES.confirmReactivate)) return
+    try {
+      await window.jimuhubApi.reactivateClient(clientId)
+      setClient(await window.jimuhubApi.getClient(clientId))
+      setReactivated(true)
+    } catch (error) {
+      setLoadError(toErrorMessage(error, CLIENT_MESSAGES.notFound))
+    }
+  }
 
   async function handleConfirmDeactivate(): Promise<void> {
     await window.jimuhubApi.deactivateClient(clientId)
@@ -94,13 +106,18 @@ export function ClientDetailPage({
             </Button>
             {client.status === 'active' ? (
               <Button onClick={() => setConfirming(true)}>利用停止にする</Button>
-            ) : null}
+            ) : (
+              <Button onClick={() => void handleReactivate()}>利用中に戻す</Button>
+            )}
           </>
         ) : null
       }
       onNavigateHome={onNavigateHome}
     >
       {flashMessage ? <Message variant="success">{flashMessage}</Message> : null}
+      {reactivated ? (
+        <Message variant="success">{CLIENT_MESSAGES.reactivateSuccess}</Message>
+      ) : null}
 
       {loadError ? (
         <>

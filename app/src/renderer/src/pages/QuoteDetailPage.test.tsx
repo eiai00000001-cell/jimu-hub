@@ -277,4 +277,63 @@ describe('QuoteDetailPage', () => {
 
     expect(await screen.findByText('PDFとして保存しました')).toBeInTheDocument()
   })
+
+  it('[F-26]下書きは「削除」を表示し、確認後にdeleteQuoteDraftを呼んで一覧へ戻る。PDF保存済みには表示しない', async () => {
+    const deleteQuoteDraft = vi.fn().mockResolvedValue({ success: true })
+    setupApi({ deleteQuoteDraft })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onDeleted = vi.fn()
+    render(
+      <QuoteDetailPage
+        quoteId={5}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
+        onDeleted={onDeleted}
+      />
+    )
+    await userEvent.click(await screen.findByText('削除'))
+    expect(confirm).toHaveBeenCalledWith(
+      'この下書きを削除します。削除すると元に戻せません。よろしいですか'
+    )
+    await waitFor(() => expect(deleteQuoteDraft).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled())
+    confirm.mockRestore()
+  })
+
+  it('[F-26]削除の確認でキャンセルすると削除しない / PDF保存済みには削除ボタンがない', async () => {
+    const deleteQuoteDraft = vi.fn()
+    setupApi({ deleteQuoteDraft })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { unmount } = render(
+      <QuoteDetailPage
+        quoteId={5}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
+      />
+    )
+    await userEvent.click(await screen.findByText('削除'))
+    expect(deleteQuoteDraft).not.toHaveBeenCalled()
+    unmount()
+    confirm.mockRestore()
+
+    setupApi({ getQuote: vi.fn().mockResolvedValue(finalizedQuote), deleteQuoteDraft })
+    render(
+      <QuoteDetailPage
+        quoteId={8}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
+      />
+    )
+    await screen.findByText('PDFを開く')
+    expect(screen.queryByText('削除')).not.toBeInTheDocument()
+  })
 })

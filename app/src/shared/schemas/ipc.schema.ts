@@ -8,7 +8,7 @@ import { INVOICE_STATUS_FILTERS, PAYMENT_STATUS_FILTERS } from '../types/invoice
  * 参照元: レビュー結果報告書 v0.0 No.3(型注釈のみでは実行時の不正値を防げないため)
  */
 
-/** clients:get・clients:update・clients:deactivateのid */
+/** clients:get・clients:update・clients:deactivate・clients:reactivateのid */
 export const ClientIdSchema = z.number().int().positive()
 
 /** clients:listのfilter(keyword・sort・statusFilter) */

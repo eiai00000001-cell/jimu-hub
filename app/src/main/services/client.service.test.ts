@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
-import { ClientService, ClientNotFoundError } from './client.service'
+import { ClientService, ClientNotFoundError, ClientAlreadyActiveError } from './client.service'
 import type { ClientInput } from '@shared/schemas/client.schema'
 
 const baseInput: ClientInput = {
@@ -83,6 +83,20 @@ describe('ClientService', () => {
 
   it('deactivateClientは存在しないidの場合ClientNotFoundErrorを投げる(レビュー結果報告書 No.9)', () => {
     expect(() => service.deactivateClient(9999)).toThrow(ClientNotFoundError)
+  })
+
+  it('[F-25]reactivateClientで利用停止の取引先をactiveへ戻す', () => {
+    const { id } = service.createClient(baseInput)
+    service.deactivateClient(id)
+    expect(service.reactivateClient(id)).toEqual({ success: true })
+    expect(service.getClient(id).status).toBe('active')
+    expect(service.listClients().map((c) => c.id)).toContain(id)
+  })
+
+  it('[F-25]reactivateClientは存在しない場合ClientNotFoundError、既に利用中の場合ClientAlreadyActiveErrorを投げる', () => {
+    expect(() => service.reactivateClient(9999)).toThrow(ClientNotFoundError)
+    const { id } = service.createClient(baseInput)
+    expect(() => service.reactivateClient(id)).toThrow(ClientAlreadyActiveError)
   })
 
   it('listClientsは既定で利用中のみを名称昇順で返す', () => {

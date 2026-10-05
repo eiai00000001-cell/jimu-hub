@@ -221,4 +221,44 @@ describe('QuoteService', () => {
       expect(service.listQuotes()).toHaveLength(1)
     })
   })
+
+  describe('deleteDraft(F-26)', () => {
+    it('下書きの見積書を明細行ごと完全に削除し、採番シーケンスは変更しない', () => {
+      const { service } = createService()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      expect(service.deleteDraft(id)).toEqual({ success: true })
+      expect(() => service.getQuote(id)).toThrow(QuoteNotFoundError)
+      const lines = db.sqlite.prepare('SELECT COUNT(*) AS c FROM quote_line_items').get() as {
+        c: number
+      }
+      expect(lines.c).toBe(0)
+    })
+
+    it('存在しない場合はQuoteNotFoundErrorを投げる', () => {
+      const { service } = createService()
+      expect(() => service.deleteDraft(9999)).toThrow(QuoteNotFoundError)
+    })
+
+    it('PDF保存済みの見積書は削除できない', async () => {
+      companyProfileRepository.upsert(baseCompanyProfile)
+      const { service } = createService()
+      const { id } = await service.finalizeQuote({ ...baseInput, clientId })
+      expect(() => service.deleteDraft(id)).toThrow('PDF保存済みの見積書は削除できません')
+      expect(service.getQuote(id).id).toBe(id)
+    })
+
+    it('この見積書から作成された請求書がある場合は削除できない', () => {
+      const { service } = createService()
+      const { id } = service.saveDraft({ ...baseInput, clientId })
+      db.sqlite
+        .prepare(
+          `INSERT INTO invoices (client_id, issue_date, source_quote_id, status, created_at, updated_at)
+           VALUES (?, '2026-09-20', ?, 'draft', 'x', 'x')`
+        )
+        .run(clientId, id)
+      expect(() => service.deleteDraft(id)).toThrow(
+        'この見積書から作成された請求書があるため削除できません'
+      )
+    })
+  })
 })

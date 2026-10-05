@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 import type {
   JimuhubApi,
+  DataProgress,
   SaveQuoteDraftRequest,
   FinalizeQuoteRequest,
   SaveInvoiceDraftRequest,
@@ -10,6 +11,16 @@ import type {
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
+import type { AccountListFilter } from '@shared/types/account'
+import type { AccountInput } from '@shared/schemas/account.schema'
+import type { CsvExportInput } from '@shared/schemas/csv-export.schema'
+import type { SummaryInput } from '@shared/schemas/summary.schema'
+import type { RecordListFilter, HistoryListFilter } from '@shared/types/cash-record'
+import type {
+  CashRecordCreateInput,
+  CashRecordUpdateInput,
+  CashRecordDeleteInput
+} from '@shared/schemas/cash-record.schema'
 import type { QuoteListFilter } from '@shared/types/quote'
 import type { InvoiceListFilter } from '@shared/types/invoice'
 
@@ -26,7 +37,43 @@ const jimuhubApi: JimuhubApi = {
   updateClient: (id: number, input: ClientInput) =>
     ipcRenderer.invoke(IPC_CHANNELS.clientsUpdate, id, input),
   deactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsDeactivate, id),
-  exportData: () => ipcRenderer.invoke(IPC_CHANNELS.dataExport),
+  reactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsReactivate, id),
+  deleteQuoteDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesDeleteDraft, id),
+  deleteInvoiceDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesDeleteDraft, id),
+  listAccounts: (filter?: AccountListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.accountsList, filter),
+  createAccount: (input: AccountInput) => ipcRenderer.invoke(IPC_CHANNELS.accountsCreate, input),
+  renameAccount: (id: number, name: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.accountsRename, id, name),
+  deactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDeactivate, id),
+  reactivateAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsReactivate, id),
+  deleteAccount: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.accountsDelete, id),
+  exportCsv: (input: CsvExportInput) => ipcRenderer.invoke(IPC_CHANNELS.csvExport, input),
+  getSummary: (input: SummaryInput) => ipcRenderer.invoke(IPC_CHANNELS.summaryGet, input),
+  pickReceipts: () => ipcRenderer.invoke(IPC_CHANNELS.receiptsPick),
+  openReceipt: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsOpen, id),
+  showReceiptInFolder: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsShowInFolder, id),
+  getReceiptThumbnail: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsThumbnail, id),
+  getReceiptPreview: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.receiptsPreview, id),
+  listRecords: (filter?: RecordListFilter) => ipcRenderer.invoke(IPC_CHANNELS.recordsList, filter),
+  getRecord: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.recordsGet, id),
+  createRecord: (input: CashRecordCreateInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsCreate, input),
+  updateRecord: (input: CashRecordUpdateInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsUpdate, input),
+  deleteRecord: (input: CashRecordDeleteInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordsDelete, input),
+  listRecordHistory: (filter?: HistoryListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.recordHistoryList, filter),
+  exportData: (options?: { confirmLarge?: boolean }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.dataExport, options),
+  onDataProgress: (callback: (progress: DataProgress) => void) => {
+    const listener = (_event: unknown, progress: DataProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.dataProgress, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.dataProgress, listener)
+    }
+  },
   importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
   saveCompanyProfile: (input: CompanyProfileInput) =>

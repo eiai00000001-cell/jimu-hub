@@ -38,5 +38,8 @@ export class ClientIpcHandler {
     ipcMain.handle(IPC_CHANNELS.clientsDeactivate, async (_event, id: unknown) =>
       this.service.deactivateClient(parseId(id))
     )
+    ipcMain.handle(IPC_CHANNELS.clientsReactivate, async (_event, id: unknown) =>
+      this.service.reactivateClient(parseId(id))
+    )
   }
 }

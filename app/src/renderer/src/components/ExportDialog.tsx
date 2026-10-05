@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Button } from './Button'
 import { Message } from './Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
@@ -14,11 +14,29 @@ interface ExportDialogProps {
 export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [progress, setProgress] = useState<{
+    current: number
+    total: number
+    packing: boolean
+  } | null>(null)
+
+  // 進捗(`data:progress`)の購読。実行中のみ表示する
+  useEffect(() => {
+    return window.jimuhubApi.onDataProgress?.((p) => {
+      if (p.phase === 'export')
+        setProgress({ current: p.current, total: p.total, packing: p.stage === 'packing' })
+    })
+  }, [])
 
   async function handleExport(): Promise<void> {
     setSubmitting(true)
     try {
-      const response = await window.jimuhubApi.exportData()
+      let response = await window.jimuhubApi.exportData()
+      // 見込みサイズが復元上限の80%を超える場合は、続行するかを確認する(基本設計書8.1章★E12)
+      if (response.warnLargeBackup) {
+        if (!window.confirm(BACKUP_MESSAGES.warnLargeBackup)) return
+        response = await window.jimuhubApi.exportData({ confirmLarge: true })
+      }
       if (response.success && response.filePath) {
         setResult({ success: true, message: BACKUP_MESSAGES.exportSuccess(response.filePath) })
       } else if (!response.success && response.error) {
@@ -27,6 +45,7 @@ export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
       // success:false かつ error未設定 = OS標準ダイアログのキャンセル。何も表示しない
     } finally {
       setSubmitting(false)
+      setProgress(null)
     }
   }
 
@@ -43,6 +62,13 @@ export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
             エクスポート実行
           </Button>
         </div>
+        {submitting && progress ? (
+          <p role="status">
+            {progress.packing
+              ? BACKUP_MESSAGES.exportPacking
+              : BACKUP_MESSAGES.exportProgress(progress.current, progress.total)}
+          </p>
+        ) : null}
         {result ? (
           <Message variant={result.success ? 'success' : 'error'}>{result.message}</Message>
         ) : null}

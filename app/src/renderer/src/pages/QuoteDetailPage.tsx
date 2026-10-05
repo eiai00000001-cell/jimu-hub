@@ -20,6 +20,8 @@ interface QuoteDetailPageProps {
   onEdit: (id: number) => void
   /** 「請求書に変換」成功時に、作成された請求書(下書き)の詳細画面へ遷移する */
   onConvertedToInvoice: (invoiceId: number) => void
+  /** 下書きの削除成功時に呼ぶ。省略時は`onBackToList` */
+  onDeleted?: () => void
 }
 
 /**
@@ -33,7 +35,8 @@ export function QuoteDetailPage({
   onNavigateClients,
   onBackToList,
   onEdit,
-  onConvertedToInvoice
+  onConvertedToInvoice,
+  onDeleted
 }: QuoteDetailPageProps): ReactElement {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -57,6 +60,17 @@ export function QuoteDetailPage({
       cancelled = true
     }
   }, [quoteId])
+
+  /** [F-26]下書きの削除(詳細設計書4.26章) */
+  async function handleDeleteDraft(): Promise<void> {
+    if (!window.confirm(QUOTE_MESSAGES.confirmDeleteDraft)) return
+    try {
+      await window.jimuhubApi.deleteQuoteDraft(quoteId)
+      ;(onDeleted ?? onBackToList)()
+    } catch (error) {
+      setActionError(toErrorMessage(error, QUOTE_MESSAGES.notFound))
+    }
+  }
 
   async function handleOpenPdf(): Promise<void> {
     setActionError(null)
@@ -100,7 +114,10 @@ export function QuoteDetailPage({
       headerActions={
         quote ? (
           quote.status === 'draft' ? (
-            <Button onClick={() => onEdit(quoteId)}>編集</Button>
+            <>
+              <Button onClick={() => onEdit(quoteId)}>編集</Button>
+              <Button onClick={() => void handleDeleteDraft()}>削除</Button>
+            </>
           ) : (
             <>
               <Button onClick={() => void handleOpenPdf()}>PDFを開く</Button>

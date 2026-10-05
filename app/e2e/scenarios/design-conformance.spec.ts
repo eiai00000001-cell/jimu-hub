@@ -92,9 +92,9 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
 
     // 取引先一覧画面からも同様に案内表示のみで遷移しないこと(結合確認: 全画面共通のサイドバー挙動)
     await window.getByRole('button', { name: '取引先管理' }).click()
-    await window.getByRole('button', { name: '入出金・経費' }).click()
+    await window.getByRole('button', { name: 'タスク・期限' }).click()
     await expect(
-      window.getByText('「入出金・経費」は以降のイテレーションで実装予定です。')
+      window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
     ).toBeVisible()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先一覧')
 
@@ -102,6 +102,10 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
     await window.getByRole('button', { name: '見積書・請求書' }).click()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書・請求書')
     await expect(window.locator('.sidebar-item.active')).toHaveText('見積書・請求書')
+    // イテレーション2で「入出金・経費」も実装済みとなり、画面遷移する(詳細設計書3.15章)
+    await window.getByRole('button', { name: '入出金・経費' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 入出金・経費')
+    await expect(window.locator('.sidebar-item.active')).toHaveText('入出金・経費')
     await shot(window, 'TC-03', 'coming_soon_notice')
   })
 })

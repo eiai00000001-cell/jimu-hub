@@ -2,9 +2,28 @@ import type { Client, ClientListFilter } from '../types/client'
 import type { ClientInput } from '../schemas/client.schema'
 import type { CompanyProfile } from '../types/company-profile'
 import type { CompanyProfileInput } from '../schemas/company-profile.schema'
+import type { AccountView, AccountListFilter } from '../types/account'
+import type { AccountInput } from '../schemas/account.schema'
+import type { CsvExportInput } from '../schemas/csv-export.schema'
+import type { SummaryInput } from '../schemas/summary.schema'
+import type { SummaryResult } from '../types/summary'
+import type { PickReceiptsResult, ReceiptPreviewResult } from '../types/receipt'
+import type {
+  CashRecordDetail,
+  CashRecordSummary,
+  HistoryListFilter,
+  HistoryListItem,
+  Paged,
+  RecordListFilter
+} from '../types/cash-record'
+import type {
+  CashRecordCreateInput,
+  CashRecordUpdateInput,
+  CashRecordDeleteInput
+} from '../schemas/cash-record.schema'
 import type { Quote, QuoteSummary, QuoteListFilter } from '../types/quote'
 import type { QuoteInput } from '../schemas/quote.schema'
-import type { Invoice, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
+import type { InvoiceDetail, InvoiceSummary, InvoiceListFilter } from '../types/invoice'
 import type { InvoiceInput } from '../schemas/invoice.schema'
 
 /**
@@ -33,12 +52,25 @@ export interface ExportDataResult {
   success: boolean
   filePath?: string
   error?: string
+  /** 見込みサイズが復元上限の80%を超える場合の警告。利用者が続行を選んだ場合のみ`confirmLarge`付きで再実行する */
+  warnLargeBackup?: boolean
+}
+
+/** エクスポート・復元中の処理済みファイル件数の通知(`data:progress`) */
+export interface DataProgress {
+  phase: 'export' | 'import'
+  current: number
+  total: number
+  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
+  stage?: 'packing'
 }
 
 export interface ImportDataResult {
   success: boolean
   importedCount?: number
   pdfHashMismatchCount?: number
+  receiptHashMismatchCount?: number
+  recordHashMismatchCount?: number
   error?: string
 }
 
@@ -82,6 +114,11 @@ export interface ConvertQuoteToInvoiceResult {
   invoiceId: number
 }
 
+/** CSV出力の結果。0件は`empty`、保存ダイアログのキャンセルは`canceled`(詳細設計書7章) */
+export type CsvExportResult =
+  | { success: true; filePath: string; count: number }
+  | { success: false; reason: 'empty' | 'canceled' | 'error'; error?: string }
+
 export type OpenPdfResult = { success: true } | { success: false; error: string }
 
 /**
@@ -97,8 +134,35 @@ export interface JimuhubApi {
   getClient(id: number): Promise<Client>
   createClient(input: ClientInput): Promise<CreateClientResult>
   updateClient(id: number, input: ClientInput): Promise<UpdateClientResult>
+  /** 下書きの見積書を削除する(F-26)。PDF保存済み等の場合はreject */
+  deleteQuoteDraft(id: number): Promise<DeactivateClientResult>
+  /** 下書きの請求書を削除する(F-26)。PDF保存済み等の場合はreject */
+  deleteInvoiceDraft(id: number): Promise<DeactivateClientResult>
+  listAccounts(filter?: AccountListFilter): Promise<AccountView[]>
+  createAccount(input: AccountInput): Promise<{ id: number }>
+  renameAccount(id: number, name: string): Promise<DeactivateClientResult>
+  deactivateAccount(id: number): Promise<DeactivateClientResult>
+  reactivateAccount(id: number): Promise<DeactivateClientResult>
+  deleteAccount(id: number): Promise<DeactivateClientResult>
+  exportCsv(input: CsvExportInput): Promise<CsvExportResult>
+  getSummary(input: SummaryInput): Promise<SummaryResult>
+  pickReceipts(): Promise<PickReceiptsResult>
+  openReceipt(id: number): Promise<OpenPdfResult>
+  showReceiptInFolder(id: number): Promise<OpenPdfResult>
+  getReceiptThumbnail(id: number): Promise<ReceiptPreviewResult>
+  getReceiptPreview(id: number): Promise<ReceiptPreviewResult>
+  listRecords(filter?: RecordListFilter): Promise<Paged<CashRecordSummary>>
+  getRecord(id: number): Promise<CashRecordDetail>
+  createRecord(input: CashRecordCreateInput): Promise<{ id: number }>
+  updateRecord(input: CashRecordUpdateInput): Promise<{ id: number; changed: boolean }>
+  deleteRecord(input: CashRecordDeleteInput): Promise<DeactivateClientResult>
+  listRecordHistory(filter?: HistoryListFilter): Promise<Paged<HistoryListItem>>
   deactivateClient(id: number): Promise<DeactivateClientResult>
-  exportData(): Promise<ExportDataResult>
+  /** 利用停止の取引先を利用中へ戻す(F-25)。存在しない・既に利用中の場合はreject */
+  reactivateClient(id: number): Promise<DeactivateClientResult>
+  exportData(options?: { confirmLarge?: boolean }): Promise<ExportDataResult>
+  /** 進捗の通知を購読する。購読解除関数を返す */
+  onDataProgress(callback: (progress: DataProgress) => void): () => void
   importData(): Promise<ImportDataResult>
   getCompanyProfile(): Promise<CompanyProfile | null>
   saveCompanyProfile(input: CompanyProfileInput): Promise<SaveCompanyProfileResult>
@@ -113,7 +177,7 @@ export interface JimuhubApi {
   convertQuoteToInvoice(quoteId: number): Promise<ConvertQuoteToInvoiceResult>
   listInvoices(filter?: InvoiceListFilter): Promise<InvoiceSummary[]>
   /** 対象が存在しない場合はPromiseがreject(例外)される(InvoiceService.getInvoice()参照) */
-  getInvoice(id: number): Promise<Invoice>
+  getInvoice(id: number): Promise<InvoiceDetail>
   saveInvoiceDraft(request: SaveInvoiceDraftRequest): Promise<SaveInvoiceDraftResult>
   finalizeInvoice(request: FinalizeInvoiceRequest): Promise<FinalizeInvoiceResult>
   updateInvoicePaymentStatus(
