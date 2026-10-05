@@ -80,6 +80,8 @@ export type BackupProgressCallback = (progress: {
   phase: 'export' | 'import'
   current: number
   total: number
+  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
+  stage?: 'packing'
 }) => void
 
 export interface ExportDataResult {
@@ -135,6 +137,9 @@ interface ParsedBackup {
 
 class BackupParseError extends Error {}
 
+/** 容量上限の超過(復元ファイルの大きさ・展開後の合計サイズ) */
+class BackupSizeLimitError extends BackupParseError {}
+
 function sha256(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex')
 }
@@ -159,6 +164,15 @@ export class BackupService {
    * 超える場合は、書き出しの前に利用者へ確認する(基本設計書8.1章★E12。詳細設計書4.2章手順5)。
    */
   isLargeBackup(): boolean {
+    return this.estimateExportBytes() > this.limits.maxFileBytes * LARGE_BACKUP_RATIO
+  }
+
+  /** 見込みサイズが復元上限を超え、書き出しても復元できないか(超える場合は書き出しを中止する) */
+  isTooLargeBackup(): boolean {
+    return this.estimateExportBytes() > this.limits.maxFileBytes
+  }
+
+  private estimateExportBytes(): number {
     const sqlite = this.deps.database.sqlite
     const receipts = sqlite
       .prepare('SELECT COALESCE(SUM(file_size), 0) AS s FROM receipts')
@@ -174,7 +188,7 @@ export class BackupService {
         if (existsSync(row.pdf_path)) pdfBytes += statSync(row.pdf_path).size
       }
     }
-    return receipts.s + pdfBytes > this.limits.maxFileBytes * LARGE_BACKUP_RATIO
+    return receipts.s + pdfBytes
   }
 
   exportData(filePath: string, onProgress?: BackupProgressCallback): ExportDataResult {
@@ -238,6 +252,8 @@ export class BackupService {
         }
       }
       zip.addFile(DATA_JSON_ENTRY, Buffer.from(JSON.stringify(payload, null, 2), 'utf-8'))
+      // ZIPの生成・書き込みは時間がかかるため、画面が止まって見えないよう開始前に通知する
+      onProgress?.({ phase: 'export', current: total, total, stage: 'packing' })
       writeFileSync(filePath, zip.toBuffer())
       return { success: true, filePath }
     } catch {
@@ -265,8 +281,14 @@ export class BackupService {
     let parsed: ParsedBackup
     try {
       parsed = this.parseFile(filePath)
-    } catch {
-      return { success: false, error: BACKUP_MESSAGES.importParseFailure }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof BackupSizeLimitError
+            ? BACKUP_MESSAGES.importTooLarge
+            : BACKUP_MESSAGES.importParseFailure
+      }
     }
 
     const validated = BackupFileSchema.safeParse(parsed.json)
@@ -315,7 +337,7 @@ export class BackupService {
   /** ファイルを読み込み、形式(ZIP/JSON)に応じてdata.jsonとPDFエントリを取り出す */
   private parseFile(filePath: string): ParsedBackup {
     if (statSync(filePath).size > this.limits.maxFileBytes) {
-      throw new BackupParseError('file too large')
+      throw new BackupSizeLimitError('file too large')
     }
     const buffer = readFileSync(filePath)
     if (this.detectFormat(buffer) === 'json') {
@@ -335,7 +357,7 @@ export class BackupService {
     }
     const declaredTotal = entries.reduce((sum, entry) => sum + entry.header.size, 0)
     if (declaredTotal > this.limits.maxTotalUncompressedBytes) {
-      throw new BackupParseError('uncompressed size too large')
+      throw new BackupSizeLimitError('uncompressed size too large')
     }
     const pdfEntries = new Map<string, Buffer>()
     for (const entry of entries) {

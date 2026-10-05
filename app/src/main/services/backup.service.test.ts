@@ -589,7 +589,7 @@ describe('BackupService', () => {
 
         const result = serviceWithLimits({ maxFileBytes: 10 }).importData(exportPath)
 
-        expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
+        expect(result.error).toBe(BACKUP_MESSAGES.importTooLarge)
         expect(repository.findAllForBackup()).toHaveLength(2)
         expect(existsSync(backupsDir)).toBe(false)
       })
@@ -619,7 +619,7 @@ describe('BackupService', () => {
           exportPath
         )
 
-        expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
+        expect(result.error).toBe(BACKUP_MESSAGES.importTooLarge)
         expect(existsSync(join(documentsDir, 'bomb.pdf'))).toBe(false)
       })
 

@@ -106,6 +106,8 @@ describe('ExportDialog', () => {
     await userEvent.click(screen.getByText('エクスポート実行'))
     act(() => emit({ phase: 'export', current: 2, total: 5 }))
     expect(await screen.findByText('領収書を書き出しています(2/5)')).toBeInTheDocument()
+    act(() => emit({ phase: 'export', current: 5, total: 5, stage: 'packing' } as never))
+    expect(await screen.findByText('ファイルを整理しています…')).toBeInTheDocument()
     finish({ success: true, filePath: '/tmp/a.zip' })
     await waitFor(() => expect(screen.queryByText(/書き出しています/)).not.toBeInTheDocument())
   })

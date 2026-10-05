@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
+import { BACKUP_MESSAGES } from '@shared/messages/messages'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 
@@ -200,6 +201,24 @@ describe('DataIpcHandler', () => {
         success: true,
         filePath: '/tmp/e.zip'
       })
+    })
+
+    it('data:exportは、見込みサイズが復元上限を超える場合はダイアログを開かず、書き出さずに理由を返す', async () => {
+      const service = {
+        isTooLargeBackup: vi.fn().mockReturnValue(true),
+        isLargeBackup: vi.fn().mockReturnValue(true),
+        exportData: vi.fn(),
+        importData: vi.fn()
+      } as unknown as BackupService
+      handlers.clear()
+      new DataIpcHandler(service).registerHandlers()
+      const handler = handlers.get(IPC_CHANNELS.dataExport)!
+      expect(await handler(makeEvent(), { confirmLarge: true })).toEqual({
+        success: false,
+        error: BACKUP_MESSAGES.exportTooLarge
+      })
+      expect(showSaveDialog).not.toHaveBeenCalled()
+      expect(service.exportData).not.toHaveBeenCalled()
     })
 
     it('進捗はdata:progressとして呼び出し元のRendererへ通知する(エクスポート・復元)', async () => {

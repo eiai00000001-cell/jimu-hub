@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
+import { BACKUP_MESSAGES } from '@shared/messages/messages'
 import { readDevOnlyEnv } from '../app-security'
 import type {
   BackupProgressCallback,
@@ -13,6 +14,8 @@ export interface BackupOperations {
   importData(filePath: string, onProgress?: BackupProgressCallback): ImportDataResult
   /** 見込みサイズが復元上限の80%を超えるか(起動エラー画面の復元用サービスでは未実装) */
   isLargeBackup?(): boolean
+  /** 見込みサイズが復元上限を超えるか(超える場合は書き出さない) */
+  isTooLargeBackup?(): boolean
 }
 
 function defaultExportFileName(): string {
@@ -53,6 +56,9 @@ export class DataIpcHandler {
     confirmLarge: boolean
   ): Promise<ExportDataResult> {
     // 領収書・PDFの見込みサイズが復元上限の80%を超える場合は、書き出しの前に警告する(基本設計書8.1章★E12)
+    if (this.service.isTooLargeBackup?.()) {
+      return { success: false, error: BACKUP_MESSAGES.exportTooLarge }
+    }
     if (!confirmLarge && this.service.isLargeBackup?.()) {
       return { success: false, warnLargeBackup: true }
     }

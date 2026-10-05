@@ -338,10 +338,15 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     seed()
     const exp: Array<[number, number]> = []
     src.service.exportData(zipPath, (p) => exp.push([p.current, p.total]))
+    // 最後は、ZIPの生成・書き込み中を示す通知(packing)
     expect(exp).toEqual([
       [1, 2],
+      [2, 2],
       [2, 2]
     ])
+    const stages: Array<string | undefined> = []
+    src.service.exportData(zipPath, (p) => stages.push(p.stage))
+    expect(stages).toEqual([undefined, undefined, 'packing'])
     const imp: Array<[string, number, number]> = []
     dst.service.importData(zipPath, (p) => imp.push([p.phase, p.current, p.total]))
     expect(imp).toEqual([
@@ -377,6 +382,9 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
           .files.map((f) => f.token)
       })
       expect(small.service.isLargeBackup()).toBe(true)
+      // 上限(20バイト)を超える見込みサイズなら、書き出し中止の対象(通常の上限では対象外)
+      expect(small.service.isTooLargeBackup()).toBe(true)
+      expect(src.service.isTooLargeBackup()).toBe(false)
     } finally {
       small.db.close()
       rmSync(small.dir, { recursive: true, force: true })

@@ -61,6 +61,8 @@ export interface DataProgress {
   phase: 'export' | 'import'
   current: number
   total: number
+  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
+  stage?: 'packing'
 }
 
 export interface ImportDataResult {

@@ -14,12 +14,17 @@ interface ExportDialogProps {
 export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [progress, setProgress] = useState<{
+    current: number
+    total: number
+    packing: boolean
+  } | null>(null)
 
   // 進捗(`data:progress`)の購読。実行中のみ表示する
   useEffect(() => {
     return window.jimuhubApi.onDataProgress?.((p) => {
-      if (p.phase === 'export') setProgress({ current: p.current, total: p.total })
+      if (p.phase === 'export')
+        setProgress({ current: p.current, total: p.total, packing: p.stage === 'packing' })
     })
   }, [])
 
@@ -58,7 +63,11 @@ export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
           </Button>
         </div>
         {submitting && progress ? (
-          <p role="status">{BACKUP_MESSAGES.exportProgress(progress.current, progress.total)}</p>
+          <p role="status">
+            {progress.packing
+              ? BACKUP_MESSAGES.exportPacking
+              : BACKUP_MESSAGES.exportProgress(progress.current, progress.total)}
+          </p>
         ) : null}
         {result ? (
           <Message variant={result.success ? 'success' : 'error'}>{result.message}</Message>
