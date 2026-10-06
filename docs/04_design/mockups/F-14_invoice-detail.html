@@ -100,6 +100,15 @@
     .table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 10px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
     .table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
     .table tr:last-child td { border-bottom: none; }
+
+    .hist-table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .hist-table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 8px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+    .hist-table td { padding: 8px 14px; border-bottom: 1px solid var(--color-border); font-size: 12px; }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-badge { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; background: var(--color-bg); color: var(--color-text); }
+    .hist-title { font-size: 13px; font-weight: 600; margin: 24px 0 10px; }
+    .link-inline { background: none; border: none; padding: 0; font-family: inherit; font-size: 13px; color: var(--color-text); text-decoration: underline; }
+    .btn-sm-inline { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin-left: 12px; font-family: inherit; font-size: 12px; font-weight: 500; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-white); color: var(--color-text); vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -118,7 +127,7 @@
         <ul class="sidebar-nav">
           <li class="sidebar-item"><span>ホーム</span></li>
           <li class="sidebar-item"><span>取引先管理</span></li>
-          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>案件管理</span></li>
           <li class="sidebar-item active"><span>見積書・請求書</span></li>
           <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
@@ -141,6 +150,7 @@
             <dl class="info-grid">
               <dt>請求書番号</dt><dd>2026-012</dd>
               <dt>取引先</dt><dd>サンプル商事株式会社 御中</dd>
+              <dt>案件</dt><dd><button class="link-inline">サンプル商事 Webサイト制作</button><button class="btn-sm-inline">案件を変更</button></dd>
               <dt>発行日</dt><dd>2026-09-22</dd>
               <dt>支払期限</dt><dd>2026-10-31</dd>
               <dt>元の見積書</dt><dd><button class="link">2026-008 を見る</button></dd>
@@ -188,6 +198,7 @@
             <div style="font-size:11px; color:var(--color-text-secondary); margin-top:8px;">紐づく入金記録がある場合のみ表示します(取消済を含む。新しい順)。上の例は、入金済みを一度取り消して未収に戻した請求書です。入金済み状態では「有効」の行が表示されます。</div>
           </div>
 
+          <div class="hist-title">案件の付け替え履歴</div><table class="hist-table"><thead><tr><th>日時</th><th>付け替え前の案件</th><th>付け替え後の案件</th><th>操作の種類</th></tr></thead><tbody><tr><td>2026-10-02 14:10</td><td>案件なし</td><td>サンプル商事 Webサイト制作</td><td><span class="hist-badge">付け替え</span></td></tr><tr><td>2026-10-03 09:30</td><td>サンプル商事 Webサイト制作</td><td>アルファ商事 保守契約</td><td><span class="hist-badge">付け替え</span></td></tr><tr><td>2026-10-03 09:42</td><td>アルファ商事 保守契約</td><td>サンプル商事 Webサイト制作</td><td><span class="hist-badge">付け替え</span></td></tr></tbody></table>
           <div class="back-link">
             <button class="link">&larr; 一覧へ戻る</button>
           </div>

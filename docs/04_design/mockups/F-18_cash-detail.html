@@ -157,6 +157,15 @@
     .expand-row td { background: var(--color-bg); padding: 12px 14px 16px 40px; }
     .inline-form { display: flex; gap: 12px; align-items: flex-end; }
     .inline-form .field { margin-bottom: 0; }
+
+    .hist-table { width: 100%; border-collapse: collapse; background: var(--color-white); border: 1px solid var(--color-border); }
+    .hist-table th { text-align: left; font-size: 11px; color: var(--color-text-secondary); font-weight: 600; padding: 8px 14px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+    .hist-table td { padding: 8px 14px; border-bottom: 1px solid var(--color-border); font-size: 12px; }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-badge { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; background: var(--color-bg); color: var(--color-text); }
+    .hist-title { font-size: 13px; font-weight: 600; margin: 24px 0 10px; }
+    .link-inline { background: none; border: none; padding: 0; font-family: inherit; font-size: 13px; color: var(--color-text); text-decoration: underline; }
+    .btn-sm-inline { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin-left: 12px; font-family: inherit; font-size: 12px; font-weight: 500; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-white); color: var(--color-text); vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -171,7 +180,7 @@
         <ul class="sidebar-nav">
           <li class="sidebar-item"><span>ホーム</span></li>
           <li class="sidebar-item"><span>取引先管理</span></li>
-          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>案件管理</span></li>
           <li class="sidebar-item"><span>見積書・請求書</span></li>
           <li class="sidebar-item active"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
@@ -189,6 +198,7 @@
               <dt>勘定科目</dt><dd>通信費</dd>
               <dt>摘要・メモ</dt><dd>インターネット回線(9月分)</dd>
               <dt>取引先</dt><dd>-</dd>
+              <dt>案件</dt><dd>案件なし<button class="btn-sm-inline">案件を変更</button></dd>
               <dt>支払方法</dt><dd>クレジットカード</dd>
               <dt>税区分</dt><dd>10%</dd>
               <dt>消費税額</dt><dd>¥600</dd><dt>登録日時</dt><dd>2026-09-28 18:20</dd><dt>更新日時</dt><dd>2026-09-29 09:05</dd></dl><div class="section-title">領収書(サムネイルをクリックすると拡大して確認できます)</div><div class="receipt-cards">
@@ -208,9 +218,10 @@
               <dt>勘定科目</dt><dd>売上高</dd>
               <dt>摘要・メモ</dt><dd>請求書 2026-012 の入金</dd>
               <dt>取引先</dt><dd>サンプル商事株式会社</dd>
+              <dt>案件</dt><dd><button class="link-inline">サンプル商事 Webサイト制作</button><button class="btn-sm-inline">案件を変更</button></dd>
               <dt>支払方法</dt><dd>振込</dd>
               <dt>税区分</dt><dd>対象外</dd>
-              <dt>消費税額</dt><dd>¥0</dd><dt>請求書番号</dt><dd><button class="link">2026-012</button></dd><dt>登録日時</dt><dd>2026-09-28 18:20</dd><dt>更新日時</dt><dd>2026-09-29 09:05</dd></dl></div><div style="height:12px;"></div><div class="message message-error" style="max-width:900px;"><span class="message-icon">!</span><span>請求書側で入金済みを取り消すと、この入金記録は取消済になります</span></div>
+              <dt>消費税額</dt><dd>¥0</dd><dt>請求書番号</dt><dd><button class="link">2026-012</button></dd><dt>登録日時</dt><dd>2026-09-28 18:20</dd><dt>更新日時</dt><dd>2026-09-29 09:05</dd></dl><div class="hist-title">案件の付け替え履歴</div><table class="hist-table"><thead><tr><th>日時</th><th>付け替え前の案件</th><th>付け替え後の案件</th><th>操作の種類</th></tr></thead><tbody><tr><td>2026-10-02 14:10</td><td>案件なし</td><td>サンプル商事 Webサイト制作</td><td><span class="hist-badge">付け替え</span></td></tr></tbody></table></div><div style="height:12px;"></div><div class="message message-error" style="max-width:900px;"><span class="message-icon">!</span><span>請求書側で入金済みを取り消すと、この入金記録は取消済になります</span></div>
 <div class="reference-label again">参考: 取消済の記録(「取消済」バッジ。編集・削除ボタンなし)</div>
 <div class="mini-header"><span class="badge badge-income">入金</span><span class="badge badge-cancelled">取消済</span><span style="margin-left:auto; font-size:11px; color:var(--color-text-secondary);">編集・削除ボタンは表示しません</span></div>
 <div class="reference-label again">参考: 削除済みの記録(履歴画面の「記録を表示」から読み取り専用で表示)</div>

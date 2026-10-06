@@ -115,7 +115,7 @@
         <ul class="sidebar-nav">
           <li class="sidebar-item"><span>ホーム</span></li>
           <li class="sidebar-item"><span>取引先管理</span></li>
-          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>案件管理</span></li>
           <li class="sidebar-item active"><span>見積書・請求書</span></li>
           <li class="sidebar-item"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
@@ -145,7 +145,17 @@
                 <div class="readonly-value">PDF保存時に採番されます</div>
               </div>
             </div>
-            <div></div>
+            <div>
+              <div class="field">
+                <label>案件</label>
+                <select>
+                  <option>案件なし</option>
+                  <option selected>サンプル商事 Webサイト制作</option>
+                  <option>アルファ商事 保守契約</option>
+                </select>
+                <div class="hint">進行中の案件から選べます(任意)。変換元の見積書の案件(進行中の場合)を初期値にしています</div>
+              </div>
+            </div>
           </div>
 
           <div class="form-columns-3">

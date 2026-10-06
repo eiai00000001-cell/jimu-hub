@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>事務HUB - 入出金・経費の編集(モックアップ v2.1)</title>
+<title>事務HUB - 案件詳細(モックアップ v3.1)</title>
 <style>
     :root {
       --color-white: #FFFFFF; --color-bg: #F2F2F4; --color-border: #D1D1D6;
@@ -157,60 +157,48 @@
     .expand-row td { background: var(--color-bg); padding: 12px 14px 16px 40px; }
     .inline-form { display: flex; gap: 12px; align-items: flex-end; }
     .inline-form .field { margin-bottom: 0; }
+
+    .btn-danger { background: var(--color-red); border-color: var(--color-red); color: var(--color-white); }
+    .btn:focus-visible, .btn.focus { outline: 2px solid var(--color-text); outline-offset: 2px; }
+    .message-warning { border-left-color: var(--color-red); }
+    .message-warning .message-icon { color: var(--color-red); }
+    .modal-close { position: absolute; top: 12px; right: 14px; font-size: 14px; color: var(--color-text-secondary); }
+    .modal { position: relative; }
+    .modal.wide { width: 540px; }
+    .modal .lead { color: var(--color-text); font-size: 12px; margin: 0 0 12px; line-height: 1.7; }
+    .modal .note { color: var(--color-text-secondary); font-size: 12px; margin: 4px 0 18px; line-height: 1.7; }
+    .modal .message { margin-bottom: 10px; background: var(--color-bg); }
+    .sheet { width: 1280px; margin: 0 auto 24px; }
+    .tag-done { font-size: 11px; color: var(--color-text-secondary); }
+    .note-text { font-size: 11px; color: var(--color-text-secondary); margin: 10px 0 0; line-height: 1.6; }
+    .kv { display: flex; gap: 16px; }
+    .kv > * { flex: 1 1 0; min-width: 0; }
+    .count-grid { display: flex; gap: 16px; }
+    .count-item { flex: 1; border: 1px solid var(--color-border); padding: 12px 16px; background: var(--color-white); }
+    .count-item .label { font-size: 12px; color: var(--color-text-secondary); }
+    .count-item .value { font-size: 16px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .count-item .value small { font-size: 11px; font-weight: 400; color: var(--color-text-secondary); }
+    .sub-total { font-size: 11px; color: var(--color-text-secondary); margin-top: 6px; }
 </style>
 </head>
 <body>
   <div class="window">
-    <div class="titlebar">
-      <div class="traffic-lights"><div class="traffic-light tl-close"></div><div class="traffic-light tl-min"></div><div class="traffic-light tl-zoom"></div></div>
-      <div class="titlebar-title">事務HUB - 入出金・経費の編集</div>
-    </div>
-    <div class="app-body">
-      <div class="sidebar">
-        <div class="sidebar-header">事務HUB</div>
-        <ul class="sidebar-nav">
-          <li class="sidebar-item"><span>ホーム</span></li>
-          <li class="sidebar-item"><span>取引先管理</span></li>
-          <li class="sidebar-item"><span>案件管理</span></li>
-          <li class="sidebar-item"><span>見積書・請求書</span></li>
-          <li class="sidebar-item active"><span>入出金・経費</span></li>
-          <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
-        </ul>
-      </div>
+    <div class="titlebar"><div class="traffic-lights"><div class="traffic-light tl-close"></div><div class="traffic-light tl-min"></div><div class="traffic-light tl-zoom"></div></div><div class="titlebar-title">事務HUB - 案件詳細</div></div>
+    <div class="app-body"><div class="sidebar"><div class="sidebar-header">事務HUB</div><ul class="sidebar-nav">
+<li class="sidebar-item"><span>ホーム</span></li><li class="sidebar-item"><span>取引先管理</span></li><li class="sidebar-item active"><span>案件管理</span></li><li class="sidebar-item"><span>見積書・請求書</span></li><li class="sidebar-item"><span>入出金・経費</span></li><li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li></ul></div>
       <div class="main">
-        <div class="page-header">
-          <div class="page-title-group"><h1 class="page-title">経費の編集</h1></div>
-          <div class="header-actions"></div>
-        </div>
-        <div class="page-content">
-<div class="panel"><div class="form-columns"><div><div class="field"><label>種別<span class="required">必須</span></label><div class="readonly">経費</div><div class="hint">登録後は種別を変更できません</div></div>
-              <div class="field"><label>日付<span class="required">必須</span></label><input type="date" value="2026-09-28"></div>
-              <div class="field"><label>金額<span class="required">必須</span></label><input type="text" value="6,600" placeholder="例: 6,600"><div class="hint">税込の金額を半角数字で入力します(カンマ区切り可)</div></div>
-              <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option>消耗品費</option><option selected>通信費</option><option>旅費交通費</option><option>外注費</option><option>新聞図書費</option><option>地代家賃</option><option>支払手数料</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
-              <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="インターネット回線(9月分)" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><select><option>(未選択)</option><option>サンプル商事株式会社</option><option>アルファ商事株式会社</option><option>オレンジ物産株式会社</option></select></div>
-              <div class="field"><label>支払方法</label><select><option>現金</option><option>振込</option><option selected>クレジットカード</option><option>その他</option></select></div>
-              <div class="field"><label>税区分</label><select><option selected>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
-              <div class="field"><label>消費税額</label><div class="readonly">¥600</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>
-              <div class="field"><label>領収書</label><div class="receipt-list"><div class="receipt-item"><div class="thumb"></div><div class="receipt-meta"><div class="name">receipt_2026-09-28.jpg</div><div class="info">JPEG · 412 KB · 保存済み</div></div><button class="btn btn-secondary btn-sm">削除</button></div><div class="receipt-item removed"><div class="thumb pdf"></div><div class="receipt-meta"><div class="name">invoice_internet_sep.pdf</div><div class="info">PDF · 186 KB · 削除予定(保存時に外します)</div></div></div><div class="receipt-item"><div class="thumb pdf"></div><div class="receipt-meta"><div class="name">invoice_internet_oct.pdf</div><div class="info">PDF · 201 KB · 追加予定(保存時に添付します)</div></div><button class="btn btn-secondary btn-sm">削除</button></div></div>
-              <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm">ファイルを追加</button></div>
-              <div class="hint">PDF・JPEG・PNG、1ファイル10MBまで、1つの記録につき5件まで(現在 3 件)</div></div><div class="field"><label>変更理由</label><input type="text" placeholder="例: 金額の訂正(200文字まで)"><div class="hint">履歴に残ります(任意)</div></div></div></div></div>
-          <div class="form-actions"><button class="btn btn-primary">保存</button><button class="btn btn-secondary">キャンセル</button></div><div class="reference-block"><div class="reference-label">参考: 請求書から自動作成された入金記録の編集(種別・金額・取引先・請求書は表示のみ。日付・勘定科目・摘要・支払方法・税区分・領収書・変更理由を編集できる)</div>
-<div class="panel"><div class="form-columns"><div><div class="field"><label>種別<span class="required">必須</span></label><div class="readonly">入金</div><div class="hint">登録後は種別を変更できません</div></div>
-              <div class="field"><label>日付<span class="required">必須</span></label><input type="date" value="2026-09-30"></div>
-              <div class="field"><label>金額<span class="required">必須</span></label><div class="readonly">¥332,370</div><div class="hint">請求書から作成された入金記録の金額は変更できません</div></div>
-              <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option selected>売上高</option><option>雑収入</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
-              <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="請求書 2026-012 の入金" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><div class="readonly">サンプル商事株式会社</div></div>
-              <div class="field"><label>支払方法</label><select><option>(未選択)</option><option>現金</option><option>振込</option><option>クレジットカード</option><option>その他</option></select></div>
-              <div class="field"><label>税区分</label><select><option>(未選択)</option><option>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
-              <div class="field"><label>消費税額</label><div class="readonly">¥0</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>
-              <div class="field"><label>領収書</label><div class="receipt-empty">領収書は添付されていません。</div>
-              <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm">ファイルを追加</button></div>
-              <div class="hint">PDF・JPEG・PNG、1ファイル10MBまで、1つの記録につき5件まで</div></div><div class="field"><label>変更理由</label><input type="text" placeholder="例: 金額の訂正(200文字まで)"><div class="hint">履歴に残ります(任意)</div></div></div></div></div>
-          
-</div>
-        </div>
+        <div class="page-header"><div class="page-title-group"><h1 class="page-title">案件詳細</h1></div><div class="header-actions"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">完了</button></div></div>
+        <div class="page-content"><div class="panel"><dl class="info-grid"><dt>案件名</dt><dd>サンプル商事 Webサイト制作</dd><dt>取引先</dt><dd>サンプル商事株式会社</dd><dt>状態</dt><dd><span class="badge badge-active">進行中</span></dd><dt>期間</dt><dd>2026-08-01〜2026-11-30</dd><dt>メモ</dt><dd>トップページ・下層5ページの制作。公開は11月中旬の予定。</dd></dl></div>
+<div class="section-title">案件別収支</div><div class="summary-cards"><div class="summary-card"><div class="label">売上</div><div class="value">¥363,000</div><div class="sub-total">うち源泉徴収額 ¥30,630</div></div><div class="summary-card"><div class="label">経費</div><div class="value">¥55,000</div></div><div class="summary-card"><div class="label">差引(売上−経費)</div><div class="value">¥308,000</div></div></div>
+<p class="note-text" style="margin:-8px 0 0">売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。</p>
+<div class="section-title">件数の内訳</div><div class="count-grid"><div class="count-item"><div class="label">見積書</div><div class="value">1<small> 件</small></div></div><div class="count-item"><div class="label">請求書</div><div class="value">2<small> 件(発行済み 1 / 下書き 1)</small></div></div><div class="count-item"><div class="label">入金(取消済を含む)</div><div class="value">2<small> 件</small></div></div><div class="count-item"><div class="label">経費</div><div class="value">1<small> 件</small></div></div></div>
+<div class="section-title">紐づく見積書・請求書</div><table class="table"><thead><tr><th>書類番号</th><th>種別</th><th>発行日</th><th>取引先</th><th class="num">合計金額</th><th>状態</th><th class="op">操作</th></tr></thead><tbody><tr><td><button class="link" style="font-size:13px">2026-012</button></td><td>請求書</td><td>2026-09-22</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-inactive">PDF保存済み</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td><button class="link" style="font-size:13px">2026-008</button></td><td>見積書</td><td>2026-09-20</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-inactive">PDF保存済み</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td><button class="link" style="font-size:13px">下書き</button></td><td>請求書</td><td>2026-10-01</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-active">下書き</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr></tbody></table><div class="section-title">紐づく入出金・経費</div><table class="table"><thead><tr><th>日付</th><th>種別</th><th>摘要・メモ</th><th class="num">金額</th><th>状態</th><th class="op">操作</th></tr></thead><tbody><tr><td>2026-09-30</td><td><span class="badge badge-income">入金</span></td><td>入金(請求書から自動作成)</td><td class="num"><span class="sign">+¥332,370</span></td><td><span class="badge badge-active">有効</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td>2026-09-15</td><td><span class="badge badge-expense">経費</span></td><td>デザイン作業の外注</td><td class="num"><span class="sign">−¥55,000</span></td><td><span class="badge badge-active">有効</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr class="cancelled"><td>2026-09-12</td><td><span class="badge badge-income">入金</span></td><td>入金(請求書から自動作成)</td><td class="num"><span class="sign">+¥332,370</span></td><td><span class="badge badge-cancelled">取消済</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr></tbody></table><div class="section-title">付け替え履歴</div><table class="table"><thead><tr><th>日時</th><th>対象</th><th>付け替え前の案件</th><th>付け替え後の案件</th><th>操作の種類</th></tr></thead><tbody><tr><td>2026-10-03 09:42</td><td>請求書 2026-012</td><td>アルファ商事 保守契約</td><td>サンプル商事 Webサイト制作</td><td><span class="badge badge-op-minor">付け替え</span></td></tr><tr><td>2026-10-03 09:30</td><td>請求書 2026-012</td><td>案件なし</td><td>アルファ商事 保守契約</td><td><span class="badge badge-op-minor">付け替え</span></td></tr><tr><td>2026-09-30</td><td>入出金 2026-09-15 経費</td><td>案件なし</td><td>サンプル商事 Webサイト制作</td><td><span class="badge badge-op-minor">付け替え</span></td></tr></tbody></table>
+<div class="back-link"><button class="link">&larr; 一覧へ戻る</button></div><div class="reference-block"><div class="reference-label">参考: 完了の案件(「完了」バッジ。「完了」ボタンの代わりに「再開」を表示。完了でも「案件を変更」は操作できる)</div><div class="mini-header"><span style="font-weight:600">サンプル商事 ロゴ制作</span><span class="badge badge-inactive">完了</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">再開</button></span></div>
+<div class="reference-label again">参考: 紐づけが0件の案件(「削除」ボタンを表示。1件でも紐づく間は表示しない)</div><div class="mini-header"><span style="font-weight:600">オレンジ物産 パンフレット制作</span><span class="badge badge-active">進行中</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">完了</button><button class="btn btn-secondary">削除</button></span></div></div></div>
       </div>
+      
     </div>
   </div>
+
 </body>
 </html>
