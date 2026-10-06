@@ -148,6 +148,7 @@ export const BACKUP_MESSAGES = {
     '領収書の容量が大きいため、このファイルは復元できない可能性があります。続行しますか',
   exportTooLarge:
     '領収書・PDFの容量が復元できる上限(1GB)を超えるため、エクスポートを中止しました。復元できないファイルになってしまうため、書き出していません',
+  exportRecords: 'データを書き出しています',
   exportPacking: 'ファイルを整理しています…',
   exportProgress: (current: number, total: number): string =>
     `領収書を書き出しています(${current}/${total})`,
@@ -155,6 +156,10 @@ export const BACKUP_MESSAGES = {
     `領収書・PDFを復元しています(${current}/${total})`,
   importParseFailure:
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
+  importVerify: (current: number, total: number): string =>
+    `復元したファイルを確認しています(${current}/${total})`,
+  importDiskShort:
+    'ディスクの空き容量が足りないため、復元できませんでした。空き容量を確保してから、もう一度お試しください',
   importTooLarge: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした',
   importVersionTooNew:
     'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください',

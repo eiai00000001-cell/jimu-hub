@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { Button } from './Button'
 import { Message } from './Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
+import type { DataProgress } from '@shared/ipc/api'
 
 interface ExportDialogProps {
   onClose: () => void
@@ -14,17 +15,15 @@ interface ExportDialogProps {
 export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{
-    current: number
-    total: number
-    packing: boolean
-  } | null>(null)
+  const [progress, setProgress] = useState<Pick<
+    DataProgress,
+    'stage' | 'current' | 'total'
+  > | null>(null)
 
   // 進捗(`data:progress`)の購読。実行中のみ表示する
   useEffect(() => {
     return window.jimuhubApi.onDataProgress?.((p) => {
-      if (p.phase === 'export')
-        setProgress({ current: p.current, total: p.total, packing: p.stage === 'packing' })
+      if (p.phase === 'export') setProgress({ stage: p.stage, current: p.current, total: p.total })
     })
   }, [])
 
@@ -64,9 +63,11 @@ export function ExportDialog({ onClose }: ExportDialogProps): ReactElement {
         </div>
         {submitting && progress ? (
           <p role="status">
-            {progress.packing
-              ? BACKUP_MESSAGES.exportPacking
-              : BACKUP_MESSAGES.exportProgress(progress.current, progress.total)}
+            {progress.stage === 'records'
+              ? BACKUP_MESSAGES.exportRecords
+              : progress.stage === 'packing'
+                ? BACKUP_MESSAGES.exportPacking
+                : BACKUP_MESSAGES.exportProgress(progress.current, progress.total)}
           </p>
         ) : null}
         {result ? (

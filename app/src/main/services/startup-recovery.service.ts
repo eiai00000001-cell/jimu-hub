@@ -28,11 +28,11 @@ export class StartupRecoveryService {
   constructor(private readonly deps: StartupRecoveryDeps) {}
 
   /** 起動エラー画面ではエクスポート(書き出し)は行えない */
-  exportData(): ExportDataResult {
-    return { success: false, error: BACKUP_MESSAGES.exportFailure }
+  exportData(): Promise<ExportDataResult> {
+    return Promise.resolve({ success: false, error: BACKUP_MESSAGES.exportFailure })
   }
 
-  importData(filePath: string): ImportDataResult {
+  async importData(filePath: string): Promise<ImportDataResult> {
     const { dbFilePath, backupsDir } = this.deps
     mkdirSync(backupsDir, { recursive: true })
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -63,7 +63,7 @@ export class StartupRecoveryService {
         documentsDir: this.deps.documentsDir,
         appVersion: this.deps.appVersion
       })
-      const result = service.importData(filePath)
+      const result = await service.importData(filePath)
       database.close()
       database = null
       if (!result.success) {

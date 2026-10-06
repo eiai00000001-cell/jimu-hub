@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import AdmZip from 'adm-zip'
+import { exportToLegacyJson } from './backup/test-helpers'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
 import { initializeStartup } from '../startup'
@@ -32,7 +32,7 @@ describe('StartupRecoveryService(F-09)', () => {
   let exportPath: string
   let service: StartupRecoveryService
 
-  beforeEach(() => {
+  beforeEach(async () => {
     dir = mkdtempSync(join(tmpdir(), 'jimuhub-recovery-test-'))
     dbFilePath = join(dir, 'data.sqlite')
     backupsDir = join(dir, 'backups')
@@ -44,7 +44,7 @@ describe('StartupRecoveryService(F-09)', () => {
     const src = new Database(srcPath)
     src.initialize()
     new ClientRepository(src).insert(client)
-    new BackupService({
+    await new BackupService({
       database: src,
       clientRepository: new ClientRepository(src),
       migrationService: new MigrationService(),
@@ -66,12 +66,12 @@ describe('StartupRecoveryService(F-09)', () => {
 
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-  it('破損したDBでは起動に失敗する(前提確認)', () => {
+  it('破損したDBでは起動に失敗する(前提確認)', async () => {
     expect(initializeStartup(dbFilePath).status.ok).toBe(false)
   })
 
-  it('復元に成功すると、破損DBをbackups/へ退避した新しいDBで通常起動できる', () => {
-    const result = service.importData(exportPath)
+  it('復元に成功すると、破損DBをbackups/へ退避した新しいDBで通常起動できる', async () => {
+    const result = await service.importData(exportPath)
 
     expect(result.success).toBe(true)
     expect(result.importedCount).toBe(1)
@@ -87,21 +87,20 @@ describe('StartupRecoveryService(F-09)', () => {
     started.database!.close()
   })
 
-  it('旧JSON形式のエクスポートファイルでも復元できる', () => {
+  it('旧JSON形式のエクスポートファイルでも復元できる', async () => {
     const legacy = join(dir, 'legacy.json')
-    const data = JSON.parse(new AdmZip(exportPath).getEntry('data.json')!.getData().toString())
-    data.schemaVersion = 1
+    const data = exportToLegacyJson(exportPath, 1) as { data: { clients: unknown[] } }
     writeFileSync(legacy, JSON.stringify({ ...data, data: { clients: data.data.clients } }))
 
-    expect(service.importData(legacy).success).toBe(true)
+    expect((await service.importData(legacy)).success).toBe(true)
     expect(initializeStartup(dbFilePath).status.ok).toBe(true)
   })
 
-  it('復元に失敗した場合は、退避した元のDBファイルを元の場所へ戻し、再度選び直せる', () => {
+  it('復元に失敗した場合は、退避した元のDBファイルを元の場所へ戻し、再度選び直せる', async () => {
     const broken = join(dir, 'broken.zip')
     writeFileSync(broken, 'PK壊れたZIP')
 
-    const result = service.importData(broken)
+    const result = await service.importData(broken)
 
     expect(result.success).toBe(false)
     expect(result.error).toContain('読み込めませんでした')
@@ -109,10 +108,10 @@ describe('StartupRecoveryService(F-09)', () => {
     expect(existsSync(`${dbFilePath}-wal`)).toBe(false)
 
     // 同じ状態から正しいファイルで再試行できる
-    expect(service.importData(exportPath).success).toBe(true)
+    expect((await service.importData(exportPath)).success).toBe(true)
   })
 
-  it('エクスポートは起動エラー画面では行えない', () => {
-    expect(service.exportData().success).toBe(false)
+  it('エクスポートは起動エラー画面では行えない', async () => {
+    expect((await service.exportData()).success).toBe(false)
   })
 })

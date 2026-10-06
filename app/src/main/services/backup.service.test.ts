@@ -3,6 +3,7 @@ import * as fsModule from 'node:fs'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import AdmZip from 'adm-zip'
+import { buildZip, exportToLegacyJson, mapExportTable, readExport } from './backup/test-helpers'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Database } from '../db/db'
@@ -22,7 +23,11 @@ import type { ClientInput } from '@shared/schemas/client.schema'
  */
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof fsModule>()
-  return { ...actual, copyFileSync: vi.fn(actual.copyFileSync) }
+  return {
+    ...actual,
+    copyFileSync: vi.fn(actual.copyFileSync),
+    renameSync: vi.fn(actual.renameSync)
+  }
 })
 
 const baseInput: ClientInput = {
@@ -114,62 +119,67 @@ describe('BackupService', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
-  it('exportDataで全データを含むZIPファイル(data.json)を書き出す', () => {
+  it('exportDataで全データを含むZIPファイル(manifest.json+JSON Lines)を書き出す', async () => {
     repository.insert(baseInput)
     repository.insert({ ...baseInput, name: '2件目' })
 
-    const result = service.exportData(exportPath)
+    const result = await service.exportData(exportPath)
 
     expect(result.success).toBe(true)
-    const written = JSON.parse(
-      new AdmZip(exportPath).getEntry('data.json')!.getData().toString('utf-8')
-    )
-    expect(written.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    expect(written.appVersion).toBe('0.1.0')
-    expect(written.data.clients).toHaveLength(2)
+    const exported = readExport(exportPath)
+    expect(exported.manifest.format).toBe('jimuhub-backup')
+    expect(exported.manifest.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(exported.manifest.appVersion).toBe('0.1.0')
+    expect(exported.manifest.tables.clients).toEqual({ file: 'data/clients.jsonl', count: 2 })
+    expect(exported.records('clients')).toHaveLength(2)
+    expect(exported.entries.has('data.json')).toBe(false)
+    // 作業用ファイル・一時フォルダは残さない
+    expect(existsSync(`${exportPath}.partial`)).toBe(false)
+    expect(existsSync(join(dir, 'tmp'))).toBe(true)
+    expect(readdirSync(join(dir, 'tmp'))).toEqual([])
   })
 
-  it('exportDataは書き込み失敗時にsuccess:falseを返す', () => {
+  it('exportDataは書き込み失敗時にsuccess:falseを返す', async () => {
     const invalidPath = join(dir, 'no-such-directory', 'export.zip')
-    const result = service.exportData(invalidPath)
+    const result = await service.exportData(invalidPath)
     expect(result.success).toBe(false)
     expect(result.error).toBeTruthy()
   })
 
-  it('exportしたファイルをimportすると同じ件数が復元される(往復確認)', () => {
+  it('exportしたファイルをimportすると同じ件数が復元される(往復確認)', async () => {
     repository.insert(baseInput)
     repository.insert({ ...baseInput, name: '2件目' })
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
 
     repository.deleteAll()
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
 
     expect(result.success).toBe(true)
     expect(result.importedCount).toBe(2)
     expect(repository.findAllForBackup()).toHaveLength(2)
   })
 
-  it('importDataは復元前にidを保持したまま置き換える(全置換)', () => {
+  it('importDataは復元前にidを保持したまま置き換える(全置換)', async () => {
     const { id } = repository.insert(baseInput)
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
 
     repository.insert({ ...baseInput, name: '復元前に追加された取引先' })
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
 
     expect(result.success).toBe(true)
     const all = repository.findAllForBackup()
     expect(all.map((c) => c.id)).toEqual([id])
   })
 
-  it('importDataはJSONとして解析できないファイルの場合エラーを返す', () => {
+  it('importDataはJSONとして解析できないファイルの場合エラーを返す', async () => {
     writeFileSync(exportPath, '{ 壊れたJSON', 'utf-8')
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
 
     expect(result.success).toBe(false)
     expect(result.error).toContain('読み込めませんでした')
   })
 
-  it('importDataはschemaVersionが現行より新しい場合エラーを返す', () => {
+  it('importDataはschemaVersionが現行より新しい場合エラーを返す', async () => {
     writeFileSync(
       exportPath,
       JSON.stringify({
@@ -181,28 +191,28 @@ describe('BackupService', () => {
       'utf-8'
     )
 
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
     expect(result.success).toBe(false)
     expect(result.error).toContain('新しいバージョン')
   })
 
-  it('importData実行前に現行DBファイルを退避コピーする', () => {
+  it('importData実行前に現行DBファイルを退避コピーする', async () => {
     repository.insert(baseInput)
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
 
-    service.importData(exportPath)
+    await service.importData(exportPath)
 
     expect(existsSync(backupsDir)).toBe(true)
     const files = readdirSync(backupsDir)
     expect(files.length).toBeGreaterThan(0)
   })
 
-  it('退避コピーは直近3世代のみ保持する', () => {
+  it('退避コピーは直近3世代のみ保持する', async () => {
     repository.insert(baseInput)
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
 
     for (let i = 0; i < 5; i += 1) {
-      service.importData(exportPath)
+      await service.importData(exportPath)
     }
 
     const files = readdirSync(backupsDir)
@@ -210,14 +220,14 @@ describe('BackupService', () => {
     expect(files.filter((f) => f.startsWith('documents_')).length).toBe(3)
   })
 
-  it('復元処理中に例外が発生した場合は、ロールバックし退避コピーから復旧する(詳細設計書4.3章手順8)', () => {
+  it('復元処理中に例外が発生した場合は、ロールバックし退避コピーから復旧する(詳細設計書4.3章手順8)', async () => {
     repository.insert(baseInput)
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
 
     // status列のCHECK制約に違反するデータで、トランザクション内(insertWithId)を意図的に失敗させる
     writeFileSync(exportPath, JSON.stringify(buildBrokenPayload()), 'utf-8')
 
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
 
     // (1) importTransactionFailureが返ること
     expect(result.success).toBe(false)
@@ -235,7 +245,7 @@ describe('BackupService', () => {
 
   it('退避コピーからの復旧自体が失敗した場合も、例外を投げずにエラー結果を返す', async () => {
     repository.insert(baseInput)
-    service.exportData(exportPath)
+    await service.exportData(exportPath)
     writeFileSync(exportPath, JSON.stringify(buildBrokenPayload()), 'utf-8')
 
     const { copyFileSync: realCopyFileSync } = await vi.importActual<typeof fsModule>('node:fs')
@@ -248,7 +258,7 @@ describe('BackupService', () => {
       throw new Error('シミュレートしたディスク障害')
     })
 
-    const result = service.importData(exportPath)
+    const result = await service.importData(exportPath)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe(BACKUP_MESSAGES.importSafeguardRestoreFailure)
@@ -303,25 +313,24 @@ describe('BackupService', () => {
       return { quoteId, invoiceId, pdfPath }
     }
 
-    it('exportDataはPDFをdocuments/配下の相対パスでZIPへ同梱し、data.jsonのpdfPathも相対パスにする', () => {
+    it('exportDataはPDFをdocuments/配下の相対パスでZIPへ同梱し、quotes.jsonlのpdfPathも相対パスにする', async () => {
       const { pdfPath } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
 
-      const zip = new AdmZip(exportPath)
-      expect(zip.getEntry('documents/quotes/2026/2026-003_株式会社サンプル.pdf')).not.toBeNull()
-      const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-      expect(data.data.quotes[0].pdfPath).toBe(
+      const exported = readExport(exportPath)
+      expect(exported.entries.has('documents/quotes/2026/2026-003_株式会社サンプル.pdf')).toBe(true)
+      expect(exported.records('quotes')[0]?.pdfPath).toBe(
         'documents/quotes/2026/2026-003_株式会社サンプル.pdf'
       )
-      expect(data.data.quotes[0].pdfPath).not.toContain(dir)
-      expect(data.data.invoices).toHaveLength(1)
-      expect(data.data.companyProfile.name).toBe('サンプル商店')
+      expect(exported.records('quotes')[0]?.pdfPath).not.toContain(dir)
+      expect(exported.records('invoices')).toHaveLength(1)
+      expect(exported.records('companyProfile')[0]?.name).toBe('サンプル商店')
       expect(existsSync(pdfPath)).toBe(true)
     })
 
-    it('往復すると全データ・PDF・採番シーケンスが復元され、ハッシュ不一致は0件', () => {
+    it('往復すると全データ・PDF・採番シーケンスが復元され、ハッシュ不一致は0件', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
 
       // 現状を壊してから復元する(PDF削除・データ全削除)
       rmSync(documentsDir, { recursive: true, force: true })
@@ -330,7 +339,7 @@ describe('BackupService', () => {
       db.sqlite.prepare('DELETE FROM quote_line_items').run()
       db.sqlite.prepare('DELETE FROM quotes').run()
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
 
       expect(result).toEqual({
         success: true,
@@ -361,9 +370,9 @@ describe('BackupService', () => {
       expect(invoice?.invoiceNumber).toBe('2026-007')
     })
 
-    it('PDFのハッシュが記録値と一致しない書類のみ個別に警告フラグを立て、復元自体は成功する', () => {
+    it('PDFのハッシュが記録値と一致しない書類のみ個別に警告フラグを立て、復元自体は成功する', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
 
       // ZIP内のPDFを改変する
       const zip = new AdmZip(exportPath)
@@ -373,7 +382,7 @@ describe('BackupService', () => {
       )
       zip.writeZip(exportPath)
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
 
       expect(result.success).toBe(true)
       expect(result.pdfHashMismatchCount).toBe(1)
@@ -381,29 +390,29 @@ describe('BackupService', () => {
       expect(result.success && BACKUP_MESSAGES.importSuccess(3, 1)).toContain('1件')
     })
 
-    it('ZIP内にPDFが存在しない書類も不一致として扱う', () => {
+    it('ZIP内にPDFが存在しない書類も不一致として扱う', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
       const zip = new AdmZip(exportPath)
       zip.deleteFile('documents/quotes/2026/2026-003_株式会社サンプル.pdf')
       zip.writeZip(exportPath)
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
       expect(result.pdfHashMismatchCount).toBe(1)
       expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(true)
     })
 
-    it('ZIP形式の復元ではdocumentsフォルダを全置換し、孤立したPDFを残さない', () => {
+    it('ZIP形式の復元ではdocumentsフォルダを全置換し、孤立したPDFを残さない', async () => {
       seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
       const orphan = join(documentsDir, 'quotes', '2026', 'orphan.pdf')
       writeFileSync(orphan, 'x')
 
-      service.importData(exportPath)
+      await service.importData(exportPath)
       expect(existsSync(orphan)).toBe(false)
     })
 
-    it('旧JSON形式(schemaVersion1・取引先のみ)も復元でき、documentsフォルダには手を加えない', () => {
+    it('旧JSON形式(schemaVersion1・取引先のみ)も復元でき、documentsフォルダには手を加えない', async () => {
       const { pdfPath } = seedDocuments()
       const legacy = {
         schemaVersion: 1,
@@ -432,7 +441,7 @@ describe('BackupService', () => {
       const jsonPath = join(dir, 'legacy.json')
       writeFileSync(jsonPath, JSON.stringify(legacy), 'utf-8')
 
-      const result = service.importData(jsonPath)
+      const result = await service.importData(jsonPath)
 
       expect(result).toEqual({ success: true, importedCount: 1 })
       expect(repository.findById(50)?.furigana).toBeNull()
@@ -440,49 +449,48 @@ describe('BackupService', () => {
       expect(new QuoteRepository(db).findAll()).toHaveLength(0)
     })
 
-    it('旧JSON形式(schemaVersion2・PDFパスのみ記録)でも見積書・請求書を復元し、ハッシュ照合は行わない', () => {
+    it('旧JSON形式(schemaVersion2・PDFパスのみ記録)でも見積書・請求書を復元し、ハッシュ照合は行わない', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
-      const data = JSON.parse(
-        new AdmZip(exportPath).getEntry('data.json')!.getData().toString('utf-8')
-      )
-      data.schemaVersion = 2
+      await service.exportData(exportPath)
+      const data = exportToLegacyJson(exportPath, 2) as {
+        data: { quotes: Array<Record<string, unknown>> }
+      }
       for (const q of data.data.quotes) delete q.pdfHashMismatch
       const jsonPath = join(dir, 'v2.json')
       writeFileSync(jsonPath, JSON.stringify(data), 'utf-8')
 
-      const result = service.importData(jsonPath)
+      const result = await service.importData(jsonPath)
 
       expect(result.success).toBe(true)
       expect(result.pdfHashMismatchCount).toBeUndefined()
       expect(new QuoteRepository(db).findById(quoteId)?.pdfHashMismatch).toBe(false)
     })
 
-    it('ZIPにdata.jsonが無い場合・壊れたZIPの場合は解析エラーを返す', () => {
+    it('ZIPにdata.jsonが無い場合・壊れたZIPの場合は解析エラーを返す', async () => {
       const noData = new AdmZip()
       noData.addFile('documents/a.pdf', Buffer.from('x'))
       noData.writeZip(join(dir, 'nodata.zip'))
-      expect(service.importData(join(dir, 'nodata.zip')).error).toBe(
+      expect((await service.importData(join(dir, 'nodata.zip'))).error).toBe(
         BACKUP_MESSAGES.importParseFailure
       )
 
       const broken = Buffer.concat([Buffer.from('PK'), Buffer.from('壊れたZIP')])
       writeFileSync(join(dir, 'broken.zip'), broken)
-      expect(service.importData(join(dir, 'broken.zip')).error).toBe(
+      expect((await service.importData(join(dir, 'broken.zip'))).error).toBe(
         BACKUP_MESSAGES.importParseFailure
       )
     })
 
-    it('ZIP内の親ディレクトリ参照を含むエントリは書き出さず、正常なPDFは復元する(ZIPスリップ対策)', () => {
+    it('ZIP内の親ディレクトリ参照を含むエントリは書き出さず、正常なPDFは復元する(ZIPスリップ対策)', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
       const zip = new AdmZip(exportPath)
       zip.addFile('documents/../../evil.txt', Buffer.from('x'))
       zip.addFile('documents/quotes/../../../evil2.txt', Buffer.from('x'))
       zip.writeZip(exportPath)
       rmSync(documentsDir, { recursive: true, force: true })
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
 
       expect(result.success).toBe(true)
       expect(result.pdfHashMismatchCount).toBe(0)
@@ -497,17 +505,13 @@ describe('BackupService', () => {
     })
 
     it.each(['/Applications/Calculator.app', 'documents/../../outside.pdf', '../outside.pdf'])(
-      'data.jsonのpdfPathが %s のように documents/ 配下に収まらない場合は採用しない(I1-03)',
-      (badPath) => {
+      'quotes.jsonlのpdfPathが %s のように documents/ 配下に収まらない場合は採用しない(I1-03)',
+      async (badPath) => {
         const { quoteId } = seedDocuments()
-        service.exportData(exportPath)
-        const zip = new AdmZip(exportPath)
-        const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-        data.data.quotes[0].pdfPath = badPath
-        zip.updateFile('data.json', Buffer.from(JSON.stringify(data)))
-        zip.writeZip(exportPath)
+        await service.exportData(exportPath)
+        mapExportTable(exportPath, 'quotes', (row) => ({ ...row, pdfPath: badPath }))
 
-        const result = service.importData(exportPath)
+        const result = await service.importData(exportPath)
 
         expect(result.success).toBe(true)
         const restored = new QuoteRepository(db).findById(quoteId)
@@ -515,46 +519,47 @@ describe('BackupService', () => {
       }
     )
 
-    it('復元前の退避コピー作成に失敗した場合は、例外を投げず失敗結果を返しデータに触れない(I1-06)', () => {
+    it('復元前の退避コピー作成に失敗した場合は、例外を投げず失敗結果を返しデータに触れない(I1-06)', async () => {
       repository.insert(baseInput)
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
       repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
       vi.mocked(fsModule.copyFileSync).mockImplementationOnce(() => {
         throw new Error('シミュレートした容量不足')
       })
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
 
       expect(result.success).toBe(false)
       expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
       expect(repository.findAllForBackup()).toHaveLength(2)
     })
 
-    it('ZIP形式の復元に失敗した場合、documentsフォルダも復元前の状態へ戻す', () => {
+    it('ZIP形式の復元に失敗した場合、documentsフォルダも復元前の状態へ戻す', async () => {
       const { pdfPath } = seedDocuments()
-      const zip = new AdmZip()
-      zip.addFile('data.json', Buffer.from(JSON.stringify(buildBrokenPayload())))
-      zip.addFile('documents/new.pdf', Buffer.from('new'))
-      zip.writeZip(join(dir, 'broken-data.zip'))
+      buildZip(join(dir, 'broken-data.zip'), {
+        'data.json': JSON.stringify(buildBrokenPayload()),
+        'documents/new.pdf': 'new'
+      })
 
-      const result = service.importData(join(dir, 'broken-data.zip'))
+      const result = await service.importData(join(dir, 'broken-data.zip'))
 
       expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
       expect(existsSync(pdfPath)).toBe(true)
       expect(existsSync(join(documentsDir, 'new.pdf'))).toBe(false)
     })
 
-    it('ZIP内の.pdf以外のエントリは書き出さず、data.jsonのpdfPathが.pdf以外を指す場合は採用しない(SEC-10)', () => {
+    it('ZIP内の.pdf以外のエントリは書き出さず、quotes.jsonlのpdfPathが.pdf以外を指す場合は採用しない(SEC-10)', async () => {
       const { quoteId } = seedDocuments()
-      service.exportData(exportPath)
+      await service.exportData(exportPath)
       const zip = new AdmZip(exportPath)
       zip.addFile('documents/quotes/2026/evil.terminal', Buffer.from('x'))
-      const data = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-      data.data.quotes[0].pdfPath = 'documents/quotes/2026/evil.terminal'
-      zip.updateFile('data.json', Buffer.from(JSON.stringify(data)))
       zip.writeZip(exportPath)
+      mapExportTable(exportPath, 'quotes', (row) => ({
+        ...row,
+        pdfPath: 'documents/quotes/2026/evil.terminal'
+      }))
 
-      const result = service.importData(exportPath)
+      const result = await service.importData(exportPath)
 
       expect(result.success).toBe(true)
       expect(existsSync(join(documentsDir, 'quotes', '2026', 'evil.terminal'))).toBe(false)
@@ -582,56 +587,238 @@ describe('BackupService', () => {
         })
       }
 
-      it('ファイルサイズが上限を超える場合は、展開せず解析エラーを返しデータに触れない', () => {
+      it('ファイルサイズが上限を超える場合は、展開せず解析エラーを返しデータに触れない', async () => {
         repository.insert(baseInput)
-        service.exportData(exportPath)
+        await service.exportData(exportPath)
         repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
 
-        const result = serviceWithLimits({ maxFileBytes: 10 }).importData(exportPath)
+        const result = await serviceWithLimits({ maxFileBytes: 10 }).importData(exportPath)
 
         expect(result.error).toBe(BACKUP_MESSAGES.importTooLarge)
         expect(repository.findAllForBackup()).toHaveLength(2)
         expect(existsSync(backupsDir)).toBe(false)
       })
 
-      it('ZIPのエントリ数が上限を超える場合は解析エラーを返す', () => {
+      it('ZIPのエントリ数が上限を超える場合は解析エラーを返す', async () => {
         seedDocuments()
-        service.exportData(exportPath)
+        await service.exportData(exportPath)
         const zip = new AdmZip(exportPath)
         zip.addFile('documents/extra1.pdf', Buffer.from('x'))
         zip.addFile('documents/extra2.pdf', Buffer.from('x'))
         zip.writeZip(exportPath)
 
-        const result = serviceWithLimits({ maxEntries: 3 }).importData(exportPath)
+        const result = await serviceWithLimits({ maxEntries: 3 }).importData(exportPath)
 
         expect(result.error).toBe(BACKUP_MESSAGES.importParseFailure)
       })
 
-      it('展開後の合計サイズ(宣言値)が上限を超える場合は、展開せず解析エラーを返す(解凍爆弾対策)', () => {
+      it('展開後の合計サイズ(宣言値)が上限を超える場合は、展開せず容量超過のエラーを返す(解凍爆弾対策)', async () => {
         seedDocuments()
-        service.exportData(exportPath)
+        await service.exportData(exportPath)
         const zip = new AdmZip(exportPath)
         // 高圧縮率のエントリ(ZIPファイル自体は小さいが展開後は大きい)
         zip.addFile('documents/bomb.pdf', Buffer.alloc(1024 * 1024, 0))
         zip.writeZip(exportPath)
 
-        const result = serviceWithLimits({ maxTotalUncompressedBytes: 512 * 1024 }).importData(
-          exportPath
-        )
+        const result = await serviceWithLimits({
+          maxTotalUncompressedBytes: 512 * 1024
+        }).importData(exportPath)
 
         expect(result.error).toBe(BACKUP_MESSAGES.importTooLarge)
         expect(existsSync(join(documentsDir, 'bomb.pdf'))).toBe(false)
       })
 
-      it('上限内であれば従来どおり復元できる(既定値)', () => {
+      it('上限内であれば従来どおり復元できる(既定値)', async () => {
         seedDocuments()
-        service.exportData(exportPath)
+        await service.exportData(exportPath)
 
-        expect(service.importData(exportPath).success).toBe(true)
+        expect((await service.importData(exportPath)).success).toBe(true)
       })
     })
 
-    it('detectFormatはPKシグネチャでZIP/JSONを判定する', () => {
+    describe('ストリーム方式の書き出し・復元(F-32)', () => {
+      const tmpEntries = (): string[] =>
+        existsSync(join(dir, 'tmp')) ? readdirSync(join(dir, 'tmp')) : []
+
+      function serviceWith(extra: {
+        getFreeBytes?: (dir: string) => number
+        restoreLimits?: { maxFileBytes?: number }
+      }): BackupService {
+        return new BackupService({
+          database: db,
+          clientRepository: repository,
+          migrationService: new MigrationService(),
+          dbFilePath,
+          backupsDir,
+          documentsDir,
+          appVersion: '0.1.0',
+          ...extra
+        })
+      }
+
+      it('書き出し後の実サイズが上限を超えた場合は、作業用ファイルも出力ファイルも残さず、専用のエラーを返す', async () => {
+        seedDocuments()
+        // 上限を、書き出されるZIPより小さくする(見込みサイズの確認は呼び出し側のため、ここは実サイズの確認のみ)
+        const result = await serviceWith({ restoreLimits: { maxFileBytes: 100 } }).exportData(
+          exportPath
+        )
+
+        expect(result).toEqual({ success: false, error: BACKUP_MESSAGES.exportTooLarge })
+        expect(existsSync(exportPath)).toBe(false)
+        expect(existsSync(`${exportPath}.partial`)).toBe(false)
+        expect(tmpEntries()).toEqual([])
+      })
+
+      it('書き込みに失敗した場合は、作業用ファイルと一時フォルダを残さない', async () => {
+        seedDocuments()
+        const result = await service.exportData(join(dir, 'no-such-dir', 'export.zip'))
+
+        expect(result.success).toBe(false)
+        expect(result.error).toBe(BACKUP_MESSAGES.exportFailure)
+        expect(existsSync(join(dir, 'no-such-dir'))).toBe(false)
+        expect(tmpEntries()).toEqual([])
+      })
+
+      it('実ファイルが無いPDFはZIPへ追加せず、書き出しは成功する', async () => {
+        const { pdfPath } = seedDocuments()
+        rmSync(pdfPath)
+        const result = await service.exportData(exportPath)
+
+        expect(result.success).toBe(true)
+        expect(
+          readExport(exportPath).entries.has('documents/quotes/2026/2026-003_株式会社サンプル.pdf')
+        ).toBe(false)
+      })
+
+      it('復元の成功後も失敗後も、一時フォルダは残らない', async () => {
+        seedDocuments()
+        await service.exportData(exportPath)
+        expect((await service.importData(exportPath)).success).toBe(true)
+        expect(tmpEntries()).toEqual([])
+
+        const broken = join(dir, 'broken-tmp.zip')
+        buildZip(broken, {
+          'data.json': JSON.stringify(buildBrokenPayload()),
+          'documents/a.pdf': 'x'
+        })
+        expect((await service.importData(broken)).success).toBe(false)
+        expect(tmpEntries()).toEqual([])
+      })
+
+      it('展開先の空き容量が不足する場合は、展開せず専用のエラーを返し、データに触れない', async () => {
+        seedDocuments()
+        await service.exportData(exportPath)
+        repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
+
+        const result = await serviceWith({ getFreeBytes: () => 0 }).importData(exportPath)
+
+        expect(result).toEqual({ success: false, error: BACKUP_MESSAGES.importDiskShort })
+        expect(repository.findAllForBackup()).toHaveLength(2)
+        expect(existsSync(backupsDir)).toBe(false)
+        expect(tmpEntries()).toEqual([])
+      })
+
+      it('空き容量が、展開対象の宣言サイズの合計+10%ちょうどあれば復元できる', async () => {
+        await service.exportData(exportPath)
+        const entries = readExport(exportPath).entries
+        let needed = 0
+        for (const [name, content] of entries) {
+          if (name === 'manifest.json' || name.startsWith('data/')) needed += content.length
+        }
+
+        const ok = await serviceWith({ getFreeBytes: () => Math.ceil(needed * 1.1) }).importData(
+          exportPath
+        )
+        expect(ok.success).toBe(true)
+        const short = await serviceWith({
+          getFreeBytes: () => Math.floor(needed * 1.1) - 1
+        }).importData(exportPath)
+        expect(short.error).toBe(BACKUP_MESSAGES.importDiskShort)
+      })
+
+      it('manifest.jsonのschemaVersionが現行より新しい場合は、復元せずエラーを返す', async () => {
+        await service.exportData(exportPath)
+        const zip = new AdmZip(exportPath)
+        const manifest = JSON.parse(zip.getEntry('manifest.json')!.getData().toString('utf-8'))
+        manifest.schemaVersion = CURRENT_SCHEMA_VERSION + 1
+        zip.updateFile('manifest.json', Buffer.from(JSON.stringify(manifest)))
+        zip.writeZip(exportPath)
+
+        const result = await service.importData(exportPath)
+        expect(result.error).toBe(BACKUP_MESSAGES.importVersionTooNew)
+        expect(existsSync(backupsDir)).toBe(false)
+      })
+
+      it('manifest.jsonの形式が不正な場合は、解析エラーを返す', async () => {
+        buildZip(exportPath, { 'manifest.json': '{"format":"other"}' })
+        expect((await service.importData(exportPath)).error).toBe(
+          BACKUP_MESSAGES.importParseFailure
+        )
+        buildZip(exportPath, { 'manifest.json': 'not json' })
+        expect((await service.importData(exportPath)).error).toBe(
+          BACKUP_MESSAGES.importParseFailure
+        )
+      })
+
+      it('JSON Linesが壊れている場合は、ロールバックして元のデータに戻す', async () => {
+        repository.insert(baseInput)
+        await service.exportData(exportPath)
+        const zip = new AdmZip(exportPath)
+        zip.updateFile('data/quotes.jsonl', Buffer.from('{broken\n'))
+        zip.writeZip(exportPath)
+        repository.insert({ ...baseInput, name: '復元前に追加した取引先' })
+
+        const result = await service.importData(exportPath)
+
+        expect(result.error).toBe(BACKUP_MESSAGES.importTransactionFailure)
+        expect(repository.findAllForBackup()).toHaveLength(2)
+      })
+
+      it('documentsの入れ替えで別のボリュームへ移動できない場合も、コピーして復元する', async () => {
+        const { pdfPath } = seedDocuments()
+        await service.exportData(exportPath)
+        rmSync(documentsDir, { recursive: true, force: true })
+        vi.mocked(fsModule.renameSync).mockImplementationOnce(() => {
+          throw new Error('EXDEV')
+        })
+
+        const result = await service.importData(exportPath)
+
+        expect(result.success).toBe(true)
+        expect(existsSync(pdfPath)).toBe(true)
+        expect(tmpEntries()).toEqual([])
+      })
+
+      it('PDFが1件も無い場合も、空のdocumentsフォルダを作成する', async () => {
+        repository.insert(baseInput)
+        await service.exportData(exportPath)
+        rmSync(documentsDir, { recursive: true, force: true })
+
+        expect((await service.importData(exportPath)).success).toBe(true)
+        expect(existsSync(documentsDir)).toBe(true)
+      })
+
+      it('従来形式(data.json)のZIPの復元は、現行の構造へ変換して復元できる(後方互換)', async () => {
+        seedDocuments()
+        await service.exportData(exportPath)
+        const legacyJson = exportToLegacyJson(exportPath, 4)
+        const pdfEntry = 'documents/quotes/2026/2026-003_株式会社サンプル.pdf'
+        const legacyZip = join(dir, 'legacy-v4.zip')
+        buildZip(legacyZip, {
+          'data.json': JSON.stringify(legacyJson),
+          [pdfEntry]: readExport(exportPath).entries.get(pdfEntry)!
+        })
+        db.sqlite.prepare('DELETE FROM quote_line_items').run()
+        db.sqlite.prepare('DELETE FROM quotes').run()
+
+        const result = await service.importData(legacyZip)
+
+        expect(result).toMatchObject({ success: true, pdfHashMismatchCount: 0 })
+        expect(new QuoteRepository(db).findAll()).toHaveLength(1)
+      })
+    })
+
+    it('detectFormatはPKシグネチャでZIP/JSONを判定する', async () => {
       expect(service.detectFormat(Buffer.from('PK\u0003\u0004xxxx'))).toBe('zip')
       expect(service.detectFormat(Buffer.from('{"a":1}'))).toBe('json')
     })

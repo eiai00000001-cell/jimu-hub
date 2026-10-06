@@ -10,8 +10,8 @@ import type {
 
 /** `BackupService`および起動エラー画面用の`StartupRecoveryService`が満たすインターフェース */
 export interface BackupOperations {
-  exportData(filePath: string, onProgress?: BackupProgressCallback): ExportDataResult
-  importData(filePath: string, onProgress?: BackupProgressCallback): ImportDataResult
+  exportData(filePath: string, onProgress?: BackupProgressCallback): Promise<ExportDataResult>
+  importData(filePath: string, onProgress?: BackupProgressCallback): Promise<ImportDataResult>
   /** 見込みサイズが復元上限の80%を超えるか(起動エラー画面の復元用サービスでは未実装) */
   isLargeBackup?(): boolean
   /** 見込みサイズが復元上限を超えるか(超える場合は書き出さない) */

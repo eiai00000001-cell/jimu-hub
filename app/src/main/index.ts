@@ -1,9 +1,10 @@
 import { app, BrowserWindow, session } from 'electron'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
 import { BackupService } from './services/backup.service'
+import { BackupStagingArea } from './services/backup/staging-area'
 import { MigrationService } from './services/migration.service'
 import { CompanyProfileRepository } from './repositories/company-profile.repository'
 import { CompanyService } from './services/company.service'
@@ -93,6 +94,9 @@ app.whenReady().then(() => {
 
   // 異常終了で残ったPDF生成用の一時HTML(書類の内容を含む)を削除する(SEC-11)
   cleanupLeftoverPdfTempFiles()
+
+  // 異常終了で残ったバックアップ・復元用の一時フォルダ(データの一部を含む)を削除する(F-32。詳細設計書4.1章手順0-2)
+  new BackupStagingArea(join(dirname(dbFilePath), 'tmp')).removeLeftovers()
 
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。

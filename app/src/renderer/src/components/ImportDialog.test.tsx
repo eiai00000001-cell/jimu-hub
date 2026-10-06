@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ImportDialog } from './ImportDialog'
+import type { DataProgress } from '@shared/ipc/api'
 
 function setupApi(result: {
   success: boolean
@@ -177,7 +178,7 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
   })
 
   it('実行中は進捗「領収書・PDFを復元しています(n/m)」を表示する', async () => {
-    let emit: (p: { phase: 'export' | 'import'; current: number; total: number }) => void = () => {}
+    let emit: (p: DataProgress) => void = () => {}
     let finish: (v: unknown) => void = () => {}
     window.jimuhubApi = {
       importData: vi.fn().mockReturnValue(new Promise((resolve) => (finish = resolve))),
@@ -189,8 +190,10 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
     await userEvent.click(screen.getByText('ファイルを選択して復元'))
     await userEvent.click(screen.getByText('続行'))
-    act(() => emit({ phase: 'import', current: 3, total: 4 }))
+    act(() => emit({ phase: 'import', stage: 'extract', current: 3, total: 4 }))
     expect(await screen.findByText('領収書・PDFを復元しています(3/4)')).toBeInTheDocument()
+    act(() => emit({ phase: 'import', stage: 'verify', current: 1, total: 2 }))
+    expect(await screen.findByText('復元したファイルを確認しています(1/2)')).toBeInTheDocument()
     finish({ success: false })
   })
 })

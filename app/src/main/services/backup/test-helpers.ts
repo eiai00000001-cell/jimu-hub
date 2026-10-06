@@ -93,3 +93,39 @@ export function patchCentralHeaders(
   }
   writeFileSync(path, bytes)
 }
+
+/** テスト用: エクスポートしたZIPのテーブル(JSON Lines)のレコードを加工して、ZIPを書き直す */
+export function mapExportTable(
+  path: string,
+  table: string,
+  mapRow: (row: Record<string, unknown>, index: number) => Record<string, unknown>
+): void {
+  const zip = new AdmZip(path)
+  const name = `data/${table}.jsonl`
+  const text = zip.getEntry(name)!.getData().toString('utf-8')
+  const rows = text
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line, index) => mapRow(JSON.parse(line), index))
+  zip.updateFile(name, Buffer.from(rows.map((r) => `${JSON.stringify(r)}\n`).join(''), 'utf-8'))
+  zip.writeZip(path)
+}
+
+/**
+ * テスト用: エクスポートしたZIPの内容から、従来形式(`data.json`1本)のJSONを組み立てる。
+ * 旧形式のバックアップの復元(後方互換)の検証に使う。
+ */
+export function exportToLegacyJson(path: string, schemaVersion: number): Record<string, unknown> {
+  const exported = readExport(path)
+  const data: Record<string, unknown> = {}
+  for (const name of Object.keys(exported.manifest.tables)) {
+    data[name] = exported.records(name)
+  }
+  data.companyProfile = exported.records('companyProfile')[0] ?? null
+  return {
+    schemaVersion,
+    appVersion: exported.manifest.appVersion,
+    exportedAt: exported.manifest.exportedAt,
+    data
+  }
+}

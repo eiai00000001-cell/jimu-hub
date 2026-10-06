@@ -8,9 +8,10 @@ import { z } from 'zod'
 /**
  * エクスポートファイルの最新スキーマバージョン(DBのschema_versionと同一の値)。
  * 1: 取引先のみ / 2: フリガナ・自社情報・見積書・請求書を追加 / 3: pdfHashMismatchを追加(ZIP形式) /
- * 4: 勘定科目・入出金経費の記録・領収書・履歴を追加(領収書ファイルはZIPの`documents/receipts/`に同梱)
+ * 4: 勘定科目・入出金経費の記録・領収書・履歴を追加(領収書ファイルはZIPの`documents/receipts/`に同梱) /
+ * 5: `data.json`1本から`manifest.json`+JSON Lines(`data/<名前>.jsonl`)へ変更し、案件(`projects`等)を追加
  */
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5
 
 export const BackupClientRecordSchema = z.object({
   id: z.number().int(),

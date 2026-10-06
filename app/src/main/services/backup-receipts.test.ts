@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import AdmZip from 'adm-zip'
+import { mapExportTable, readExport, renameEntryInZip } from './backup/test-helpers'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
 import { BackupService } from './backup.service'
@@ -98,36 +99,30 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     return { recordId: id }
   }
 
-  type Rows = Array<Record<string, unknown>>
-  interface Payload {
-    schemaVersion: number
-    data: { accounts: Rows; cashRecords: Rows; receipts: Rows; cashRecordHistory: Rows }
-  }
-  const readPayload = (path: string): Payload =>
-    JSON.parse(new AdmZip(path).getEntry('data.json')!.getData().toString('utf-8'))
-
-  it('エクスポート: スキーマv4のdata.jsonに新テーブルを含め、領収書のfilePathは`documents/`始まり、履歴はオブジェクト、領収書ファイルを同梱する(外した領収書も)', () => {
+  it('エクスポート: スキーマv5のmanifest・JSON Linesに新テーブルを含め、領収書のfilePathは`documents/`始まり、履歴はオブジェクト、領収書ファイルを同梱する(外した領収書も)', async () => {
     seed()
-    expect(src.service.exportData(zipPath).success).toBe(true)
-    const payload = readPayload(zipPath)
-    expect(payload.schemaVersion).toBe(4)
-    expect(payload.data.accounts).toHaveLength(INITIAL_ACCOUNTS.length)
-    expect(payload.data.cashRecords).toHaveLength(2)
-    expect(payload.data.cashRecords.find((r) => r.isDeleted === true)).toBeDefined()
-    expect(payload.data.receipts).toHaveLength(2)
-    for (const r of payload.data.receipts) {
+    expect((await src.service.exportData(zipPath)).success).toBe(true)
+    const exported = readExport(zipPath)
+    expect(exported.manifest.schemaVersion).toBe(5)
+    expect(exported.records('accounts')).toHaveLength(INITIAL_ACCOUNTS.length)
+    expect(exported.records('cashRecords')).toHaveLength(2)
+    expect(exported.records('cashRecords').find((r) => r.isDeleted === true)).toBeDefined()
+    expect(exported.records('receipts')).toHaveLength(2)
+    for (const r of exported.records('receipts')) {
       expect(r.filePath).toMatch(/^documents\/receipts\/\d{4}\/[0-9a-f-]{36}\.pdf$/)
     }
-    expect(payload.data.cashRecordHistory.length).toBeGreaterThanOrEqual(4)
-    expect(typeof payload.data.cashRecordHistory[0]!.snapshotAfter).toBe('object')
-    const entries = new AdmZip(zipPath).getEntries().map((e) => e.entryName)
-    expect(entries.filter((n) => n.startsWith('documents/receipts/'))).toHaveLength(2)
+    const history = exported.records('cashRecordHistory')
+    expect(history.length).toBeGreaterThanOrEqual(4)
+    expect(typeof history[0]!.snapshotAfter).toBe('object')
+    expect(
+      [...exported.entries.keys()].filter((n) => n.startsWith('documents/receipts/'))
+    ).toHaveLength(2)
   })
 
-  it('往復: 別の環境へ復元すると、ID・履歴・領収書ファイルが復元され、照合の不一致は0件。履歴のトリガーも再作成される', () => {
+  it('往復: 別の環境へ復元すると、ID・履歴・領収書ファイルが復元され、照合の不一致は0件。履歴のトリガーも再作成される', async () => {
     const { recordId } = seed()
-    src.service.exportData(zipPath)
-    const result = dst.service.importData(zipPath)
+    await src.service.exportData(zipPath)
+    const result = await dst.service.importData(zipPath)
     expect(result).toMatchObject({
       success: true,
       pdfHashMismatchCount: 0,
@@ -156,22 +151,20 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     expect(receiptFiles).toHaveLength(2)
   })
 
-  it('復元時の照合: 領収書の改変・欠落・記録の改ざんを件数で返し、復元は中断しない', () => {
+  it('復元時の照合: 領収書の改変・欠落・記録の改ざんを件数で返し、復元は中断しない', async () => {
     seed()
-    src.service.exportData(zipPath)
+    await src.service.exportData(zipPath)
     const zip = new AdmZip(zipPath)
     const receiptEntries = zip
       .getEntries()
       .filter((e) => e.entryName.startsWith('documents/receipts/') && !e.isDirectory)
     zip.updateFile(receiptEntries[0]!.entryName, Buffer.from('%PDF-1.4\ntampered'))
     zip.deleteFile(receiptEntries[1]!.entryName)
-    const payload = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    payload.data.cashRecords[0].amount = 1
-    zip.updateFile('data.json', Buffer.from(JSON.stringify(payload)))
     const tampered = join(src.dir, 'tampered.zip')
     zip.writeZip(tampered)
+    mapExportTable(tampered, 'cashRecords', (row, i) => (i === 0 ? { ...row, amount: 1 } : row))
 
-    const result = dst.service.importData(tampered)
+    const result = await dst.service.importData(tampered)
     expect(result).toMatchObject({
       success: true,
       receiptHashMismatchCount: 2,
@@ -180,38 +173,37 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     expect(dst.records.cashRecordService.listRecords({}).totalCount).toBe(1)
   })
 
-  it('復元時の照合: ハッシュが一致しても、中身が拡張子と異なる(マジックナンバー不一致)領収書は不一致に数える(R-17)', () => {
+  it('復元時の照合: ハッシュが一致しても、中身が拡張子と異なる(マジックナンバー不一致)領収書は不一致に数える(R-17)', async () => {
     seed()
-    src.service.exportData(zipPath)
+    await src.service.exportData(zipPath)
     const zip = new AdmZip(zipPath)
-    const payload = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    const target = payload.data.receipts[0]
+    const targetPath = String(readExport(zipPath).records('receipts')[0]!.filePath)
     const fake = Buffer.from('MZ not a pdf')
-    zip.updateFile(target.filePath, fake)
-    target.sha256 = createHash('sha256').update(fake).digest('hex')
-    zip.updateFile('data.json', Buffer.from(JSON.stringify(payload)))
+    zip.updateFile(targetPath, fake)
     const forged = join(src.dir, 'forged.zip')
     zip.writeZip(forged)
+    mapExportTable(forged, 'receipts', (row, i) =>
+      i === 0 ? { ...row, sha256: createHash('sha256').update(fake).digest('hex') } : row
+    )
 
-    const result = dst.service.importData(forged)
+    const result = await dst.service.importData(forged)
     expect(result).toMatchObject({ success: true, receiptHashMismatchCount: 1 })
     expect(dst.records.cashRecordService.listRecords({}).totalCount).toBe(1)
   })
 
-  it('不正なエントリ・パスは採用しない(形式に一致しない領収書エントリ・パストラバーサル。filePathは空文字で欠落扱い)', () => {
+  it('不正なエントリ・パスは採用しない(形式に一致しない領収書エントリ・パストラバーサル。filePathは空文字で欠落扱い)', async () => {
     seed()
-    src.service.exportData(zipPath)
+    await src.service.exportData(zipPath)
     const zip = new AdmZip(zipPath)
     zip.addFile('documents/receipts/2026/evil.exe', Buffer.from('MZ'))
     zip.addFile('documents/receipts/2026/not-a-uuid.pdf', dummyPdf('x'))
-    zip.addFile('documents/receipts/../../outside.pdf', dummyPdf('y'))
-    const payload = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    payload.data.receipts[0].filePath = '../../etc/hosts.pdf'
-    zip.updateFile('data.json', Buffer.from(JSON.stringify(payload)))
     const evil = join(src.dir, 'evil.zip')
     zip.writeZip(evil)
+    mapExportTable(evil, 'receipts', (row, i) =>
+      i === 0 ? { ...row, filePath: '../../etc/hosts.pdf' } : row
+    )
 
-    const result = dst.service.importData(evil)
+    const result = await dst.service.importData(evil)
     expect(result).toMatchObject({ success: true, receiptHashMismatchCount: 1 })
     const row = dst.db.sqlite.prepare('SELECT file_path FROM receipts ORDER BY id').all() as Array<{
       file_path: string
@@ -222,7 +214,25 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     expect(existsSync(join(dst.dir, 'outside.pdf'))).toBe(false)
   })
 
-  it('旧形式(スキーマv3)の復元: 勘定科目は初期科目14件、入出金・領収書・履歴は空になる(ZIPではdocumentsも全置換)', () => {
+  it('親ディレクトリ参照を含むエントリがあるZIPは、細工されたファイルとして復元を中断し、現在のデータを変更しない(ZIPスリップ対策)', async () => {
+    seed()
+    await src.service.exportData(zipPath)
+    const slipName = 'documents/receipts/../../outside.pdf'
+    const placeholder = 'x'.repeat(slipName.length)
+    const zip = new AdmZip(zipPath)
+    zip.addFile(placeholder, dummyPdf('y'))
+    const slip = join(src.dir, 'slip.zip')
+    zip.writeZip(slip)
+    renameEntryInZip(slip, placeholder, slipName)
+
+    const result = await dst.service.importData(slip)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('読み込めませんでした')
+    expect(existsSync(join(dst.dir, 'outside.pdf'))).toBe(false)
+    expect(dst.records.cashRecordService.listRecords({}).totalCount).toBe(0)
+  })
+
+  it('旧形式(スキーマv3)の復元: 勘定科目は初期科目14件、入出金・領収書・履歴は空になる(ZIPではdocumentsも全置換)', async () => {
     const v3 = {
       schemaVersion: 3,
       appVersion: '0.2.0',
@@ -255,7 +265,7 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
       receiptTokens: dst.records.receiptService.pickAndStage([dummy]).files.map((f) => f.token)
     })
 
-    const result = dst.service.importData(v3Zip)
+    const result = await dst.service.importData(v3Zip)
     expect(result).toMatchObject({
       success: true,
       receiptHashMismatchCount: 0,
@@ -275,7 +285,7 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     expect(existsSync(join(dst.documentsDir, 'receipts'))).toBe(false)
   })
 
-  it('旧形式(JSON単体・v3)の復元では、documentsフォルダに手を加えない', () => {
+  it('旧形式(JSON単体・v3)の復元では、documentsフォルダに手を加えない', async () => {
     const dummy = join(dst.dir, 'pre.pdf')
     writeFileSync(dummy, dummyPdf('pre'))
     dst.records.cashRecordService.createRecord({
@@ -299,13 +309,13 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
         data: { clients: [] }
       })
     )
-    const result = dst.service.importData(json)
+    const result = await dst.service.importData(json)
     expect(result.success).toBe(true)
     expect(result.receiptHashMismatchCount).toBeUndefined()
     expect(existsSync(join(dst.documentsDir, 'receipts'))).toBe(true)
   })
 
-  it('復元の途中で失敗した場合は、ロールバックして元のデータ・トリガーを維持する', () => {
+  it('復元の途中で失敗した場合は、ロールバックして元のデータ・トリガーを維持する', async () => {
     dst.records.cashRecordService.createRecord({
       kind: 'expense',
       recordDate: '2026-09-01',
@@ -317,15 +327,12 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
       taxCategory: null
     })
     seed()
-    src.service.exportData(zipPath)
-    const zip = new AdmZip(zipPath)
-    const payload = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    payload.data.cashRecords[0].kind = 'invalid'
-    zip.updateFile('data.json', Buffer.from(JSON.stringify(payload)))
+    await src.service.exportData(zipPath)
     const broken = join(src.dir, 'broken.zip')
-    zip.writeZip(broken)
+    new AdmZip(zipPath).writeZip(broken)
+    mapExportTable(broken, 'cashRecords', (row, i) => (i === 0 ? { ...row, kind: 'invalid' } : row))
 
-    const result = dst.service.importData(broken)
+    const result = await dst.service.importData(broken)
     expect(result.success).toBe(false)
     expect(result.error).toContain('復元に失敗しました')
     expect(dst.records.cashRecordService.listRecords({}).items[0]!.description).toBe('元のデータ')
@@ -334,28 +341,30 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     )
   })
 
-  it('進捗: エクスポート・復元ともに、ファイル1件ごとに現在件数と総数を通知する', () => {
+  it('進捗: エクスポートはテーブル→ファイル1件ごと→仕上げの順、復元は展開→照合の順に、現在件数と総数を通知する', async () => {
     seed()
-    const exp: Array<[number, number]> = []
-    src.service.exportData(zipPath, (p) => exp.push([p.current, p.total]))
-    // 最後は、ZIPの生成・書き込み中を示す通知(packing)
-    expect(exp).toEqual([
-      [1, 2],
-      [2, 2],
-      [2, 2]
+    const exp: Array<[string, number, number]> = []
+    await src.service.exportData(zipPath, (p) => exp.push([p.stage, p.current, p.total]))
+    const records = exp.filter(([stage]) => stage === 'records')
+    expect(records).toHaveLength(10)
+    expect(records.at(-1)).toEqual(['records', 10, 10])
+    // PDF・領収書ファイル(領収書2件)は、1件ごとに通知する。最後はZIPの仕上げ中を示す通知(packing)
+    expect(exp.filter(([stage]) => stage === 'files')).toEqual([
+      ['files', 1, 2],
+      ['files', 2, 2]
     ])
-    const stages: Array<string | undefined> = []
-    src.service.exportData(zipPath, (p) => stages.push(p.stage))
-    expect(stages).toEqual([undefined, undefined, 'packing'])
-    const imp: Array<[string, number, number]> = []
-    dst.service.importData(zipPath, (p) => imp.push([p.phase, p.current, p.total]))
-    expect(imp).toEqual([
-      ['import', 1, 2],
-      ['import', 2, 2]
-    ])
+    expect(exp.filter(([stage]) => stage === 'packing')).toEqual([['packing', 2, 2]])
+
+    const imp: Array<[string, string, number, number]> = []
+    await dst.service.importData(zipPath, (p) => imp.push([p.phase, p.stage, p.current, p.total]))
+    // 展開したファイル(manifest・.jsonl・領収書)ごとに通知する
+    const extract = imp.filter(([, stage]) => stage === 'extract')
+    expect(extract).toHaveLength(13)
+    expect(extract.at(-1)).toEqual(['import', 'extract', 13, 13])
+    expect(imp.every(([phase]) => phase === 'import')).toBe(true)
   })
 
-  it('80%超の警告: 領収書・PDFの見込みサイズが復元上限の80%を超える場合のみtrue(上限は差し替え可能)', () => {
+  it('80%超の警告: 領収書・PDFの見込みサイズが復元上限の80%を超える場合のみtrue(上限は差し替え可能)', async () => {
     seed()
     expect(src.service.isLargeBackup()).toBe(false)
     const small = createEnv('small', { maxFileBytes: 20 })

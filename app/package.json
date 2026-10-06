@@ -33,7 +33,6 @@
     "dist:mac": "electron-vite build && electron-builder --mac --universal"
   },
   "dependencies": {
-    "adm-zip": "0.6.1",
     "archiver": "8.0.0",
     "better-sqlite3": "13.0.3",
     "drizzle-orm": "0.45.3",
@@ -55,6 +54,7 @@
     "@types/yauzl": "3.4.0",
     "@vitejs/plugin-react": "5.2.0",
     "@vitest/coverage-v8": "5.0.2",
+    "adm-zip": "0.6.1",
     "electron": "44.5.1",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",

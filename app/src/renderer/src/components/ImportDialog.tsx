@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { Button } from './Button'
 import { Message } from './Message'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
+import type { DataProgress } from '@shared/ipc/api'
 import { toErrorMessage } from '../utils/error-message'
 
 interface ImportDialogProps {
@@ -26,12 +27,15 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
   const [step, setStep] = useState<Step>('initial')
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [progress, setProgress] = useState<Pick<
+    DataProgress,
+    'stage' | 'current' | 'total'
+  > | null>(null)
 
   // 進捗(`data:progress`)の購読。実行中のみ表示する
   useEffect(() => {
     return window.jimuhubApi.onDataProgress?.((p) => {
-      if (p.phase === 'import') setProgress({ current: p.current, total: p.total })
+      if (p.phase === 'import') setProgress({ stage: p.stage, current: p.current, total: p.total })
     })
   }, [])
 
@@ -97,7 +101,11 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
         )}
 
         {submitting && progress ? (
-          <p role="status">{BACKUP_MESSAGES.importProgress(progress.current, progress.total)}</p>
+          <p role="status">
+            {progress.stage === 'verify'
+              ? BACKUP_MESSAGES.importVerify(progress.current, progress.total)
+              : BACKUP_MESSAGES.importProgress(progress.current, progress.total)}
+          </p>
         ) : null}
         {result ? (
           <Message variant={result.success ? 'success' : 'error'}>{result.message}</Message>

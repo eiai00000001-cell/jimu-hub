@@ -56,13 +56,15 @@ export interface ExportDataResult {
   warnLargeBackup?: boolean
 }
 
-/** エクスポート・復元中の処理済みファイル件数の通知(`data:progress`) */
+/**
+ * エクスポート・復元の進捗の通知(`data:progress`)。`stage`ごとに`current`・`total`の単位が異なる
+ * (records=テーブル数、files=PDF・領収書の件数、packing=ZIPの仕上げ、extract=展開したファイル数、verify=照合したファイル数)。
+ */
 export interface DataProgress {
   phase: 'export' | 'import'
+  stage: 'records' | 'files' | 'packing' | 'extract' | 'verify'
   current: number
   total: number
-  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
-  stage?: 'packing'
 }
 
 export interface ImportDataResult {

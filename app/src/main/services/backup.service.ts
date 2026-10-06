@@ -1,5 +1,10 @@
 import {
+  closeSync,
   copyFileSync,
+  openSync,
+  readSync,
+  renameSync,
+  statfsSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -10,10 +15,10 @@ import {
   unlinkSync,
   writeFileSync
 } from 'node:fs'
-import { createHash, randomBytes } from 'node:crypto'
-import { dirname, extname, isAbsolute, join, resolve, sep } from 'node:path'
-import AdmZip from 'adm-zip'
+import { randomBytes } from 'node:crypto'
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
+  BackupClientRecordSchema,
   BackupFileSchema,
   CURRENT_SCHEMA_VERSION,
   type BackupFile,
@@ -21,6 +26,7 @@ import {
 } from '@shared/backup/backup-file'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
 import type { Database } from '../db/db'
+import type { DataProgress } from '@shared/ipc/api'
 import type { ClientRepository } from '../repositories/client.repository'
 import type { MigrationService } from './migration.service'
 import { CASH_RECORD_HISTORY_TRIGGERS_SQL, CASH_RECORD_HISTORY_TRIGGER_NAMES } from '../db/db'
@@ -29,18 +35,26 @@ import { CashRecordRepository } from '../repositories/cash-record.repository'
 import { ReceiptRepository } from '../repositories/receipt.repository'
 import { IntegrityService } from './integrity/integrity.service'
 import { resolveReceiptPath } from './receipts/receipt-path'
+import { BackupArchiveWriter } from './backup/archive-writer'
+import { BackupArchiveReader } from './backup/archive-reader'
+import { BackupDiskShortError, BackupParseError, BackupSizeLimitError } from './backup/errors'
+import { LegacyJsonRecordSource } from './backup/legacy-record-source'
 import {
-  ACCOUNTS_TABLE,
-  CASH_RECORD_HISTORY_TABLE,
-  CASH_RECORDS_TABLE,
+  JsonlRecordSource,
+  LegacyRecordSourceAdapter,
+  ManifestSchema,
+  type Manifest,
+  type RecordSource
+} from './backup/record-source'
+import { JsonlTableWriter, jsonlEntryName } from './backup/jsonl-table-writer'
+import { BackupStagingArea } from './backup/staging-area'
+import {
+  BACKUP_TABLES,
   RECEIPTS_TABLE,
-  COMPANY_PROFILE_TABLE,
-  INVOICE_LINE_ITEMS_TABLE,
   INVOICES_TABLE,
-  QUOTE_LINE_ITEMS_TABLE,
   QUOTES_TABLE,
   insertRow,
-  readRows
+  type TableDef
 } from './backup-tables'
 
 const MAX_BACKUP_GENERATIONS = 3
@@ -48,6 +62,11 @@ const BACKUP_FILE_PREFIX = 'data_'
 const BACKUP_FILE_SUFFIX = '.sqlite'
 const DOCUMENTS_BACKUP_PREFIX = 'documents_'
 const DATA_JSON_ENTRY = 'data.json'
+const MANIFEST_ENTRY = 'manifest.json'
+const MANIFEST_FORMAT = 'jimuhub-backup'
+/** 従来形式の`data.json`・旧形式のJSON単体の読み込み上限(256MiB。基本設計書8.1章★31) */
+const MAX_LEGACY_JSON_BYTES = 256 * 1024 * 1024
+const MAX_MANIFEST_BYTES = 1024 * 1024
 const DOCUMENTS_ENTRY_PREFIX = 'documents/'
 const PDF_EXTENSION = '.pdf'
 
@@ -75,14 +94,8 @@ export function hasPdfExtension(path: string): boolean {
   return extname(path).toLowerCase() === PDF_EXTENSION
 }
 
-/** 進捗の通知(ファイル1件ごと。`data:progress`としてRendererへ渡す) */
-export type BackupProgressCallback = (progress: {
-  phase: 'export' | 'import'
-  current: number
-  total: number
-  /** ZIPの生成・書き込み中(ファイルの書き出しが完了した後) */
-  stage?: 'packing'
-}) => void
+/** 進捗の通知(`data:progress`としてRendererへ渡す) */
+export type BackupProgressCallback = (progress: DataProgress) => void
 
 export interface ExportDataResult {
   success: boolean
@@ -120,28 +133,42 @@ export interface BackupServiceDeps {
   backupsDir: string
   /** 見積書・請求書PDFの保存先ルート(`<データ保存先>/documents`) */
   documentsDir: string
+  /** 一時フォルダの親(省略時は`<データ保存先>/tmp`。DBファイルと同じボリュームに置く) */
+  tmpDir?: string
   /** エクスポートファイルに記録するアプリバージョン */
   appVersion: string
+  /** 展開先の空き容量(バイト)の取得(省略時は`statfsSync`。テストで差し替える) */
+  getFreeBytes?: (dir: string) => number
   /** 復元ファイルの読み込み上限(省略時は`DEFAULT_RESTORE_LIMITS`。テストで小さい値を指定する) */
   restoreLimits?: Partial<RestoreLimits>
 }
 
 type FileFormat = 'zip' | 'json'
 
-interface ParsedBackup {
-  format: FileFormat
-  json: unknown
-  /** ZIP内のPDF・領収書エントリ(キー: `documents/...`形式のエントリ名) */
-  pdfEntries: Map<string, Buffer>
+/** 一時フォルダへの展開と確認が済んだ、復元の入力 */
+interface PreparedRestore {
+  schemaVersion: number
+  /** 現行より新しい版の場合はnull(復元しない) */
+  source: RecordSource | null
+  /** `documents/`の入れ替えと、PDF・領収書の照合を行うか(ZIPの場合) */
+  hasDocuments: boolean
+  /** エントリ名→SHA-256(展開時に算出) */
+  hashes: Map<string, string>
 }
 
-class BackupParseError extends Error {}
+interface RestoreSummary {
+  importedCount: number
+  pdfHashMismatchCount: number
+  receiptHashMismatchCount: number
+  recordHashMismatchCount: number
+}
 
-/** 容量上限の超過(復元ファイルの大きさ・展開後の合計サイズ) */
-class BackupSizeLimitError extends BackupParseError {}
-
-function sha256(buffer: Buffer): string {
-  return createHash('sha256').update(buffer).digest('hex')
+/** 復元したPDFのハッシュ照合の対象(見積書・請求書) */
+export interface PdfCheck {
+  table: string
+  id: number
+  pdfPath: string
+  hash: string
 }
 
 /**
@@ -154,9 +181,11 @@ function sha256(buffer: Buffer): string {
  */
 export class BackupService {
   private readonly limits: RestoreLimits
+  private readonly tmpDir: string
 
   constructor(private readonly deps: BackupServiceDeps) {
     this.limits = { ...DEFAULT_RESTORE_LIMITS, ...deps.restoreLimits }
+    this.tmpDir = deps.tmpDir ?? join(dirname(deps.dbFilePath), 'tmp')
   }
 
   /**
@@ -191,85 +220,119 @@ export class BackupService {
     return receipts.s + pdfBytes
   }
 
-  exportData(filePath: string, onProgress?: BackupProgressCallback): ExportDataResult {
+  /**
+   * エクスポート(詳細設計書4.2章手順4〜7)。DBレコードを一時フォルダへJSON Linesで書き出し(同期)、
+   * `manifest.json`・`.jsonl`・PDF・領収書を、作業用ファイル(`.partial`)へストリームでZIP化してから、正式な名前へ変更する。
+   */
+  async exportData(
+    filePath: string,
+    onProgress?: BackupProgressCallback
+  ): Promise<ExportDataResult> {
+    const staging = new BackupStagingArea(this.tmpDir)
+    const partialPath = `${filePath}.partial`
+    let dir: string | null = null
+    let writer: BackupArchiveWriter | null = null
     try {
-      const sqlite = this.deps.database.sqlite
-      const zip = new AdmZip()
-      const addedEntries = new Set<string>()
-      // 進捗: 書き出す対象のファイル件数(PDF保存済みの書類+領収書の行)を総数とする
-      const total = this.countExportFiles()
+      dir = staging.create('export')
+      const files = new Map<string, string>()
+      const counts = this.writeRecordFiles(dir, files, onProgress)
+      this.writeManifest(dir, counts)
+
+      const total = files.size
       let current = 0
-      const progress = (): void => {
+      rmSync(partialPath, { force: true })
+      writer = new BackupArchiveWriter(partialPath, (entryName) => {
+        if (!entryName.startsWith(DOCUMENTS_ENTRY_PREFIX)) return
         current += 1
-        onProgress?.({ phase: 'export', current, total })
+        onProgress?.({ phase: 'export', stage: 'files', current, total })
+      })
+      writer.addFile(join(dir, MANIFEST_ENTRY), MANIFEST_ENTRY)
+      for (const entry of BACKUP_TABLES) {
+        writer.addFile(join(dir, jsonlEntryName(entry.name)), jsonlEntryName(entry.name))
       }
-
-      const toRelativePdfPath = (row: BackupRow): BackupRow => {
-        const pdfPath = row.pdfPath
-        if (typeof pdfPath !== 'string') {
-          return row
-        }
-        const relative = this.toEntryName(pdfPath)
-        if (relative === null) {
-          return row
-        }
-        if (!addedEntries.has(relative) && existsSync(pdfPath)) {
-          zip.addFile(relative, readFileSync(pdfPath))
-          addedEntries.add(relative)
-        }
-        progress()
-        return { ...row, pdfPath: relative }
+      for (const [entryName, absolutePath] of files) {
+        writer.addFile(absolutePath, entryName)
       }
-
-      // 領収書: DBの`file_path`(`receipts/...`)を、`documents/`始まりのパスで書き出す。実ファイルが無い領収書は書き出さない
-      const toRelativeReceiptPath = (row: BackupRow): BackupRow => {
-        const filePathValue = typeof row.filePath === 'string' ? row.filePath : ''
-        const absolute = resolveReceiptPath(this.deps.documentsDir, filePathValue)
-        const entryName = `${DOCUMENTS_ENTRY_PREFIX}${filePathValue}`
-        if (absolute && !addedEntries.has(entryName)) {
-          zip.addFile(entryName, readFileSync(absolute))
-          addedEntries.add(entryName)
-        }
-        progress()
-        return { ...row, filePath: filePathValue === '' ? '' : entryName }
+      // ZIPの仕上げ(書き込みの完了待ち)は時間がかかるため、画面が止まって見えないよう通知する
+      onProgress?.({ phase: 'export', stage: 'packing', current: total, total })
+      const size = await writer.finalize()
+      if (size > this.limits.maxFileBytes) {
+        // 復元できない大きさのファイルは残さない(見込みサイズの確認に続く二重の確認。基本設計書8.1章★E19)
+        rmSync(partialPath, { force: true })
+        return { success: false, error: BACKUP_MESSAGES.exportTooLarge }
       }
-
-      const payload: BackupFile = {
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        appVersion: this.deps.appVersion,
-        exportedAt: new Date().toISOString(),
-        data: {
-          clients: this.deps.clientRepository.findAllForBackup(),
-          companyProfile: readRows(sqlite, COMPANY_PROFILE_TABLE)[0] ?? null,
-          quotes: readRows(sqlite, QUOTES_TABLE).map(toRelativePdfPath),
-          quoteLineItems: readRows(sqlite, QUOTE_LINE_ITEMS_TABLE),
-          invoices: readRows(sqlite, INVOICES_TABLE).map(toRelativePdfPath),
-          invoiceLineItems: readRows(sqlite, INVOICE_LINE_ITEMS_TABLE),
-          accounts: readRows(sqlite, ACCOUNTS_TABLE),
-          cashRecords: readRows(sqlite, CASH_RECORDS_TABLE),
-          receipts: readRows(sqlite, RECEIPTS_TABLE).map(toRelativeReceiptPath),
-          cashRecordHistory: readRows(sqlite, CASH_RECORD_HISTORY_TABLE)
-        }
-      }
-      zip.addFile(DATA_JSON_ENTRY, Buffer.from(JSON.stringify(payload, null, 2), 'utf-8'))
-      // ZIPの生成・書き込みは時間がかかるため、画面が止まって見えないよう開始前に通知する
-      onProgress?.({ phase: 'export', current: total, total, stage: 'packing' })
-      writeFileSync(filePath, zip.toBuffer())
+      renameSync(partialPath, filePath)
       return { success: true, filePath }
     } catch {
+      await writer?.abort()
+      rmSync(partialPath, { force: true })
       return { success: false, error: BACKUP_MESSAGES.exportFailure }
+    } finally {
+      if (dir) staging.remove(dir)
     }
   }
 
-  /** 書き出し対象のファイル件数(PDF保存済みの書類+領収書の行) */
-  private countExportFiles(): number {
-    const sqlite = this.deps.database.sqlite
-    const count = (sql: string): number => (sqlite.prepare(sql).get() as { c: number }).c
-    return (
-      count('SELECT COUNT(*) AS c FROM quotes WHERE pdf_path IS NOT NULL') +
-      count('SELECT COUNT(*) AS c FROM invoices WHERE pdf_path IS NOT NULL') +
-      count('SELECT COUNT(*) AS c FROM receipts')
-    )
+  /**
+   * 全テーブルを、同じ時点の内容で`data/<名前>.jsonl`へ書き出す(awaitを挟まない同期処理)。
+   * あわせて、ZIPへ追加するPDF・領収書ファイル(エントリ名→絶対パス)を`files`へ集める(パスのみ。中身は読まない)。
+   * @returns テーブルごとの書き出し件数
+   */
+  private writeRecordFiles(
+    dir: string,
+    files: Map<string, string>,
+    onProgress?: BackupProgressCallback
+  ): Map<string, number> {
+    const writer = new JsonlTableWriter(this.deps.database.sqlite)
+    const toRelativePdfPath = (row: BackupRow): BackupRow => {
+      const pdfPath = row.pdfPath
+      if (typeof pdfPath !== 'string') return row
+      const relative = this.toEntryName(pdfPath)
+      if (relative === null) return row
+      if (existsSync(pdfPath)) files.set(relative, pdfPath)
+      return { ...row, pdfPath: relative }
+    }
+    // 領収書: DBの`file_path`(`receipts/...`)を、`documents/`始まりのパスで書き出す。実ファイルが無い領収書は書き出さない
+    const toRelativeReceiptPath = (row: BackupRow): BackupRow => {
+      const filePathValue = typeof row.filePath === 'string' ? row.filePath : ''
+      const absolute = resolveReceiptPath(this.deps.documentsDir, filePathValue)
+      const entryName = `${DOCUMENTS_ENTRY_PREFIX}${filePathValue}`
+      if (absolute) files.set(entryName, absolute)
+      return { ...row, filePath: filePathValue === '' ? '' : entryName }
+    }
+    const mappers: Record<string, (row: BackupRow) => BackupRow> = {
+      quotes: toRelativePdfPath,
+      invoices: toRelativePdfPath,
+      receipts: toRelativeReceiptPath
+    }
+
+    const counts = new Map<string, number>()
+    let done = 0
+    for (const entry of BACKUP_TABLES) {
+      counts.set(entry.name, writer.writeTable(entry, dir, mappers[entry.name]))
+      done += 1
+      onProgress?.({
+        phase: 'export',
+        stage: 'records',
+        current: done,
+        total: BACKUP_TABLES.length
+      })
+    }
+    return counts
+  }
+
+  private writeManifest(dir: string, counts: Map<string, number>): void {
+    const tables: Record<string, { file: string; count: number }> = {}
+    for (const entry of BACKUP_TABLES) {
+      tables[entry.name] = { file: jsonlEntryName(entry.name), count: counts.get(entry.name) ?? 0 }
+    }
+    const manifest = {
+      format: MANIFEST_FORMAT,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: this.deps.appVersion,
+      exportedAt: new Date().toISOString(),
+      tables
+    }
+    writeFileSync(join(dir, MANIFEST_ENTRY), JSON.stringify(manifest, null, 2), 'utf-8')
   }
 
   /** ファイルの先頭バイトがZIPシグネチャ(`PK`)かどうかで形式を判定する(詳細設計書4.3章手順3) */
@@ -277,114 +340,176 @@ export class BackupService {
     return buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4b ? 'zip' : 'json'
   }
 
-  importData(filePath: string, onProgress?: BackupProgressCallback): ImportDataResult {
-    let parsed: ParsedBackup
+  /**
+   * 復元(詳細設計書4.3章手順3〜9)。まず一時フォルダへ展開して内容を確認し(現在のデータは変更しない)、
+   * その後、同期処理のトランザクションで全置換する。成功・失敗を問わず、一時フォルダは削除する。
+   */
+  async importData(
+    filePath: string,
+    onProgress?: BackupProgressCallback
+  ): Promise<ImportDataResult> {
+    const staging = new BackupStagingArea(this.tmpDir)
+    let dir: string | null = null
     try {
-      parsed = this.parseFile(filePath)
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof BackupSizeLimitError
-            ? BACKUP_MESSAGES.importTooLarge
-            : BACKUP_MESSAGES.importParseFailure
+      let prepared: PreparedRestore
+      try {
+        dir = staging.create('restore')
+        prepared = await this.prepareRestore(filePath, dir, onProgress)
+      } catch (error) {
+        return { success: false, error: this.toParseErrorMessage(error) }
       }
-    }
-
-    const validated = BackupFileSchema.safeParse(parsed.json)
-    if (!validated.success) {
-      return { success: false, error: BACKUP_MESSAGES.importParseFailure }
-    }
-
-    if (validated.data.schemaVersion > CURRENT_SCHEMA_VERSION) {
-      return { success: false, error: BACKUP_MESSAGES.importVersionTooNew }
-    }
-
-    const restorePdfs = parsed.format === 'zip'
-    let backupFile: BackupFile
-    let documentsBackupPath: string | null
-    try {
-      backupFile = this.deps.migrationService.migrateExportData(
-        validated.data,
-        validated.data.schemaVersion
-      )
-      // 退避コピーの作成失敗(容量・権限不足等)も、データには未着手のため結果として返す
-      documentsBackupPath = this.createSafeguardCopy(restorePdfs)
-    } catch {
-      return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
-    }
-
-    try {
-      const counts = this.deps.database.transaction(() =>
-        this.replaceAllData(backupFile, restorePdfs ? parsed.pdfEntries : null, onProgress)
-      )
-      const d = backupFile.data
-      return {
-        success: true,
-        importedCount:
-          d.clients.length + d.quotes.length + d.invoices.length + d.cashRecords.length,
-        ...(restorePdfs ? counts : {})
+      if (prepared.schemaVersion > CURRENT_SCHEMA_VERSION) {
+        return { success: false, error: BACKUP_MESSAGES.importVersionTooNew }
       }
-    } catch {
-      const restoreResult = this.restoreFromLatestSafeguardCopy(documentsBackupPath)
-      if (!restoreResult.success) {
-        return { success: false, error: BACKUP_MESSAGES.importSafeguardRestoreFailure }
+
+      let documentsBackupPath: string | null
+      try {
+        // 退避コピーの作成失敗(容量・権限不足等)も、データには未着手のため結果として返す
+        documentsBackupPath = this.createSafeguardCopy(prepared.hasDocuments)
+      } catch {
+        return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
       }
-      return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
+
+      try {
+        const summary = this.deps.database.transaction(() =>
+          this.replaceAllData(prepared, dir as string, onProgress)
+        )
+        return {
+          success: true,
+          importedCount: summary.importedCount,
+          ...(prepared.hasDocuments
+            ? {
+                pdfHashMismatchCount: summary.pdfHashMismatchCount,
+                receiptHashMismatchCount: summary.receiptHashMismatchCount,
+                recordHashMismatchCount: summary.recordHashMismatchCount
+              }
+            : {})
+        }
+      } catch {
+        const restoreResult = this.restoreFromLatestSafeguardCopy(documentsBackupPath)
+        if (!restoreResult.success) {
+          return { success: false, error: BACKUP_MESSAGES.importSafeguardRestoreFailure }
+        }
+        return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
+      }
+    } finally {
+      if (dir) staging.remove(dir)
     }
   }
 
-  /** ファイルを読み込み、形式(ZIP/JSON)に応じてdata.jsonとPDFエントリを取り出す */
-  private parseFile(filePath: string): ParsedBackup {
+  private toParseErrorMessage(error: unknown): string {
+    if (error instanceof BackupSizeLimitError) return BACKUP_MESSAGES.importTooLarge
+    if (error instanceof BackupDiskShortError) return BACKUP_MESSAGES.importDiskShort
+    return BACKUP_MESSAGES.importParseFailure
+  }
+
+  /**
+   * ファイルの確認と、一時フォルダへの展開(現在のデータは変更しない。手順3・4)。
+   * ZIPはファイル全体を読み込まず、目録の確認→1件ずつの展開の順に処理する。
+   */
+  private async prepareRestore(
+    filePath: string,
+    dir: string,
+    onProgress?: BackupProgressCallback
+  ): Promise<PreparedRestore> {
     if (statSync(filePath).size > this.limits.maxFileBytes) {
       throw new BackupSizeLimitError('file too large')
     }
-    const buffer = readFileSync(filePath)
-    if (this.detectFormat(buffer) === 'json') {
-      return { format: 'json', json: JSON.parse(buffer.toString('utf-8')), pdfEntries: new Map() }
+    if (this.detectFormat(this.readHeader(filePath)) === 'json') {
+      // 旧形式(JSON単体。PDF・領収書を含まない)
+      const text = this.readTextWithin(filePath, MAX_LEGACY_JSON_BYTES)
+      return this.prepareLegacy(text, false)
     }
 
-    const zip = new AdmZip(buffer)
-    const dataEntry = zip.getEntry(DATA_JSON_ENTRY)
-    if (!dataEntry) {
-      throw new BackupParseError('data.json not found')
-    }
-    const entries = zip.getEntries()
-    // 解凍爆弾対策(SEC-09): 展開前にエントリ数と展開後サイズの宣言値の合計を確認する。
-    // adm-zip 0.6.1は宣言値を超える展開を打ち切るため、宣言値の合計が実際の展開量の上限になる
-    if (entries.length > this.limits.maxEntries) {
-      throw new BackupParseError('too many entries')
-    }
-    const declaredTotal = entries.reduce((sum, entry) => sum + entry.header.size, 0)
-    if (declaredTotal > this.limits.maxTotalUncompressedBytes) {
-      throw new BackupSizeLimitError('uncompressed size too large')
-    }
-    const pdfEntries = new Map<string, Buffer>()
-    for (const entry of entries) {
-      const name = entry.entryName
-      if (entry.isDirectory || !name.startsWith(DOCUMENTS_ENTRY_PREFIX)) {
-        continue
+    const reader = new BackupArchiveReader(filePath, this.limits)
+    try {
+      const scan = await reader.scan()
+      this.assertFreeSpace(scan.extractBytes)
+      const { hashes } = await reader.extractTo(dir, (current, total) =>
+        onProgress?.({ phase: 'import', stage: 'extract', current, total })
+      )
+      if (scan.hasManifest) {
+        return this.prepareManifest(dir, hashes)
       }
-      // ZIPスリップ対策: 親ディレクトリ参照・絶対パスを含むエントリは無視する
-      if (name.split('/').includes('..') || isAbsolute(name)) {
-        continue
-      }
-      // 領収書(`documents/receipts/`配下)は、エントリ名が所定の形式に一致するものだけを採用する(SEC-10)
-      if (name.startsWith(`${DOCUMENTS_ENTRY_PREFIX}receipts/`)) {
-        if (!RECEIPT_PATH_PATTERN.test(name.slice(DOCUMENTS_ENTRY_PREFIX.length))) {
-          continue
-        }
-      } else if (!hasPdfExtension(name)) {
-        // PDF以外のファイル(実行可能な種類のファイル等)は書き出さない(SEC-10)
-        continue
-      }
-      pdfEntries.set(name, entry.getData())
+      const text = this.readTextWithin(join(dir, DATA_JSON_ENTRY), MAX_LEGACY_JSON_BYTES)
+      return { ...this.prepareLegacy(text, true), hashes }
+    } finally {
+      reader.close()
+    }
+  }
+
+  private prepareManifest(dir: string, hashes: Map<string, string>): PreparedRestore {
+    let manifest: Manifest
+    try {
+      const text = this.readTextWithin(join(dir, MANIFEST_ENTRY), MAX_MANIFEST_BYTES)
+      manifest = ManifestSchema.parse(JSON.parse(text))
+    } catch (error) {
+      if (error instanceof BackupSizeLimitError) throw error
+      throw new BackupParseError('invalid manifest')
     }
     return {
-      format: 'zip',
-      json: JSON.parse(dataEntry.getData().toString('utf-8')),
-      pdfEntries
+      schemaVersion: manifest.schemaVersion,
+      source: new JsonlRecordSource(dir),
+      hasDocuments: true,
+      hashes
     }
+  }
+
+  /** 従来形式(`data.json`・JSON単体。スキーマバージョン1〜4)を読み込み、現行の構造へ変換する */
+  private prepareLegacy(text: string, hasDocuments: boolean): PreparedRestore {
+    let json: unknown
+    try {
+      json = JSON.parse(text)
+    } catch {
+      throw new BackupParseError('invalid json')
+    }
+    const validated = BackupFileSchema.safeParse(json)
+    if (!validated.success) throw new BackupParseError('invalid backup file')
+    const schemaVersion = validated.data.schemaVersion
+    if (schemaVersion > CURRENT_SCHEMA_VERSION) {
+      return { schemaVersion, source: null, hasDocuments, hashes: new Map() }
+    }
+    let migrated: BackupFile
+    try {
+      migrated = this.deps.migrationService.migrateExportData(validated.data, schemaVersion)
+    } catch {
+      throw new BackupParseError('migration failed')
+    }
+    return {
+      schemaVersion,
+      source: new LegacyRecordSourceAdapter(new LegacyJsonRecordSource(migrated)),
+      hasDocuments,
+      hashes: new Map()
+    }
+  }
+
+  private readHeader(filePath: string): Buffer {
+    const fd = openSync(filePath, 'r')
+    try {
+      const header = Buffer.alloc(2)
+      const read = readSync(fd, header, 0, 2, 0)
+      return header.subarray(0, read)
+    } finally {
+      closeSync(fd)
+    }
+  }
+
+  /** 上限以内の大きさのテキストファイルのみを読み込む(超える場合は容量超過のエラー) */
+  private readTextWithin(path: string, maxBytes: number): string {
+    if (statSync(path).size > maxBytes) throw new BackupSizeLimitError('file too large')
+    return readFileSync(path, 'utf-8')
+  }
+
+  /** 展開先の空き容量が、展開対象の宣言サイズの合計+10%以上あることを確認する(基本設計書8.1章★31) */
+  private assertFreeSpace(extractBytes: number): void {
+    mkdirSync(this.tmpDir, { recursive: true })
+    const free = this.deps.getFreeBytes
+      ? this.deps.getFreeBytes(this.tmpDir)
+      : (() => {
+          const stats = statfsSync(this.tmpDir)
+          return Number(stats.bavail) * Number(stats.bsize)
+        })()
+    if (free < extractBytes * 1.1) throw new BackupDiskShortError('not enough free space')
   }
 
   /** `<documentsDir>`配下の絶対パスを、ZIP内エントリ名(`documents/...`)へ変換する。配下でなければnull */
@@ -416,20 +541,17 @@ export class BackupService {
 
   /**
    * 全テーブルを削除して復元データで置き換える(トランザクション内で呼び出す。詳細設計書4.3章手順6・7)。
-   * PDFを復元する場合は、documentsフォルダを全置換して書き出し、SHA-256を再照合する。
-   * @returns ハッシュ不一致の件数(PDFを復元しない場合は0)
+   * DBレコードは1行ずつ読み込んでINSERTし、全行を配列に保持しない。
+   * ZIPの場合は、`documents/`フォルダを全置換して、PDF・領収書のSHA-256を再照合する。
    */
   private replaceAllData(
-    backup: BackupFile,
-    pdfEntries: Map<string, Buffer> | null,
+    prepared: PreparedRestore,
+    stagingDir: string,
     onProgress?: BackupProgressCallback
-  ): {
-    pdfHashMismatchCount: number
-    receiptHashMismatchCount: number
-    recordHashMismatchCount: number
-  } {
+  ): RestoreSummary {
     const sqlite = this.deps.database.sqlite
-    const d = backup.data
+    const source = prepared.source
+    if (!source) throw new BackupParseError('no record source')
 
     // 履歴テーブルの更新・削除を拒否するトリガーは、全件削除・再投入のため一時的に削除し、コミット前に再作成する
     // (SQLiteのDDLはトランザクション内で巻き戻せるため、失敗時はトリガーも元に戻る)
@@ -452,50 +574,66 @@ export class BackupService {
     }
     this.deps.clientRepository.deleteAll()
 
-    for (const record of d.clients) {
-      this.deps.clientRepository.insertWithId(record)
-    }
-    if (d.companyProfile) {
-      insertRow(sqlite, COMPANY_PROFILE_TABLE, d.companyProfile)
-    }
+    const counts: Record<string, number> = {}
+    const pdfChecks: PdfCheck[] = []
+    const sequences = { quote: new Map<number, number>(), invoice: new Map<number, number>() }
     // pdf_pathは現在のデータ保存先の絶対パスへ変換し、照合結果(pdf_hash_mismatch)は後段で設定する
-    const withPdfPath = (row: BackupRow): Record<string, unknown> => ({
-      pdfPath: this.toAbsolutePdfPath(row.pdfPath),
-      pdfHashMismatch: false
-    })
-    for (const row of d.quotes) {
-      insertRow(sqlite, QUOTES_TABLE, row, withPdfPath(row))
+    const documentInserter =
+      (def: TableDef, key: 'quote' | 'invoice') =>
+      (row: BackupRow): void => {
+        const pdfPath = this.toAbsolutePdfPath(row.pdfPath)
+        insertRow(sqlite, def, row, { pdfPath, pdfHashMismatch: false })
+        if (pdfPath && typeof row.pdfHash === 'string' && row.pdfHash !== '') {
+          pdfChecks.push({ table: def.table, id: Number(row.id), pdfPath, hash: row.pdfHash })
+        }
+        this.trackSequence(sequences[key], row[key === 'quote' ? 'quoteNumber' : 'invoiceNumber'])
+      }
+    const inserters: Record<string, (row: BackupRow) => void> = {
+      clients: (row) =>
+        this.deps.clientRepository.insertWithId(BackupClientRecordSchema.parse(row)),
+      quotes: documentInserter(QUOTES_TABLE, 'quote'),
+      invoices: documentInserter(INVOICES_TABLE, 'invoice'),
+      // 領収書の保存先は、所定の形式に一致するものだけを採用し、一致しないものは空文字とする(照合で欠落扱いになる)
+      receipts: (row) =>
+        insertRow(sqlite, RECEIPTS_TABLE, row, { filePath: this.toReceiptDbPath(row.filePath) })
     }
-    for (const row of d.quoteLineItems) {
-      insertRow(sqlite, QUOTE_LINE_ITEMS_TABLE, row)
-    }
-    for (const row of d.invoices) {
-      insertRow(sqlite, INVOICES_TABLE, row, withPdfPath(row))
-    }
-    for (const row of d.invoiceLineItems) {
-      insertRow(sqlite, INVOICE_LINE_ITEMS_TABLE, row)
-    }
-    for (const row of d.accounts) {
-      insertRow(sqlite, ACCOUNTS_TABLE, row)
-    }
-    for (const row of d.cashRecords) {
-      insertRow(sqlite, CASH_RECORDS_TABLE, row)
-    }
-    // 領収書の保存先は、所定の形式に一致するものだけを採用し、一致しないものは空文字とする(照合で欠落扱いになる)
-    for (const row of d.receipts) {
-      insertRow(sqlite, RECEIPTS_TABLE, row, { filePath: this.toReceiptDbPath(row.filePath) })
-    }
-    for (const row of d.cashRecordHistory) {
-      insertRow(sqlite, CASH_RECORD_HISTORY_TABLE, row)
+    for (const entry of BACKUP_TABLES) {
+      const insert =
+        inserters[entry.name] ?? ((row: BackupRow) => insertRow(sqlite, entry.def, row))
+      counts[entry.name] = source.readSync(entry.name, insert)
     }
     sqlite.exec(CASH_RECORD_HISTORY_TRIGGERS_SQL)
-    this.rebuildNumberSequences(d.quotes, d.invoices)
+    this.rebuildNumberSequences(sequences)
 
-    if (!pdfEntries) {
-      return { pdfHashMismatchCount: 0, receiptHashMismatchCount: 0, recordHashMismatchCount: 0 }
+    const importedCount =
+      (counts.clients ?? 0) +
+      (counts.quotes ?? 0) +
+      (counts.invoices ?? 0) +
+      (counts.cashRecords ?? 0)
+    if (!prepared.hasDocuments) {
+      return {
+        importedCount,
+        pdfHashMismatchCount: 0,
+        receiptHashMismatchCount: 0,
+        recordHashMismatchCount: 0
+      }
     }
-    const pdfHashMismatchCount = this.restorePdfFiles(pdfEntries, d.quotes, d.invoices, onProgress)
-    return { pdfHashMismatchCount, ...this.verifyRecords() }
+    const pdfHashMismatchCount = this.restorePdfFiles(
+      stagingDir,
+      pdfChecks,
+      prepared.hashes,
+      onProgress
+    )
+    return { importedCount, pdfHashMismatchCount, ...this.verifyRecords() }
+  }
+
+  /** 見積書番号・請求書番号(`YYYY-NNN`)から、年ごとの最大採番値を集計する */
+  private trackSequence(maxByYear: Map<number, number>, value: unknown): void {
+    const match = /^(\d{4})-(\d+)$/.exec(String(value ?? ''))
+    if (match) {
+      const year = Number(match[1])
+      maxByYear.set(year, Math.max(maxByYear.get(year) ?? 0, Number(match[2])))
+    }
   }
 
   /** エクスポートファイルの領収書パス(`documents/receipts/...`)を、DBの`file_path`(`receipts/...`)へ変換する */
@@ -519,72 +657,57 @@ export class BackupService {
   }
 
   /** 復元後の見積書・請求書の最大採番値から`document_number_sequences`を再計算する(詳細設計書4.3章手順6) */
-  private rebuildNumberSequences(quotes: BackupRow[], invoices: BackupRow[]): void {
-    const sqlite = this.deps.database.sqlite
-    const collect = (rows: BackupRow[], key: string): Map<number, number> => {
-      const maxByYear = new Map<number, number>()
-      for (const row of rows) {
-        const match = /^(\d{4})-(\d+)$/.exec(String(row[key] ?? ''))
-        if (match) {
-          const year = Number(match[1])
-          maxByYear.set(year, Math.max(maxByYear.get(year) ?? 0, Number(match[2])))
-        }
-      }
-      return maxByYear
-    }
-    const insert = sqlite.prepare(
+  private rebuildNumberSequences(sequences: {
+    quote: Map<number, number>
+    invoice: Map<number, number>
+  }): void {
+    const insert = this.deps.database.sqlite.prepare(
       'INSERT INTO document_number_sequences (year, doc_type, last_number) VALUES (?, ?, ?)'
     )
-    for (const [year, last] of collect(quotes, 'quoteNumber')) {
-      insert.run(year, 'quote', last)
-    }
-    for (const [year, last] of collect(invoices, 'invoiceNumber')) {
-      insert.run(year, 'invoice', last)
-    }
+    for (const [year, last] of sequences.quote) insert.run(year, 'quote', last)
+    for (const [year, last] of sequences.invoice) insert.run(year, 'invoice', last)
   }
 
   /**
-   * documentsフォルダを全置換してPDFを書き出し、SHA-256を再照合する(詳細設計書4.3章手順7・`restorePdfFiles`)。
+   * 現在の`documents/`を削除し、一時フォルダへ展開済みの`documents/`を`rename`で移動して(コピー・メモリ使用なし)、
+   * PDFのSHA-256(展開時に算出済み)を再照合する(詳細設計書4.3章手順7・`restorePdfFiles`)。
    * ハッシュが記録値と一致しない(またはPDFが存在しない)書類は、復元を中断せず`pdf_hash_mismatch`を1にする。
+   * @returns ハッシュ不一致の件数
    */
   restorePdfFiles(
-    entries: Map<string, Buffer>,
-    quotes: BackupRow[],
-    invoices: BackupRow[],
+    stagingDir: string,
+    checks: PdfCheck[],
+    hashes: Map<string, string>,
     onProgress?: BackupProgressCallback
   ): number {
     const root = resolve(this.deps.documentsDir)
     rmSync(root, { recursive: true, force: true })
-    let written = 0
-    for (const [name, data] of entries) {
-      const target = resolve(dirname(root), name)
-      if (!target.startsWith(root + sep)) {
-        continue
+    const staged = join(stagingDir, 'documents')
+    mkdirSync(dirname(root), { recursive: true })
+    if (existsSync(staged)) {
+      try {
+        renameSync(staged, root)
+      } catch {
+        // 別のボリュームの場合は、コピーしてから削除する
+        cpSync(staged, root, { recursive: true })
+        rmSync(staged, { recursive: true, force: true })
       }
-      mkdirSync(dirname(target), { recursive: true })
-      writeFileSync(target, data)
-      written += 1
-      onProgress?.({ phase: 'import', current: written, total: entries.size })
+    } else {
+      mkdirSync(root, { recursive: true })
     }
 
     const sqlite = this.deps.database.sqlite
     let mismatchCount = 0
-    const verify = (table: 'quotes' | 'invoices', rows: BackupRow[]): void => {
-      const update = sqlite.prepare(`UPDATE ${table} SET pdf_hash_mismatch = 1 WHERE id = ?`)
-      for (const row of rows) {
-        const path = this.toAbsolutePdfPath(row.pdfPath)
-        if (!path || typeof row.pdfHash !== 'string' || row.pdfHash === '') {
-          continue
-        }
-        const matches = existsSync(path) && sha256(readFileSync(path)) === row.pdfHash
-        if (!matches) {
-          update.run(row.id as number)
-          mismatchCount += 1
-        }
+    let checked = 0
+    for (const check of checks) {
+      const entryName = relative(dirname(root), check.pdfPath).split(sep).join('/')
+      if (hashes.get(entryName) !== check.hash) {
+        sqlite.prepare(`UPDATE ${check.table} SET pdf_hash_mismatch = 1 WHERE id = ?`).run(check.id)
+        mismatchCount += 1
       }
+      checked += 1
+      onProgress?.({ phase: 'import', stage: 'verify', current: checked, total: checks.length })
     }
-    verify('quotes', quotes)
-    verify('invoices', invoices)
     return mismatchCount
   }
 
