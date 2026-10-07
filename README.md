@@ -5,7 +5,7 @@
 ## 1. 文書情報
 
 - 作成日: 2026-09-26(初版)/ 2026-10-08(v3.1改訂)
-- 版数: v3.1
+- 版数: v3.2
 - 対象イテレーション: イテレーション3(案件管理+バックアップ・復元のメモリ使用量改善)の実装フェーズのうち、T-61(F-32・F-33)完了時点。T-62(`npm audit fix`)・T-63(案件管理)・T-64(案件別収支)はこれから実装します
 - 参照元: 詳細設計書.md v3.3、基本設計書.md v3.3、デザインガイド.md v3.2、コーディング規約.md v3.1(いずれも `docs/` 配下)
 
@@ -159,7 +159,7 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 ### 5.1 単体・画面操作テスト(Vitest + React Testing Library)
 
 - 実行コマンド: `npm run test`
-- 結果: **91ファイル・843件、すべて成功**(失敗0件。T-61完了時点)
+- 結果: **91ファイル・843件、すべて成功**(失敗0件。T-62の依存更新後も同じ)
 - 内訳: Main層(DB・Repository・Service・PDFテンプレート・IPCハンドラ・起動回復・バックアップ・領収書・集計・CSV)、Shared層(Zodスキーマ・税額計算・CSV・履歴差分)、Renderer層(各画面・ダイアログ・ルーティング)
 - コードカバレッジ: 行90.97%・分岐86.94%(計測コマンド: `npm run test:coverage`。T-61の新規ファイルは行97%前後・分岐91%前後)
 
@@ -187,7 +187,7 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 - `npm run lint`: エラー・警告なし
 - `npm run build`: 型チェック後、Main/Preload/Rendererのビルドが成功
 - `npm run format:check`: 問題なし
-- `npm audit`: 高の脆弱性1件(開発用の間接依存`http-cache-semantics`への新規の脆弱性情報。イテレーション2の変更とは無関係。★F3参照)
+- `npm audit`: T-62の`npm audit fix`(`--force`なし)で高の脆弱性2件(`http-cache-semantics`・`source-map-js`)を解消し、残りは中8件(`sprintf-js`経由の`electron-builder`系。開発・配布ツール由来。★F3参照)。`npm audit --omit=dev`(配布物に含まれる依存)は0件
 - `npm run dist:mac`: universal(x86_64・arm64)`.dmg`の生成に成功。生成された`.app`を直接起動し、ウィンドウ表示・データベースファイル作成を確認
 
 ## 6. 詳細設計書との差異
@@ -261,7 +261,7 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | ★F1 | 本READMEの差異18〜26は、architectureによる詳細設計書の改訂候補です | 設計書と実装の整合 | レビュー指摘対応後に、architectureが詳細設計書へ反映するかを判断 | architecture | レビュー指摘対応後 |
 | ★F2 | 1GiBに近い規模のバックアップでの、エクスポート・復元時間とヒープ使用量の増加(目標: 約100MB以内)の実測。T-61時点では約200MBのダミーデータでの簡易計測のみ(ヒープの増加はほぼ0MB) | 大容量時の待ち時間・メモリ使用量 | テストフェーズで、領収書のダミーファイルによる計測 | tester | テストフェーズ |
 | ★G1 | `e2e/scenarios`のうち、エクスポートしたZIPの`data.json`を読み書きする箇所(`backup-zip`・`backup-integrity`・`i2-backup`・`i2-capacity`等)は、新形式(`manifest.json`+JSON Lines)に追随していないため、そのままでは失敗する見込み(未実行) | 結合テスト実施時に不合格として現れる(実装不具合ではない) | シナリオの改訂(新形式の読み書きヘルパーは`src/main/services/backup/test-helpers.ts`を参考にできる) | tester | テストフェーズ着手時 |
-| ★F3 | `npm audit`で高の脆弱性1件(間接依存`http-cache-semantics`。開発・配布ツール由来)が報告されている | 配布物・実行時への影響は未確認 | セキュリティフェーズで影響範囲を確認し、依存パッケージの更新要否を判断 | security-expert | セキュリティフェーズ |
+| ★F3 | (T-62で一部解消)高の2件は`npm audit fix`で解消。残る中8件は`sprintf-js`(DoS。`roarr`→`global-agent`→`@electron/get`→`app-builder-lib`→`electron-builder`の連鎖)で、修正には`npm audit fix --force`(`electron-builder`を26.5.0へ下げる破壊的変更)が必要なため未対応 | 開発・配布ツールのみ。配布物(`--omit=dev`)は0件 | 依頼者ご本人のご判断(`--force`を使うか、上流の修正を待つか) | project-leader / security-expert | セキュリティフェーズ |
 | ★F4 | `e2e/scenarios`の期待値3件を最小限に更新した(上記5.3参照)。シナリオの見直しはテストフェーズの担当 | テスト仕様書との整合 | テスト仕様書・ケースの改訂 | tester | テストフェーズ |
 
 なお、詳細設計書8章・基本設計書8章からの持ち越し事項(要件定義書10.2章★7・★8・★9等)は、本書では参照のみとし、内容の重複記載は行いません。
@@ -288,3 +288,4 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | v2.3 | 2026-10-05 | イテレーション2の納品に向け、アプリ版数を0.2.0から0.3.0へ更新した(`app/package.json`・`app/package-lock.json`)。機能変更なし。 |
 | v3.0 | 2026-10-05 | イテレーション2完了(総括で完了判定)に伴いv3.0へ引き上げ。参照元の版数を最新版に合わせた。本文のその他の変更なし。 |
 | v3.1 | 2026-10-08 | イテレーション3のT-61(F-32 バックアップ・復元のストリーム化、F-33 復元前の確認)の実装完了に伴い改訂。採用技術(`archiver`・`yauzl`)、実装状況、テスト結果(843件・E2E 4件)、差異29〜34、要確認事項★G1を追記した。 |
+| v3.2 | 2026-10-08 | T-62(SEC-17)。`npm audit fix`(`--force`なし)で間接依存の`http-cache-semantics`(4.3.0)・`source-map-js`(1.2.2)を更新し、高の脆弱性2件を解消した(`package-lock.json`のみの変更)。単体843件・E2E 4件・`.dmg`の再ビルド(署名なし)・パッケージ版の起動を確認した。残る中8件は`--force`が必要なため未対応(★F3)。 |
