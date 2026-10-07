@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
+import type { InspectBackupResult } from '@shared/ipc/api'
 import { BACKUP_MESSAGES } from '@shared/messages/messages'
 import { readDevOnlyEnv } from '../app-security'
 import type {
@@ -7,6 +8,9 @@ import type {
   ExportDataResult,
   ImportDataResult
 } from '../services/backup.service'
+import type { RestoreInspector } from '../services/backup/restore-inspector'
+import type { RestoreSessionStore } from '../services/backup/restore-session-store'
+import { toRestoreErrorMessage } from '../services/backup/restore-errors'
 
 /** `BackupService`および起動エラー画面用の`StartupRecoveryService`が満たすインターフェース */
 export interface BackupOperations {
@@ -33,15 +37,27 @@ function defaultExportFileName(): string {
  * 参照元: 詳細設計書 4.2章・4.3章、5章(クラス設計 `DataIpcHandler`)、7章
  */
 export class DataIpcHandler {
-  constructor(private readonly service: BackupOperations) {}
+  /**
+   * @param restore 復元前の確認(F-33)の部品。起動エラー画面からの復元(現在のデータを読めない)では指定せず、
+   *   `data:import`はMainが選択ダイアログでファイルを取得する(確認画面は表示しない)
+   */
+  constructor(
+    private readonly service: BackupOperations,
+    private readonly restore?: { inspector: RestoreInspector; store: RestoreSessionStore }
+  ) {}
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.dataExport, (event, options?: { confirmLarge?: boolean }) =>
       this.handleExport(this.progressSender(event), options?.confirmLarge === true)
     )
-    ipcMain.handle(IPC_CHANNELS.dataImport, (event) =>
-      this.handleImport(this.progressSender(event))
+    ipcMain.handle(IPC_CHANNELS.dataImport, (event, options?: { token?: string }) =>
+      this.handleImport(this.progressSender(event), options?.token)
     )
+    ipcMain.handle(IPC_CHANNELS.dataInspectBackup, () => this.handleInspect())
+    ipcMain.handle(IPC_CHANNELS.dataDiscardBackup, (_event, options?: { token?: string }) => {
+      if (options?.token) this.restore?.store.discard(options.token)
+      return { success: true as const }
+    })
   }
 
   /** 進捗をRendererへ`data:progress`として通知する(ファイル1件ごと) */
@@ -86,11 +102,53 @@ export class DataIpcHandler {
     return this.service.exportData(result.filePath, onProgress)
   }
 
-  private async handleImport(onProgress: BackupProgressCallback): Promise<ImportDataResult> {
+  /** 復元するファイルを選択させ、現在のデータを変更せずに内容を確認する(F-33。詳細設計書4.33章) */
+  private async handleInspect(): Promise<InspectBackupResult> {
+    if (!this.restore) {
+      return { success: false, error: BACKUP_MESSAGES.importParseFailure }
+    }
+    const filePath = await this.selectImportFile()
+    if (!filePath) {
+      return { success: false, canceled: true }
+    }
+    try {
+      return { success: true, inspection: await this.restore.inspector.inspect(filePath) }
+    } catch (error) {
+      return { success: false, error: toRestoreErrorMessage(error) }
+    }
+  }
+
+  /**
+   * 復元を実行する。`token`がある場合は、事前確認で登録したファイルを使う(ファイルが変更されていた場合は復元しない)。
+   * `token`が無い場合(起動エラー画面)は、Mainが選択ダイアログでファイルを取得する。
+   */
+  private async handleImport(
+    onProgress: BackupProgressCallback,
+    token?: string
+  ): Promise<ImportDataResult> {
+    if (token && this.restore) {
+      try {
+        const filePath = this.restore.store.resolve(token)
+        return await this.service.importData(filePath, onProgress)
+      } catch (error) {
+        return { success: false, error: toRestoreErrorMessage(error) }
+      } finally {
+        this.restore.store.discard(token)
+      }
+    }
+    const filePath = await this.selectImportFile()
+    if (!filePath) {
+      return { success: false }
+    }
+    return this.service.importData(filePath, onProgress)
+  }
+
+  /** 復元ファイルのパスを取得する(キャンセル時はnull)。E2Eでは環境変数のパスを使い、ダイアログを省略する */
+  private async selectImportFile(): Promise<string | null> {
     // E2Eテスト専用: 詳細は handleExport() のコメントを参照
     const e2eOverridePath = readDevOnlyEnv('JIMUHUB_E2E_IMPORT_PATH', app.isPackaged)
     if (e2eOverridePath) {
-      return this.service.importData(e2eOverridePath, onProgress)
+      return e2eOverridePath
     }
 
     const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -104,10 +162,6 @@ export class DataIpcHandler {
       : await dialog.showOpenDialog(options)
 
     const filePath = result.filePaths[0]
-    if (result.canceled || !filePath) {
-      return { success: false }
-    }
-
-    return this.service.importData(filePath, onProgress)
+    return result.canceled || !filePath ? null : filePath
   }
 }

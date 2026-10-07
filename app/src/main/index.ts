@@ -3,7 +3,9 @@ import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
-import { BackupService } from './services/backup.service'
+import { BackupService, DEFAULT_RESTORE_LIMITS } from './services/backup.service'
+import { RestoreInspector } from './services/backup/restore-inspector'
+import { RestoreSessionStore } from './services/backup/restore-session-store'
 import { BackupStagingArea } from './services/backup/staging-area'
 import { MigrationService } from './services/migration.service'
 import { CompanyProfileRepository } from './repositories/company-profile.repository'
@@ -170,7 +172,15 @@ app.whenReady().then(() => {
       recordServices.historyService
     ).registerHandlers()
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
-    new DataIpcHandler(backupService).registerHandlers()
+    const restoreStore = new RestoreSessionStore()
+    new DataIpcHandler(backupService, {
+      store: restoreStore,
+      inspector: new RestoreInspector({
+        database,
+        store: restoreStore,
+        ...DEFAULT_RESTORE_LIMITS
+      })
+    }).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
     new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()
     new InvoicesIpcHandler(invoiceService, documentsDir).registerHandlers()

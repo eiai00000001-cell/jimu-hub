@@ -158,6 +158,16 @@ export const BACKUP_MESSAGES = {
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
   importVerify: (current: number, total: number): string =>
     `復元したファイルを確認しています(${current}/${total})`,
+  importFileChanged:
+    '選択したファイルが変更されたか、無効になりました。もう一度ファイルを選択してください',
+  confirmTitle: '復元前の確認',
+  confirmLead: '選択したバックアップを復元すると、次のデータが消えます。',
+  confirmNoReceipts: (count: number): string =>
+    `このバックアップには領収書が含まれていないため、復元すると現在の領収書(${count}件)はすべて消えます。`,
+  confirmNoProjects: (count: number): string =>
+    `このバックアップには案件のデータが含まれていないため、復元すると現在の案件(${count}件)と、案件への紐づけ・付け替え履歴はすべて消えます。`,
+  confirmBackupNotice: '復元前の状態は自動で退避され、直近3回分が保存されます。',
+  confirmRestore: '復元する',
   importDiskShort:
     'ディスクの空き容量が足りないため、復元できませんでした。空き容量を確保してから、もう一度お試しください',
   importTooLarge: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした',

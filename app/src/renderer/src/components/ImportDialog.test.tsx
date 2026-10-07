@@ -3,23 +3,37 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ImportDialog } from './ImportDialog'
-import type { DataProgress } from '@shared/ipc/api'
+import type { BackupInspection, DataProgress, InspectBackupResult } from '@shared/ipc/api'
 
-function setupApi(result: {
-  success: boolean
-  importedCount?: number
-  pdfHashMismatchCount?: number
-  error?: string
-}): ReturnType<typeof vi.fn> {
+const inspection = (overrides: Partial<BackupInspection> = {}): InspectBackupResult => ({
+  success: true,
+  inspection: {
+    token: 'token-1',
+    fileName: 'backup.zip',
+    schemaVersion: 5,
+    hasReceipts: true,
+    hasProjects: true,
+    currentReceiptCount: 0,
+    currentProjectCount: 0,
+    needsConfirmation: false,
+    ...overrides
+  }
+})
+
+/** `importData`のモックを返す。`inspectBackup`は、既定では確認画面が不要な結果を返す */
+function setupApi(
+  result: {
+    success: boolean
+    importedCount?: number
+    pdfHashMismatchCount?: number
+    error?: string
+  },
+  inspectResult: InspectBackupResult = inspection()
+): ReturnType<typeof vi.fn> {
   const importData = vi.fn().mockResolvedValue(result)
   window.jimuhubApi = {
-    getStartupStatus: vi.fn(),
-    listClients: vi.fn(),
-    getClient: vi.fn(),
-    createClient: vi.fn(),
-    updateClient: vi.fn(),
-    deactivateClient: vi.fn(),
-    exportData: vi.fn(),
+    inspectBackup: vi.fn().mockResolvedValue(inspectResult),
+    discardBackup: vi.fn().mockResolvedValue({ success: true }),
     importData
   } as unknown as Window['jimuhubApi']
   return importData
@@ -78,7 +92,8 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
     await userEvent.click(screen.getByRole('button', { name: '続行' }))
 
-    await waitFor(() => expect(importData).toHaveBeenCalled())
+    await waitFor(() => expect(importData).toHaveBeenCalledWith({ token: 'token-1' }))
+    expect(window.jimuhubApi.inspectBackup).toHaveBeenCalledTimes(1)
   })
 
   it('復元成功時は件数を含む完了メッセージを表示し、onImportedを呼び出す', async () => {
@@ -115,15 +130,122 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     ).toBeInTheDocument()
   })
 
-  it('OS標準ダイアログがキャンセルされた場合(エラーなし)は警告以外の結果メッセージは表示しない', async () => {
-    setupApi({ success: false })
+  it('OS標準ダイアログがキャンセルされた場合は、復元を実行せず、警告以外の結果メッセージは表示しない', async () => {
+    setupApi({ success: true, importedCount: 1 }, { success: false, canceled: true })
     const { container } = render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
     await userEvent.click(screen.getByRole('button', { name: '続行' }))
 
-    await waitFor(() => expect(window.jimuhubApi.importData).toHaveBeenCalled())
+    await waitFor(() => expect(window.jimuhubApi.inspectBackup).toHaveBeenCalled())
+    expect(window.jimuhubApi.importData).not.toHaveBeenCalled()
     expect(container.querySelectorAll('.message')).toHaveLength(1)
+  })
+
+  it('ファイルの確認でエラー(容量超過・形式不正等)になった場合は、復元せずエラーを表示する', async () => {
+    setupApi(
+      { success: true, importedCount: 1 },
+      {
+        success: false,
+        error: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした'
+      }
+    )
+    render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+    await userEvent.click(screen.getByRole('button', { name: '続行' }))
+
+    expect(await screen.findByText(/容量が復元できる上限/)).toBeInTheDocument()
+    expect(window.jimuhubApi.importData).not.toHaveBeenCalled()
+  })
+
+  describe('復元前の確認画面(F-33。詳細設計書3.7章・4.33章)', () => {
+    async function openConfirm(
+      overrides: Partial<BackupInspection>
+    ): Promise<ReturnType<typeof vi.fn>> {
+      const importData = setupApi(
+        { success: true, importedCount: 7 },
+        inspection({ needsConfirmation: true, ...overrides })
+      )
+      render(<ImportDialog onClose={vi.fn()} onImported={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: 'ファイルを選択して復元' }))
+      await userEvent.click(screen.getByRole('button', { name: '続行' }))
+      await screen.findByText('復元前の確認')
+      return importData
+    }
+
+    it('領収書が消える場合は、現在の件数を表示し、復元はまだ実行しない。「キャンセル」が初期フォーカス', async () => {
+      const importData = await openConfirm({ hasReceipts: false, currentReceiptCount: 12 })
+
+      expect(
+        screen.getByText(
+          'このバックアップには領収書が含まれていないため、復元すると現在の領収書(12件)はすべて消えます。'
+        )
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/案件のデータが含まれていない/)).not.toBeInTheDocument()
+      expect(
+        screen.getByText('復元前の状態は自動で退避され、直近3回分が保存されます。')
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'キャンセル' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: '復元する' })).toHaveClass('btn-danger')
+      expect(importData).not.toHaveBeenCalled()
+    })
+
+    it('案件が消える場合は、案件の件数を表示する', async () => {
+      await openConfirm({ hasProjects: false, currentProjectCount: 5 })
+
+      expect(
+        screen.getByText(/現在の案件\(5件\)と、案件への紐づけ・付け替え履歴はすべて消えます/)
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/領収書が含まれていない/)).not.toBeInTheDocument()
+    })
+
+    it('両方が消える場合は、1つの確認画面に2項目を並べる', async () => {
+      await openConfirm({
+        hasReceipts: false,
+        hasProjects: false,
+        currentReceiptCount: 12,
+        currentProjectCount: 5
+      })
+
+      expect(screen.getByText(/現在の領収書\(12件\)/)).toBeInTheDocument()
+      expect(screen.getByText(/現在の案件\(5件\)/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /キャンセル|復元する/ })).toHaveLength(2)
+    })
+
+    it('「復元する」を押すと、確認済みの識別子で復元を実行し、完了メッセージを表示する', async () => {
+      const importData = await openConfirm({ hasReceipts: false, currentReceiptCount: 1 })
+
+      await userEvent.click(screen.getByRole('button', { name: '復元する' }))
+
+      await waitFor(() => expect(importData).toHaveBeenCalledWith({ token: 'token-1' }))
+      expect(await screen.findByText('復元が完了しました(7件)')).toBeInTheDocument()
+      expect(screen.queryByText('復元前の確認')).not.toBeInTheDocument()
+    })
+
+    it('「キャンセル」を押すと、選択済みファイルの情報を破棄し、復元せずに最初の状態へ戻る', async () => {
+      const importData = await openConfirm({ hasReceipts: false, currentReceiptCount: 1 })
+
+      await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+      expect(window.jimuhubApi.discardBackup).toHaveBeenCalledWith('token-1')
+      expect(importData).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'ファイルを選択して復元' })).toBeInTheDocument()
+      expect(screen.queryByText('復元前の確認')).not.toBeInTheDocument()
+    })
+
+    it('復元に失敗した場合は、最初の状態へ戻ってエラーを表示する', async () => {
+      const importData = await openConfirm({ hasReceipts: false, currentReceiptCount: 1 })
+      importData.mockResolvedValue({
+        success: false,
+        error: '復元に失敗しました。データは復元前の状態に戻しました'
+      })
+
+      await userEvent.click(screen.getByRole('button', { name: '復元する' }))
+
+      expect(await screen.findByText(/復元に失敗しました/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'ファイルを選択して復元' })).toBeInTheDocument()
+    })
   })
 
   it('閉じるボタンでonCloseを呼び出す(どの段階でも操作可能)', async () => {
@@ -160,6 +282,7 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
 
   it('復元の完了メッセージに、PDF・領収書・記録の不一致件数を含める', async () => {
     window.jimuhubApi = {
+      inspectBackup: vi.fn().mockResolvedValue(inspection()),
       importData: vi.fn().mockResolvedValue({
         success: true,
         importedCount: 12,
@@ -181,6 +304,7 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
     let emit: (p: DataProgress) => void = () => {}
     let finish: (v: unknown) => void = () => {}
     window.jimuhubApi = {
+      inspectBackup: vi.fn().mockResolvedValue(inspection()),
       importData: vi.fn().mockReturnValue(new Promise((resolve) => (finish = resolve))),
       onDataProgress: vi.fn((cb) => {
         emit = cb

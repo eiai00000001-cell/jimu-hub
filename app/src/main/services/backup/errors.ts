@@ -9,3 +9,6 @@ export class BackupDiskShortError extends Error {}
 
 /** 確認時から復元ファイルが変更された(サイズ・更新日時の不一致) */
 export class BackupFileChangedError extends Error {}
+
+/** 復元ファイルが、現在のアプリより新しい版で作られている */
+export class BackupVersionTooNewError extends Error {}

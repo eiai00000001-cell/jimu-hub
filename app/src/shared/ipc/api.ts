@@ -76,6 +76,24 @@ export interface ImportDataResult {
   error?: string
 }
 
+/** 復元ファイルの事前確認の結果(`data:inspectBackup`。詳細設計書4.33章) */
+export interface BackupInspection {
+  /** `data:import`へ渡す識別子(30分有効) */
+  token: string
+  fileName: string
+  schemaVersion: number
+  hasReceipts: boolean
+  hasProjects: boolean
+  currentReceiptCount: number
+  currentProjectCount: number
+  /** 領収書・案件が消える旨の確認画面が必要か */
+  needsConfirmation: boolean
+}
+
+export type InspectBackupResult =
+  | { success: true; inspection: BackupInspection }
+  | { success: false; canceled?: true; error?: string }
+
 /** アプリ起動処理(4.1章)の結果。データベース接続に失敗した場合はok:falseとなる */
 export interface StartupStatus {
   ok: boolean
@@ -165,7 +183,12 @@ export interface JimuhubApi {
   exportData(options?: { confirmLarge?: boolean }): Promise<ExportDataResult>
   /** 進捗の通知を購読する。購読解除関数を返す */
   onDataProgress(callback: (progress: DataProgress) => void): () => void
-  importData(): Promise<ImportDataResult>
+  /** 復元ファイルを選択し、現在のデータを変更せずに内容を確認する(F-33) */
+  inspectBackup(): Promise<InspectBackupResult>
+  /** 確認画面で「キャンセル」した場合に、選択済みファイルの情報を破棄する */
+  discardBackup(token: string): Promise<{ success: true }>
+  /** `token`は`inspectBackup`が返した識別子。省略時はMainがファイル選択ダイアログを開く(起動エラー画面) */
+  importData(options?: { token: string }): Promise<ImportDataResult>
   getCompanyProfile(): Promise<CompanyProfile | null>
   saveCompanyProfile(input: CompanyProfileInput): Promise<SaveCompanyProfileResult>
   listQuotes(filter?: QuoteListFilter): Promise<QuoteSummary[]>

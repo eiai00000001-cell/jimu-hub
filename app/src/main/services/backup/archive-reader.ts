@@ -188,6 +188,35 @@ export class BackupArchiveReader {
     return { hashes }
   }
 
+  /**
+   * 目録の確認(`scan`)で許可したエントリのうち1件の中身を、上限以内の大きさで文字列として読み込む。
+   * ファイル全体の展開は行わない(事前確認用。詳細設計書4.33章)。
+   */
+  async readText(entryName: string, maxBytes: number): Promise<string> {
+    const zipfile = this.zipfile
+    const entry = this.accepted.find((e) => e.fileName === entryName)
+    if (!zipfile || !entry) throw new BackupParseError('entry not found')
+    if (entry.uncompressedSize > maxBytes) throw new BackupSizeLimitError('entry too large')
+    try {
+      const stream = await new Promise<NodeJS.ReadableStream>((resolvePromise, reject) => {
+        zipfile.openReadStream(entry, (error, input) =>
+          error || !input ? reject(error ?? new Error('no stream')) : resolvePromise(input)
+        )
+      })
+      const chunks: Buffer[] = []
+      let bytes = 0
+      for await (const chunk of stream) {
+        const buffer = Buffer.from(chunk as Buffer)
+        bytes += buffer.length
+        if (bytes > maxBytes) throw new BackupSizeLimitError('entry too large')
+        chunks.push(buffer)
+      }
+      return Buffer.concat(chunks).toString('utf-8')
+    } catch (error) {
+      throw toBackupError(error)
+    }
+  }
+
   close(): void {
     this.zipfile?.close()
     this.zipfile = null

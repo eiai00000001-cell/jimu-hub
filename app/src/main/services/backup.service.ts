@@ -38,6 +38,7 @@ import { resolveReceiptPath } from './receipts/receipt-path'
 import { BackupArchiveWriter } from './backup/archive-writer'
 import { BackupArchiveReader } from './backup/archive-reader'
 import { BackupDiskShortError, BackupParseError, BackupSizeLimitError } from './backup/errors'
+import { toRestoreErrorMessage } from './backup/restore-errors'
 import { LegacyJsonRecordSource } from './backup/legacy-record-source'
 import {
   JsonlRecordSource,
@@ -356,7 +357,7 @@ export class BackupService {
         dir = staging.create('restore')
         prepared = await this.prepareRestore(filePath, dir, onProgress)
       } catch (error) {
-        return { success: false, error: this.toParseErrorMessage(error) }
+        return { success: false, error: toRestoreErrorMessage(error) }
       }
       if (prepared.schemaVersion > CURRENT_SCHEMA_VERSION) {
         return { success: false, error: BACKUP_MESSAGES.importVersionTooNew }
@@ -395,12 +396,6 @@ export class BackupService {
     } finally {
       if (dir) staging.remove(dir)
     }
-  }
-
-  private toParseErrorMessage(error: unknown): string {
-    if (error instanceof BackupSizeLimitError) return BACKUP_MESSAGES.importTooLarge
-    if (error instanceof BackupDiskShortError) return BACKUP_MESSAGES.importDiskShort
-    return BACKUP_MESSAGES.importParseFailure
   }
 
   /**

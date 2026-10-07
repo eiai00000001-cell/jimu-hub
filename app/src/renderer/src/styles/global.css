@@ -811,6 +811,21 @@ button {
   padding: 22px 24px;
   position: relative;
 }
+.modal.wide {
+  width: 540px;
+}
+.modal .lead {
+  color: var(--color-text);
+  font-size: 12px;
+  margin: 0 0 12px;
+  line-height: 1.7;
+}
+.modal .note {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin: 4px 0 18px;
+  line-height: 1.7;
+}
 .modal h2 {
   font-size: 15px;
   margin: 0 0 12px;

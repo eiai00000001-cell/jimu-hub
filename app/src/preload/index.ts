@@ -74,7 +74,9 @@ const jimuhubApi: JimuhubApi = {
       ipcRenderer.removeListener(IPC_CHANNELS.dataProgress, listener)
     }
   },
-  importData: () => ipcRenderer.invoke(IPC_CHANNELS.dataImport),
+  inspectBackup: () => ipcRenderer.invoke(IPC_CHANNELS.dataInspectBackup),
+  discardBackup: (token: string) => ipcRenderer.invoke(IPC_CHANNELS.dataDiscardBackup, { token }),
+  importData: (options?: { token: string }) => ipcRenderer.invoke(IPC_CHANNELS.dataImport, options),
   getCompanyProfile: () => ipcRenderer.invoke(IPC_CHANNELS.companyGet),
   saveCompanyProfile: (input: CompanyProfileInput) =>
     ipcRenderer.invoke(IPC_CHANNELS.companySave, input),
