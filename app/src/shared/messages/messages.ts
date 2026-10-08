@@ -227,6 +227,11 @@ export const INVOICE_MESSAGES = {
   convertRequiresFinalized: 'PDF保存済みの見積書のみ請求書に変換できます'
 } as const
 
+export const DB_MIGRATION_MESSAGES = {
+  preBackupFailure:
+    'データを更新する前の退避に失敗したため、起動できませんでした。空き容量・権限をご確認ください'
+} as const
+
 export const STARTUP_MESSAGES = {
   databaseError:
     'データを読み込めませんでした。ファイルが破損している可能性があります。エクスポートファイルからの復元をお試しください'

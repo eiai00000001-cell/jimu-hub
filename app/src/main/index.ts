@@ -103,7 +103,7 @@ app.whenReady().then(() => {
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。
   // これにより、データベースファイル破損時もここで処理が中断されず、必ずcreateMainWindow()まで到達する。
-  const { status: startupStatus, database } = initializeStartup(dbFilePath)
+  const { status: startupStatus, database } = initializeStartup(dbFilePath, backupsDir)
 
   new AppIpcHandler(startupStatus).registerHandlers()
 

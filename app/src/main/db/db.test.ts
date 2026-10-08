@@ -56,7 +56,7 @@ describe('Database', () => {
     db.initialize()
 
     const row = db.sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-    expect(row).toEqual({ value: '4' })
+    expect(row).toEqual({ value: '5' })
   })
 
   it('transactionは正常終了時にコミットする', () => {
@@ -121,7 +121,7 @@ describe('Database', () => {
       const version = db.sqlite
         .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
         .get() as { value: string }
-      expect(version.value).toBe('4')
+      expect(version.value).toBe('5')
 
       const rows = db.sqlite
         .prepare('SELECT name, kind, sort_order, is_default, default_key FROM accounts ORDER BY id')

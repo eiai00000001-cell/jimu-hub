@@ -1,10 +1,11 @@
-import { describe, expect, it, afterEach, vi } from 'vitest'
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest'
+import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import SqliteDatabase from 'better-sqlite3'
 import { initializeStartup } from './startup'
-import { STARTUP_MESSAGES } from '@shared/messages/messages'
+import { DB_MIGRATION_MESSAGES, STARTUP_MESSAGES } from '@shared/messages/messages'
+import { createV4Database } from './db/test-helpers'
 import { Database, CURRENT_SCHEMA_VERSION } from './db/db'
 
 /**
@@ -134,4 +135,148 @@ describe('initializeStartup', () => {
       closeSpy.mockRestore()
     }
   })
+})
+
+describe('initializeStartup: スキーマv5への移行(T-63-1。詳細設計書4.1章手順0-3・6.17章)', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'jimuhub-migrate-test-'))
+  })
+  afterEach(() => {
+    chmodSync(dir, 0o700)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  function seedV4(path: string): void {
+    createV4Database(path)
+    const legacy = new SqliteDatabase(path)
+    legacy.exec(`INSERT INTO clients (id, name, honorific) VALUES (1, '既存の取引先', '御中')`)
+    legacy.close()
+  }
+
+  it('v4のデータベースを起動すると、退避してからv5へ移行し、既存のデータは「案件なし」のまま残る', () => {
+    const dbFilePath = join(dir, 'data.sqlite')
+    seedV4(dbFilePath)
+
+    const result = initializeStartup(dbFilePath)
+
+    expect(result.status).toEqual({ ok: true })
+    const sqlite = result.database!.sqlite
+    expect(
+      (
+        sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get() as {
+          value: string
+        }
+      ).value
+    ).toBe('5')
+    for (const table of ['quotes', 'invoices', 'cash_records']) {
+      expect(result.database!.hasColumn(table, 'project_id')).toBe(true)
+    }
+    expect((sqlite.prepare('SELECT COUNT(*) AS c FROM projects').get() as { c: number }).c).toBe(0)
+    expect((sqlite.prepare('SELECT COUNT(*) AS c FROM clients').get() as { c: number }).c).toBe(1)
+    result.database?.close()
+
+    // 退避ファイルは、移行前(v4)の内容
+    const backups = readdirSync(join(dir, 'backups')).filter((n) =>
+      n.startsWith('pre-migration_v4_')
+    )
+    expect(backups).toHaveLength(1)
+    const backup = new SqliteDatabase(join(dir, 'backups', backups[0]!), { readonly: true })
+    expect(
+      (
+        backup.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get() as {
+          value: string
+        }
+      ).value
+    ).toBe('4')
+    expect(() => backup.prepare('SELECT * FROM projects').get()).toThrow()
+    backup.close()
+  })
+
+  it('付け替え履歴は、更新・削除をDBのトリガーが拒否する', () => {
+    const result = initializeStartup(join(dir, 'data.sqlite'))
+    const sqlite = result.database!.sqlite
+    sqlite.exec(
+      `INSERT INTO project_link_history (target_type, target_id, target_label, kind)
+       VALUES ('quote', 1, '下書き', 'assign')`
+    )
+    expect(() => sqlite.exec("UPDATE project_link_history SET target_label = 'x'")).toThrow(
+      '付け替え履歴は変更できません'
+    )
+    expect(() => sqlite.exec('DELETE FROM project_link_history')).toThrow(
+      '付け替え履歴は削除できません'
+    )
+    result.database?.close()
+  })
+
+  it('新規作成のデータベースは、退避せずにv5で作成する', () => {
+    const result = initializeStartup(join(dir, 'data.sqlite'))
+    expect(result.status.ok).toBe(true)
+    expect(existsSync(join(dir, 'backups'))).toBe(false)
+    result.database?.close()
+  })
+
+  it('すでにv5のデータベースは、退避しない', () => {
+    const dbFilePath = join(dir, 'data.sqlite')
+    initializeStartup(dbFilePath).database?.close()
+    const again = initializeStartup(dbFilePath)
+    expect(again.status.ok).toBe(true)
+    expect(existsSync(join(dir, 'backups'))).toBe(false)
+    again.database?.close()
+  })
+
+  it('移行前の退避に失敗した場合は、移行せず、データベースを変更せずに起動エラーを返す', () => {
+    const dbFilePath = join(dir, 'data.sqlite')
+    seedV4(dbFilePath)
+    // backupsDirの位置に通常のファイルを置き、フォルダを作れないようにする
+    writeFileSync(join(dir, 'backups'), 'not a directory')
+
+    const result = initializeStartup(dbFilePath)
+
+    expect(result.status).toEqual({ ok: false, message: DB_MIGRATION_MESSAGES.preBackupFailure })
+    expect(result.database).toBeNull()
+    const sqlite = new SqliteDatabase(dbFilePath)
+    expect(
+      (
+        sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get() as {
+          value: string
+        }
+      ).value
+    ).toBe('4')
+    expect(() => sqlite.prepare('SELECT * FROM projects').get()).toThrow()
+    sqlite.close()
+  })
+
+  it('移行は冪等で、途中で終了した後(列の追加済み・版数は4のまま)でも再実行できる', () => {
+    const dbFilePath = join(dir, 'data.sqlite')
+    seedV4(dbFilePath)
+    const partial = new SqliteDatabase(dbFilePath)
+    partial.exec(
+      'CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT NOT NULL, client_id INTEGER, start_date TEXT, end_date TEXT, memo TEXT, status TEXT NOT NULL DEFAULT "active", created_at TEXT, updated_at TEXT)'
+    )
+    partial.exec('ALTER TABLE quotes ADD COLUMN project_id INTEGER REFERENCES projects (id)')
+    partial.close()
+
+    const result = initializeStartup(dbFilePath)
+
+    expect(result.status.ok).toBe(true)
+    expect(result.database!.hasColumn('invoices', 'project_id')).toBe(true)
+    result.database?.close()
+  })
+
+  it('退避ファイルは直近3世代のみ保持する', () => {
+    const dbFilePath = join(dir, 'data.sqlite')
+    for (let i = 0; i < 5; i += 1) {
+      seedV4Fresh(dbFilePath)
+      initializeStartup(dbFilePath).database?.close()
+    }
+    const backups = readdirSync(join(dir, 'backups')).filter((n) => n.startsWith('pre-migration_'))
+    expect(backups).toHaveLength(3)
+  })
+
+  function seedV4Fresh(path: string): void {
+    for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true })
+    seedV4(path)
+  }
 })
