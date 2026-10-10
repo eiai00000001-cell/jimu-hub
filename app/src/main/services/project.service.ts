@@ -14,6 +14,7 @@ import type {
 } from '@shared/types/project'
 import type { Database } from '../db/db'
 import type { ProjectRecordInput, ProjectRepository } from '../repositories/project.repository'
+import type { ProjectSummaryRepository } from '../repositories/project-summary.repository'
 
 /** 案件の業務エラー(未存在・紐づけあり・状態不整合等)。メッセージは画面にそのまま表示する */
 export class ProjectError extends Error {
@@ -30,13 +31,24 @@ export class ProjectError extends Error {
 export class ProjectService {
   constructor(
     private readonly database: Database,
-    private readonly repository: ProjectRepository
+    private readonly repository: ProjectRepository,
+    private readonly summaryRepository: ProjectSummaryRepository
   ) {}
 
   listProjects(filter: ProjectListFilter = {}): ProjectListItem[] {
     const parsed = ProjectListFilterSchema.safeParse(filter)
     if (!parsed.success) throw new ProjectError(parsed.error.issues[0]?.message ?? 'Invalid input')
-    return this.repository.search(parsed.data)
+    // 収支の概要は、案件詳細と同じ集計を、案件ごとにSQLを発行せずにまとめて取得する(詳細設計書4.28章手順3)
+    const summaries = this.summaryRepository.summariesByProject()
+    return this.repository.search(parsed.data).map((project) => {
+      const summary = summaries.get(project.id)
+      return {
+        ...project,
+        sales: summary?.sales ?? 0,
+        expense: summary?.expense ?? 0,
+        balance: summary?.balance ?? 0
+      }
+    })
   }
 
   getProject(id: number): ProjectDetail {
@@ -48,6 +60,7 @@ export class ProjectService {
       invoices: this.repository.listLinkedDocuments('invoices', id),
       records: this.repository.listLinkedRecords(id),
       history: this.repository.listHistoryOfProject(id),
+      summary: this.summaryRepository.summary(id),
       deletable: linkCount === 0
     }
   }

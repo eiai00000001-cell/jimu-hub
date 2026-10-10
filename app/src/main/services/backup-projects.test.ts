@@ -1,3 +1,4 @@
+import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -43,7 +44,7 @@ function createEnv(name: string): Env {
       appVersion: '0.4.0'
     }),
     records: createRecordServices(db, documentsDir),
-    projects: new ProjectService(db, new ProjectRepository(db))
+    projects: new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
   }
 }
 

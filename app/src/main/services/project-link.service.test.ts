@@ -1,3 +1,4 @@
+import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,7 +24,7 @@ describe('ProjectLinkService(F-30。詳細設計書4.30章)', () => {
     db.initialize()
     repository = new ProjectRepository(db)
     link = new ProjectLinkService(db, repository)
-    projects = new ProjectService(db, repository)
+    projects = new ProjectService(db, repository, new ProjectSummaryRepository(db))
     clientId = Number(
       db.sqlite.prepare("INSERT INTO clients (name, honorific) VALUES ('取引先', '御中')").run()
         .lastInsertRowid

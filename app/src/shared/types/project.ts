@@ -29,6 +29,27 @@ export interface Project {
   updatedAt: string
 }
 
+/** 案件別収支(案件の全期間。金額は円の整数。詳細設計書4.31章) */
+export interface ProjectSummary {
+  /** 発行済み(PDF保存済み)の請求書の合計金額(税込・源泉徴収前) */
+  sales: number
+  /** 売上のうち、源泉徴収税額の合計(注記用) */
+  withholding: number
+  /** 有効な経費の合計(取消済・削除済は含めない) */
+  expense: number
+  /** 売上-経費(マイナスになり得る) */
+  balance: number
+  counts: {
+    quotes: number
+    invoicesIssued: number
+    invoicesDraft: number
+    /** 入金(取消済を含む) */
+    incomes: number
+    /** 経費(取消済を含む) */
+    expenses: number
+  }
+}
+
 /** 案件一覧の1行 */
 export interface ProjectListItem {
   id: number
@@ -38,6 +59,9 @@ export interface ProjectListItem {
   status: ProjectStatus
   startDate: string | null
   endDate: string | null
+  sales: number
+  expense: number
+  balance: number
 }
 
 /** 紐づけ先の候補(`projects:listSelectable`) */
@@ -95,6 +119,7 @@ export interface ProjectDetail extends Project {
   records: ProjectLinkedRecord[]
   /** この案件に関する付け替え履歴(新しい順) */
   history: ProjectLinkHistoryEntry[]
+  summary: ProjectSummary
   /** 紐づけが0件で、削除できるか */
   deletable: boolean
 }

@@ -1,3 +1,4 @@
+import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -29,7 +30,7 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     clients = new ClientRepository(db)
-    service = new ProjectService(db, new ProjectRepository(db))
+    service = new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
   })
   afterEach(() => {
     db.close()
@@ -362,6 +363,51 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
       )
       expect(service.listHistory('quote', 1).map((h) => h.kind)).toEqual(['unassign', 'assign'])
       expect(service.listHistory('cash_record', 1)).toEqual([])
+    })
+  })
+
+  describe('案件別収支(F-31。詳細設計書4.31章)', () => {
+    it('一覧と詳細に、同じ集計(売上・経費・差引)を返す', () => {
+      const id = service.createProject(input()).id
+      const accountId = (
+        db.sqlite.prepare('SELECT id FROM accounts LIMIT 1').get() as { id: number }
+      ).id
+      db.sqlite
+        .prepare(
+          `INSERT INTO invoices (client_id, issue_date, status, total_amount, withholding_tax_amount, project_id)
+           VALUES (?, '2026-10-01', 'finalized', 363000, 30630, ?)`
+        )
+        .run(client(), id)
+      db.sqlite
+        .prepare(
+          `INSERT INTO cash_records (record_date, kind, amount, account_id, description, project_id)
+           VALUES ('2026-10-02', 'expense', 55000, ?, 'x', ?)`
+        )
+        .run(accountId, id)
+
+      const listed = service.listProjects({ status: 'all' })[0]!
+      const detail = service.getProject(id)
+
+      expect([listed.sales, listed.expense, listed.balance]).toEqual([363000, 55000, 308000])
+      expect(detail.summary).toMatchObject({
+        sales: 363000,
+        withholding: 30630,
+        expense: 55000,
+        balance: 308000,
+        counts: { invoicesIssued: 1, expenses: 1 }
+      })
+    })
+
+    it('紐づくデータが無い案件は、0円・0件', () => {
+      const id = service.createProject(input()).id
+      expect(service.listProjects()[0]).toMatchObject({ sales: 0, expense: 0, balance: 0 })
+      expect(service.getProject(id).summary.counts).toEqual({
+        quotes: 0,
+        invoicesIssued: 0,
+        invoicesDraft: 0,
+        incomes: 0,
+        expenses: 0
+      })
     })
   })
 })

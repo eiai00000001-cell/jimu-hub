@@ -87,7 +87,7 @@ export class ProjectRepository {
    * 案件一覧の検索(指定した条件をすべて満たす案件。並び順はidの降順)。
    * 期間は、案件の期間と重なる案件とし、期間を指定した場合は開始日・終了日がともに空の案件を対象外とする(詳細設計書4.28章)。
    */
-  search(filter: ProjectListFilter): ProjectListItem[] {
+  search(filter: ProjectListFilter): Array<Omit<ProjectListItem, 'sales' | 'expense' | 'balance'>> {
     const where: string[] = []
     const params: unknown[] = []
     if (filter.keyword) {
