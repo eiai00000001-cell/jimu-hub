@@ -40,6 +40,8 @@ export const InvoiceInputSchema = z.object({
   issueDate: requiredIsoDate(VALIDATION_MESSAGES.issueDateRequired),
   dueDate: optionalIsoDate.default(''),
   remarks: optionalText('備考', 500).default(''),
-  lineItems: z.array(InvoiceLineItemInputSchema).min(1, VALIDATION_MESSAGES.lineItemsRequired)
+  lineItems: z.array(InvoiceLineItemInputSchema).min(1, VALIDATION_MESSAGES.lineItemsRequired),
+  /** 紐づける案件(任意。nullは案件なし。省略時は変更しない。詳細設計書3.26章・4.30章) */
+  projectId: z.number().int().positive().nullable().optional()
 })
 export type InvoiceInput = z.infer<typeof InvoiceInputSchema>

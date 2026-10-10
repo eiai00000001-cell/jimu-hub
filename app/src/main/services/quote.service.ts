@@ -5,6 +5,7 @@ import type { Database } from '../db/db'
 import type { QuoteRepository } from '../repositories/quote.repository'
 import type { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import type { NumberingService } from './numbering.service'
+import type { ProjectLinkService } from './project-link.service'
 import type { PdfService } from './pdf.service'
 
 export class QuoteNotFoundError extends Error {
@@ -62,6 +63,8 @@ export interface QuoteServiceDeps {
   companyProfileRepository: CompanyProfileRepository
   numberingService: NumberingService
   pdfService: PdfService
+  /** 案件の紐づけ(F-30)。未指定の場合、案件は扱わない(本番では必ず指定する) */
+  projectLinkService?: ProjectLinkService
 }
 
 /**
@@ -85,12 +88,19 @@ export class QuoteService {
 
   saveDraft(input: QuoteInput, id?: number): { id: number } {
     const validated = parseOrThrow(input)
-    if (id !== undefined) {
-      this.assertEditable(id)
-      this.deps.repository.update(id, validated)
-      return { id }
-    }
-    return this.deps.repository.insert(validated)
+    // 保存と案件の紐づけ(・履歴)は同一トランザクションで行う(詳細設計書4.30章手順3)
+    return this.deps.database.transaction(() => {
+      let savedId: number
+      if (id !== undefined) {
+        this.assertEditable(id)
+        this.deps.repository.update(id, validated)
+        savedId = id
+      } else {
+        savedId = this.deps.repository.insert(validated).id
+      }
+      this.deps.projectLinkService?.applyRequested('quote', savedId, validated.projectId)
+      return { id: savedId }
+    })
   }
 
   /**
@@ -113,6 +123,7 @@ export class QuoteService {
         this.deps.repository.update(id, validated)
       }
       const targetId = id ?? this.deps.repository.insert(validated).id
+      this.deps.projectLinkService?.applyRequested('quote', targetId, validated.projectId)
 
       const year = Number(validated.issueDate.slice(0, 4))
       const number = this.deps.numberingService.issueNumber('quote', year)
@@ -154,6 +165,7 @@ export class QuoteService {
       throw new QuoteNotDeletableError(QUOTE_MESSAGES.hasDerivedInvoice)
     }
     this.deps.database.transaction(() => {
+      this.deps.projectLinkService?.releaseOnDelete('quote', id)
       this.deps.repository.delete(id)
     })
     return { success: true }

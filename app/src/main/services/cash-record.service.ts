@@ -27,6 +27,7 @@ import type { ReceiptRepository } from '../repositories/receipt.repository'
 import type { ReceiptView } from '@shared/types/receipt'
 import type { ReceiptService, StoredReceiptFile } from './receipts/receipt.service'
 import type { IntegrityService } from './integrity/integrity.service'
+import type { ProjectLinkService } from './project-link.service'
 import { computeRecordHash } from './integrity/record-hash'
 import type { RecordHistoryService } from './record-history.service'
 
@@ -71,6 +72,8 @@ export interface CashRecordServiceDeps {
   integrityService: IntegrityService
   /** 領収書の保存(F-22)。未指定の場合、領収書の添付はできない */
   receiptService?: ReceiptService
+  /** 案件の紐づけ(F-30)。未指定の場合、案件は扱わない(本番では必ず指定する) */
+  projectLinkService?: ProjectLinkService
 }
 
 function parseOrThrow<T>(
@@ -129,7 +132,9 @@ export class CashRecordService implements InvoicePaymentRecorder {
   }
 
   createRecord(rawInput: CashRecordCreateInput): { id: number } {
-    const { receiptTokens, ...input } = parseOrThrow(CashRecordCreateSchema.safeParse(rawInput))
+    const { receiptTokens, projectId, ...input } = parseOrThrow(
+      CashRecordCreateSchema.safeParse(rawInput)
+    )
     this.assertAccount(input.accountId, input.kind, null)
     this.assertClient(input.clientId, null)
     // 領収書のファイル保存はトランザクションの前に行い、失敗時は保存済みのファイルを削除する
@@ -145,6 +150,9 @@ export class CashRecordService implements InvoicePaymentRecorder {
         })
         for (const file of stored) this.deps.receiptRepository.insert({ recordId: id, ...file })
         this.commit(id, 'create', null, null)
+        // 登録と履歴の記録の後、案件の紐づけ(・付け替え履歴)を同一トランザクションで行う(詳細設計書4.30章手順3)
+        if (projectId != null)
+          this.deps.projectLinkService?.applyRequested('cash_record', id, projectId)
         return { id }
       })
       this.deps.receiptService?.releaseTokens(receiptTokens)
@@ -223,6 +231,8 @@ export class CashRecordService implements InvoicePaymentRecorder {
     if (!current || current.isDeleted) throw new RecordError(RECORD_MESSAGES.notFound)
     if (current.invoiceId !== null) throw new RecordError(RECORD_MESSAGES.autoRecordDeleteBlocked)
     this.deps.database.transaction(() => {
+      // 削除する記録の案件の紐づけを、削除の直前に解除する(詳細設計書4.30章手順6。取消済の記録は取消後も維持する)
+      this.deps.projectLinkService?.releaseOnDelete('cash_record', id)
       const before = this.snapshotOf(current)
       this.deps.repository.update(id, { ...this.valuesOf(current), isDeleted: true })
       this.commit(id, 'delete', reason || null, before)

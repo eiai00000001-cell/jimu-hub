@@ -13,6 +13,7 @@ import type { InvoiceRepository } from '../repositories/invoice.repository'
 import type { CompanyProfileRepository } from '../repositories/company-profile.repository'
 import type { NumberingService } from './numbering.service'
 import type { PdfService } from './pdf.service'
+import type { ProjectLinkService } from './project-link.service'
 import type { InvoicePaymentRecorder } from './cash-record.service'
 import { CompanyProfileNotSetError, PdfSaveError, QuoteNotFoundError } from './quote.service'
 
@@ -60,6 +61,8 @@ export interface InvoiceServiceDeps {
   pdfService: PdfService
   /** 入金記録の自動作成・取消(F-21)。入金ステータス変更と不可分のため必須。本番では`CashRecordService`を渡す */
   paymentRecorder: InvoicePaymentRecorder
+  /** 案件の紐づけ(F-30)。未指定の場合、案件は扱わない(本番では必ず指定する) */
+  projectLinkService?: ProjectLinkService
 }
 
 /**
@@ -88,12 +91,19 @@ export class InvoiceService {
 
   saveDraft(input: InvoiceInput, id?: number): { id: number } {
     const validated = parseOrThrow(input)
-    if (id !== undefined) {
-      this.assertEditable(id)
-      this.deps.repository.update(id, validated)
-      return { id }
-    }
-    return this.deps.repository.insert(validated)
+    // 保存と案件の紐づけ(・履歴)は同一トランザクションで行う(詳細設計書4.30章手順3)
+    return this.deps.database.transaction(() => {
+      let savedId: number
+      if (id !== undefined) {
+        this.assertEditable(id)
+        this.deps.repository.update(id, validated)
+        savedId = id
+      } else {
+        savedId = this.deps.repository.insert(validated).id
+      }
+      this.deps.projectLinkService?.applyRequested('invoice', savedId, validated.projectId)
+      return { id: savedId }
+    })
   }
 
   async finalizeInvoice(input: InvoiceInput, id?: number): Promise<FinalizeInvoiceResult> {
@@ -109,6 +119,7 @@ export class InvoiceService {
         this.deps.repository.update(id, validated)
       }
       const targetId = id ?? this.deps.repository.insert(validated).id
+      this.deps.projectLinkService?.applyRequested('invoice', targetId, validated.projectId)
 
       const year = Number(validated.issueDate.slice(0, 4))
       const number = this.deps.numberingService.issueNumber('invoice', year)
@@ -154,23 +165,28 @@ export class InvoiceService {
     const pad = (n: number): string => String(n).padStart(2, '0')
     const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 
-    const { id } = this.deps.repository.insert(
-      {
-        clientId: quote.clientId,
-        issueDate: today,
-        dueDate: '',
-        remarks: quote.remarks ?? '',
-        lineItems: quote.lineItems.map((line) => ({
-          name: line.name,
-          quantity: line.quantity,
-          unit: line.unit ?? '',
-          unitPrice: line.unitPrice,
-          taxRate: line.taxRate,
-          withholdingTarget: false
-        }))
-      },
-      quote.id
-    )
+    const id = this.deps.database.transaction(() => {
+      const created = this.deps.repository.insert(
+        {
+          clientId: quote.clientId,
+          issueDate: today,
+          dueDate: '',
+          remarks: quote.remarks ?? '',
+          lineItems: quote.lineItems.map((line) => ({
+            name: line.name,
+            quantity: line.quantity,
+            unit: line.unit ?? '',
+            unitPrice: line.unitPrice,
+            taxRate: line.taxRate,
+            withholdingTarget: false
+          }))
+        },
+        quote.id
+      )
+      // 変換元の見積書の案件が進行中の場合のみ、請求書へ引き継ぐ(詳細設計書4.30章手順4)
+      this.deps.projectLinkService?.carryOverFromQuote(quote.id, created.id)
+      return created.id
+    })
     return { invoiceId: id }
   }
 
@@ -239,6 +255,7 @@ export class InvoiceService {
       throw new InvoiceNotDeletableError(INVOICE_MESSAGES.hasCashRecord)
     }
     this.deps.database.transaction(() => {
+      this.deps.projectLinkService?.releaseOnDelete('invoice', id)
       this.deps.repository.delete(id)
     })
     return { success: true }

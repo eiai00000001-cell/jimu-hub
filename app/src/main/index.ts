@@ -31,9 +31,7 @@ import { RecordsIpcHandler } from './ipc/records.ipc-handler'
 import { createRecordServices } from './services/record-services'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { ProjectsIpcHandler } from './ipc/projects.ipc-handler'
-import { ProjectLinkService } from './services/project-link.service'
 import { ProjectService } from './services/project.service'
-import { ProjectRepository } from './repositories/project.repository'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
@@ -142,16 +140,17 @@ app.whenReady().then(() => {
     const quoteRepository = new QuoteRepository(database)
     const numberingService = new NumberingService(new DocumentNumberSequenceRepository(database))
     const pdfService = new PdfService({ documentsDir })
+    const recordServices = createRecordServices(database, documentsDir)
+    const { projectRepository, projectLinkService } = recordServices
     const quoteService = new QuoteService({
       database,
       repository: quoteRepository,
       companyProfileRepository,
       numberingService,
-      pdfService
+      pdfService,
+      projectLinkService
     })
 
-    const recordServices = createRecordServices(database, documentsDir)
-    const projectRepository = new ProjectRepository(database)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
@@ -159,7 +158,8 @@ app.whenReady().then(() => {
       companyProfileRepository,
       numberingService,
       pdfService,
-      paymentRecorder: recordServices.cashRecordService
+      paymentRecorder: recordServices.cashRecordService,
+      projectLinkService
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
@@ -180,7 +180,7 @@ app.whenReady().then(() => {
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
     new ProjectsIpcHandler(
       new ProjectService(database, projectRepository),
-      new ProjectLinkService(database, projectRepository)
+      projectLinkService
     ).registerHandlers()
     const restoreStore = new RestoreSessionStore()
     new DataIpcHandler(backupService, {

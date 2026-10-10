@@ -69,6 +69,35 @@ export class ProjectLinkService {
     })
   }
 
+  /**
+   * 作成・保存時に、入力の案件を反映する(詳細設計書4.30章手順3)。`projectId`が省略(undefined)の場合は何もしない。
+   * 現在の案件と同じ場合は変更しない(完了した案件のままの下書きを、そのまま保存・確定できる)。
+   */
+  applyRequested(
+    targetType: ProjectLinkTargetType,
+    targetId: number,
+    projectId: number | null | undefined
+  ): void {
+    if (projectId === undefined) return
+    this.changeLink(targetType, targetId, projectId)
+  }
+
+  /** 対象の削除に伴い、案件の紐づけを解除する(削除と同じトランザクション内で、削除の直前に呼ぶ。詳細設計書4.30章手順6) */
+  releaseOnDelete(targetType: ProjectLinkTargetType, targetId: number): void {
+    this.changeLink(targetType, targetId, null, 'auto_release')
+  }
+
+  /**
+   * 見積書から請求書(下書き)へ変換したとき、変換元の見積書の案件が進行中の場合のみ、請求書へ引き継ぐ
+   * (完了の案件の場合は引き継がない。詳細設計書4.30章手順4。★27)。
+   */
+  carryOverFromQuote(quoteId: number, invoiceId: number): void {
+    const quote = this.repository.findLinkTarget('quote', quoteId)
+    if (!quote || quote.projectId === null) return
+    const project = this.repository.findById(quote.projectId)
+    if (project?.status === 'active') this.changeLink('invoice', invoiceId, project.id)
+  }
+
   private decideKind(from: number | null, to: number | null): ProjectLinkKind {
     if (to === null) return 'unassign'
     return from === null ? 'assign' : 'change'
