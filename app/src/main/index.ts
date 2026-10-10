@@ -30,6 +30,9 @@ import { ReceiptsIpcHandler } from './ipc/receipts.ipc-handler'
 import { RecordsIpcHandler } from './ipc/records.ipc-handler'
 import { createRecordServices } from './services/record-services'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
+import { ProjectsIpcHandler } from './ipc/projects.ipc-handler'
+import { ProjectService } from './services/project.service'
+import { ProjectRepository } from './repositories/project.repository'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
@@ -172,6 +175,9 @@ app.whenReady().then(() => {
       recordServices.historyService
     ).registerHandlers()
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
+    new ProjectsIpcHandler(
+      new ProjectService(database, new ProjectRepository(database))
+    ).registerHandlers()
     const restoreStore = new RestoreSessionStore()
     new DataIpcHandler(backupService, {
       store: restoreStore,

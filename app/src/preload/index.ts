@@ -11,6 +11,12 @@ import type {
 import type { ClientInput } from '@shared/schemas/client.schema'
 import type { ClientListFilter } from '@shared/types/client'
 import type { CompanyProfileInput } from '@shared/schemas/company-profile.schema'
+import type {
+  ProjectInput,
+  ProjectLinkChange,
+  ProjectListFilter
+} from '@shared/schemas/project.schema'
+import type { ProjectLinkTargetType } from '@shared/types/project'
 import type { AccountListFilter } from '@shared/types/account'
 import type { AccountInput } from '@shared/schemas/account.schema'
 import type { CsvExportInput } from '@shared/schemas/csv-export.schema'
@@ -40,6 +46,21 @@ const jimuhubApi: JimuhubApi = {
   reactivateClient: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.clientsReactivate, id),
   deleteQuoteDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.quotesDeleteDraft, id),
   deleteInvoiceDraft: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.invoicesDeleteDraft, id),
+  listProjects: (filter?: ProjectListFilter) =>
+    ipcRenderer.invoke(IPC_CHANNELS.projectsList, filter),
+  getProject: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.projectsGet, id),
+  createProject: (input: ProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.projectsCreate, input),
+  updateProject: (id: number, input: ProjectInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.projectsUpdate, id, input),
+  deleteProject: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.projectsDelete, id),
+  completeProject: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.projectsComplete, id),
+  reopenProject: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.projectsReopen, id),
+  listSelectableProjects: (includeId?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.projectsListSelectable, includeId),
+  changeProjectLink: (change: ProjectLinkChange) =>
+    ipcRenderer.invoke(IPC_CHANNELS.projectLinksChange, change),
+  listProjectLinkHistory: (targetType: ProjectLinkTargetType, targetId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.projectLinksHistory, targetType, targetId),
   listAccounts: (filter?: AccountListFilter) =>
     ipcRenderer.invoke(IPC_CHANNELS.accountsList, filter),
   createAccount: (input: AccountInput) => ipcRenderer.invoke(IPC_CHANNELS.accountsCreate, input),

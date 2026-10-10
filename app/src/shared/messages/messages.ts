@@ -55,6 +55,28 @@ export const ACCOUNT_MESSAGES = {
   confirmDelete: (name: string): string => `「${name}」を削除します。よろしいですか`
 } as const
 
+export const PROJECT_MESSAGES = {
+  nameRequired: '案件名を入力してください',
+  nameTooLong: '案件名は100文字以内で入力してください',
+  memoTooLong: 'メモは1000文字以内で入力してください',
+  periodInvalid: '終了日は、開始日以降の日付を入力してください',
+  periodFilterInvalid: '期間の終了日は、開始日以降の日付を入力してください',
+  clientNotSelectable: '利用停止中の取引先は選択できません',
+  notFound: '指定された案件が見つかりません',
+  hasLinks: '紐づけがあるため削除できません。完了にして、一覧の絞り込みでご確認ください',
+  alreadyCompleted: 'すでに完了の案件です',
+  alreadyActive: 'すでに進行中の案件です',
+  targetNotFound: '対象が見つかりません',
+  targetDeleted: '削除した記録は案件に紐づけられません',
+  projectNotSelectable: '完了の案件には、新しく紐づけられません',
+  linkHistoryWriteFailure: '付け替え履歴を記録できなかったため、変更できませんでした',
+  confirmComplete: 'この案件を完了にします。完了にしても、データは残ります。よろしいですか',
+  confirmReopen: 'この案件を進行中に戻します。よろしいですか',
+  confirmDelete: 'この案件を削除します。削除すると元に戻せません。よろしいですか',
+  salesNote: '売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません',
+  empty: '該当する案件がありません'
+} as const
+
 export const RECORD_MESSAGES = {
   dateRequired: '日付を入力してください',
   dateOutOfRange: '日付は2000年〜2099年の範囲で入力してください',

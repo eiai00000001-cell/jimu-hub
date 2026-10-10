@@ -6,6 +6,14 @@ import type { AccountView, AccountListFilter } from '../types/account'
 import type { AccountInput } from '../schemas/account.schema'
 import type { CsvExportInput } from '../schemas/csv-export.schema'
 import type { SummaryInput } from '../schemas/summary.schema'
+import type {
+  ProjectDetail,
+  ProjectLinkHistoryEntry,
+  ProjectLinkTargetType,
+  ProjectListItem,
+  ProjectSelectable
+} from '../types/project'
+import type { ProjectInput, ProjectLinkChange, ProjectListFilter } from '../schemas/project.schema'
 import type { SummaryResult } from '../types/summary'
 import type { PickReceiptsResult, ReceiptPreviewResult } from '../types/receipt'
 import type {
@@ -158,6 +166,21 @@ export interface JimuhubApi {
   deleteQuoteDraft(id: number): Promise<DeactivateClientResult>
   /** 下書きの請求書を削除する(F-26)。PDF保存済み等の場合はreject */
   deleteInvoiceDraft(id: number): Promise<DeactivateClientResult>
+  /** 案件(F-27〜F-30)。対象が存在しない場合などはPromiseがrejectされ、メッセージは`PROJECT_MESSAGES`の文言 */
+  listProjects(filter?: ProjectListFilter): Promise<ProjectListItem[]>
+  getProject(id: number): Promise<ProjectDetail>
+  createProject(input: ProjectInput): Promise<{ id: number }>
+  updateProject(id: number, input: ProjectInput): Promise<{ success: true }>
+  deleteProject(id: number): Promise<{ success: true }>
+  completeProject(id: number): Promise<{ success: true }>
+  reopenProject(id: number): Promise<{ success: true }>
+  /** 紐づけ先の候補(進行中の案件。`includeId`の案件は完了でも含める) */
+  listSelectableProjects(includeId?: number): Promise<ProjectSelectable[]>
+  changeProjectLink(change: ProjectLinkChange): Promise<{ changed: boolean }>
+  listProjectLinkHistory(
+    targetType: ProjectLinkTargetType,
+    targetId: number
+  ): Promise<ProjectLinkHistoryEntry[]>
   listAccounts(filter?: AccountListFilter): Promise<AccountView[]>
   createAccount(input: AccountInput): Promise<{ id: number }>
   renameAccount(id: number, name: string): Promise<DeactivateClientResult>
