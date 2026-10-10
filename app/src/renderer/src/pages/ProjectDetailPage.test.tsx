@@ -68,6 +68,13 @@ const detail = (overrides: Partial<ProjectDetail> = {}): ProjectDetail => ({
       kind: 'assign'
     }
   ],
+  summary: {
+    sales: 363000,
+    withholding: 30630,
+    expense: 55000,
+    balance: 308000,
+    counts: { quotes: 1, invoicesIssued: 1, invoicesDraft: 1, incomes: 2, expenses: 1 }
+  },
   deletable: false,
   ...overrides
 })
@@ -222,5 +229,37 @@ describe('ProjectDetailPage(F-27・F-29。詳細設計書3.24章)', () => {
     await userEvent.click(buttons[2]!)
     expect(h.onOpenRecord).not.toHaveBeenCalled()
     expect(screen.getByText(/2026-09-15 経費 デザイン作業の外注/)).toBeInTheDocument()
+  })
+
+  it('案件別収支(売上・経費・差引・注記)と件数の内訳を表示する', async () => {
+    render(<ProjectDetailPage projectId={7} {...handlers()} />)
+    await screen.findByText('案件別収支')
+
+    expect(screen.getByText('¥363,000', { selector: '.summary-card .value' })).toBeInTheDocument()
+    expect(screen.getByText('うち源泉徴収額 ¥30,630')).toBeInTheDocument()
+    expect(screen.getByText('¥55,000', { selector: '.summary-card .value' })).toBeInTheDocument()
+    expect(screen.getByText('¥308,000')).toBeInTheDocument()
+    expect(
+      screen.getByText('売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。')
+    ).toBeInTheDocument()
+    expect(screen.getByText(/件\(発行済み 1 \/ 下書き 1\)/)).toBeInTheDocument()
+    expect(screen.getByText('入金(取消済を含む)')).toBeInTheDocument()
+  })
+
+  it('源泉徴収額が0の場合は注記を表示しない。差引がマイナスの場合は「−¥」で表示する', async () => {
+    getProject.mockResolvedValue(
+      detail({
+        summary: {
+          sales: 0,
+          withholding: 0,
+          expense: 12000,
+          balance: -12000,
+          counts: { quotes: 0, invoicesIssued: 0, invoicesDraft: 0, incomes: 0, expenses: 1 }
+        }
+      })
+    )
+    render(<ProjectDetailPage projectId={7} {...handlers()} />)
+    expect(await screen.findByText('−¥12,000')).toBeInTheDocument()
+    expect(screen.queryByText(/うち源泉徴収額/)).not.toBeInTheDocument()
   })
 })

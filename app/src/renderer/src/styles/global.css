@@ -1276,3 +1276,8 @@ button {
   margin: 10px 0 0;
   line-height: 1.6;
 }
+.summary-card .sub-total {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}

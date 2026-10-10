@@ -12,10 +12,9 @@ import {
   formatHistoryKind,
   formatHistoryProject,
   formatHistoryTarget,
-  formatProjectPeriod
+  formatProjectPeriod,
+  formatYen
 } from '../utils/project-format'
-
-const yen = (amount: number): string => `¥${amount.toLocaleString('ja-JP')}`
 
 /** この画面の案件は、紐づく対象の現在の案件である(案件の詳細画面に表示している行は、すべてこの案件に紐づいている) */
 function toRef(project: ProjectDetail): ProjectRef {
@@ -154,6 +153,66 @@ export function ProjectDetailPage({
             </dl>
           </div>
 
+          <div className="section-title">案件別収支</div>
+          <div className="summary-cards">
+            <div className="summary-card">
+              <div className="label">売上</div>
+              <div className="value">{formatYen(project.summary.sales)}</div>
+              {project.summary.withholding > 0 ? (
+                <div className="sub-total">
+                  うち源泉徴収額 {formatYen(project.summary.withholding)}
+                </div>
+              ) : null}
+            </div>
+            <div className="summary-card">
+              <div className="label">経費</div>
+              <div className="value">{formatYen(project.summary.expense)}</div>
+            </div>
+            <div className="summary-card">
+              <div className="label">差引(売上−経費)</div>
+              <div className="value">{formatYen(project.summary.balance)}</div>
+            </div>
+          </div>
+          <p className="note-text" style={{ margin: '-8px 0 0' }}>
+            {PROJECT_MESSAGES.salesNote}
+          </p>
+
+          <div className="section-title">件数の内訳</div>
+          <div className="count-grid">
+            <div className="count-item">
+              <div className="label">見積書</div>
+              <div className="value">
+                {project.summary.counts.quotes}
+                <small> 件</small>
+              </div>
+            </div>
+            <div className="count-item">
+              <div className="label">請求書</div>
+              <div className="value">
+                {project.summary.counts.invoicesIssued + project.summary.counts.invoicesDraft}
+                <small>
+                  {' '}
+                  件(発行済み {project.summary.counts.invoicesIssued} / 下書き{' '}
+                  {project.summary.counts.invoicesDraft})
+                </small>
+              </div>
+            </div>
+            <div className="count-item">
+              <div className="label">入金(取消済を含む)</div>
+              <div className="value">
+                {project.summary.counts.incomes}
+                <small> 件</small>
+              </div>
+            </div>
+            <div className="count-item">
+              <div className="label">経費</div>
+              <div className="value">
+                {project.summary.counts.expenses}
+                <small> 件</small>
+              </div>
+            </div>
+          </div>
+
           <div className="section-title">紐づく見積書・請求書</div>
           {project.quotes.length + project.invoices.length === 0 ? (
             <div className="empty-state">紐づく見積書・請求書はありません</div>
@@ -192,7 +251,7 @@ export function ProjectDetailPage({
                       <td>{doc.type === 'quote' ? '見積書' : '請求書'}</td>
                       <td>{doc.issueDate}</td>
                       <td>{doc.clientName}</td>
-                      <td className="num">{yen(doc.totalAmount)}</td>
+                      <td className="num">{formatYen(doc.totalAmount)}</td>
                       <td>
                         <Badge variant={doc.status === 'draft' ? 'draft' : 'finalized'} />
                       </td>
@@ -250,7 +309,7 @@ export function ProjectDetailPage({
                     <td className="num">
                       <span className="sign">
                         {record.kind === 'income' ? '+' : '−'}
-                        {yen(record.amount)}
+                        {formatYen(record.amount)}
                       </span>
                     </td>
                     <td>

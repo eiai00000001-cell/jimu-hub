@@ -13,6 +13,9 @@ const item = (overrides: Partial<ProjectListItem> = {}): ProjectListItem => ({
   status: 'active',
   startDate: '2026-04-01',
   endDate: '2027-03-31',
+  sales: 198000,
+  expense: 0,
+  balance: 198000,
   ...overrides
 })
 
@@ -46,6 +49,20 @@ describe('ProjectListPage(F-28・F-29。詳細設計書3.22章)', () => {
     expect(screen.getByText('進行中', { selector: '.badge' })).toBeInTheDocument()
     expect(screen.getByText('2026-04-01〜2027-03-31')).toBeInTheDocument()
     expect(screen.getByText('1件')).toBeInTheDocument()
+  })
+
+  it('収支の概要(売上・経費・差引)を表示する。差引がマイナスの場合は「−¥」', async () => {
+    listProjects.mockResolvedValue([
+      item({ id: 1, sales: 0, expense: 12000, balance: -12000 }),
+      item({ id: 2, name: '黒字案件', sales: 363000, expense: 55000, balance: 308000 })
+    ])
+    render(<ProjectListPage onNewProject={vi.fn()} onSelectProject={vi.fn()} />)
+
+    expect(await screen.findByText('−¥12,000')).toBeInTheDocument()
+    expect(screen.getByText('¥363,000')).toBeInTheDocument()
+    expect(screen.getByText('¥55,000')).toBeInTheDocument()
+    expect(screen.getByText('¥308,000')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '差引' })).toBeInTheDocument()
   })
 
   it('開始日のみの案件は「開始日〜」、期間が無い案件は空欄で表示する', async () => {

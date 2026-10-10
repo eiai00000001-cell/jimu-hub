@@ -8,7 +8,7 @@ import { ProjectListFilterSchema } from '@shared/schemas/project.schema'
 import type { Client } from '@shared/types/client'
 import type { ProjectListItem, ProjectStatusFilter } from '@shared/types/project'
 import { toErrorMessage } from '../utils/error-message'
-import { formatProjectPeriod } from '../utils/project-format'
+import { formatProjectPeriod, formatYen } from '../utils/project-format'
 
 interface ProjectListPageProps {
   flashMessage?: string
@@ -173,6 +173,9 @@ export function ProjectListPage({
                 <th>取引先</th>
                 <th>状態</th>
                 <th>期間</th>
+                <th className="num">売上</th>
+                <th className="num">経費</th>
+                <th className="num">差引</th>
                 <th className="op">操作</th>
               </tr>
             </thead>
@@ -191,6 +194,9 @@ export function ProjectListPage({
                     />
                   </td>
                   <td>{formatProjectPeriod(project.startDate, project.endDate)}</td>
+                  <td className="num">{formatYen(project.sales)}</td>
+                  <td className="num">{formatYen(project.expense)}</td>
+                  <td className="num">{formatYen(project.balance)}</td>
                   <td className="op">
                     <Button
                       className="btn-sm"

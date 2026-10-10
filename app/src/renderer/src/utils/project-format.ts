@@ -40,3 +40,8 @@ const KIND_LABELS: Record<ProjectLinkHistoryEntry['kind'], string> = {
 export function formatHistoryKind(kind: ProjectLinkHistoryEntry['kind']): string {
   return KIND_LABELS[kind]
 }
+
+/** 金額(円)の表示。マイナスは「−¥12,000」 */
+export function formatYen(amount: number): string {
+  return `${amount < 0 ? '−' : ''}¥${Math.abs(amount).toLocaleString('ja-JP')}`
+}

@@ -58,12 +58,20 @@ test.describe('案件管理: 通し確認', () => {
     await expect(window.getByText('紐づく入出金・経費')).toBeVisible()
     await expect(window.getByRole('cell', { name: '案件の通信費', exact: true })).toBeVisible()
     await expect(window.getByRole('button', { name: '削除' })).toHaveCount(0)
+    // 案件別収支: 経費5,500円、売上0円、差引−5,500円(売上は発行済みの請求書のみ)
+    await expect(window.getByText('案件別収支')).toBeVisible()
+    await expect(window.locator('.summary-card .value').nth(1)).toHaveText('¥5,500')
+    await expect(window.locator('.summary-card .value').nth(2)).toHaveText('−¥5,500')
+    await expect(
+      window.getByText('売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。')
+    ).toBeVisible()
 
     // 案件を変更(解除)すると、紐づく行が消え、付け替え履歴に残る
     await window.getByRole('button', { name: '案件を変更' }).click()
     await window.getByLabel('変更先の案件').selectOption({ label: '案件なし' })
     await window.getByRole('button', { name: '変更する' }).click()
     await expect(window.getByText('紐づく入出金・経費はありません')).toBeVisible()
+    await expect(window.locator('.summary-card .value').nth(1)).toHaveText('¥0')
     await expect(window.getByRole('cell', { name: /^入出金 .* 案件の通信費$/ })).toHaveCount(2)
     await expect(window.getByText('解除')).toBeVisible()
     // 紐づけが0件になったため、削除できる

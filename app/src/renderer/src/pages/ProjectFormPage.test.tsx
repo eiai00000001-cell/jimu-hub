@@ -20,6 +20,13 @@ const detail = (overrides: Partial<ProjectDetail> = {}): ProjectDetail => ({
   invoices: [],
   records: [],
   history: [],
+  summary: {
+    sales: 0,
+    withholding: 0,
+    expense: 0,
+    balance: 0,
+    counts: { quotes: 0, invoicesIssued: 0, invoicesDraft: 0, incomes: 0, expenses: 0 }
+  },
   deletable: true,
   ...overrides
 })
