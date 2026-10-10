@@ -3,8 +3,9 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
+import { ProjectChangeDialog } from '../components/ProjectChangeDialog'
 import { PROJECT_MESSAGES } from '@shared/messages/messages'
-import type { ProjectDetail } from '@shared/types/project'
+import type { ProjectDetail, ProjectLinkTargetType, ProjectRef } from '@shared/types/project'
 import { toErrorMessage } from '../utils/error-message'
 import {
   formatDateTime,
@@ -15,6 +16,11 @@ import {
 } from '../utils/project-format'
 
 const yen = (amount: number): string => `¥${amount.toLocaleString('ja-JP')}`
+
+/** この画面の案件は、紐づく対象の現在の案件である(案件の詳細画面に表示している行は、すべてこの案件に紐づいている) */
+function toRef(project: ProjectDetail): ProjectRef {
+  return { id: project.id, name: project.name, status: project.status }
+}
 
 interface ProjectDetailPageProps {
   projectId: number
@@ -45,6 +51,11 @@ export function ProjectDetailPage({
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [changing, setChanging] = useState<{
+    targetType: ProjectLinkTargetType
+    targetId: number
+    targetLabel: string
+  } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -156,6 +167,7 @@ export function ProjectDetailPage({
                   <th>取引先</th>
                   <th className="num">合計金額</th>
                   <th>状態</th>
+                  <th className="op">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -184,6 +196,20 @@ export function ProjectDetailPage({
                       <td>
                         <Badge variant={doc.status === 'draft' ? 'draft' : 'finalized'} />
                       </td>
+                      <td className="op">
+                        <Button
+                          className="btn-sm"
+                          onClick={() =>
+                            setChanging({
+                              targetType: doc.type,
+                              targetId: doc.id,
+                              targetLabel: `${doc.type === 'quote' ? '見積書' : '請求書'} ${doc.documentNumber ?? '下書き'}`
+                            })
+                          }
+                        >
+                          案件を変更
+                        </Button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -202,6 +228,7 @@ export function ProjectDetailPage({
                   <th>摘要・メモ</th>
                   <th className="num">金額</th>
                   <th>状態</th>
+                  <th className="op">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,6 +259,21 @@ export function ProjectDetailPage({
                       ) : (
                         <span className="badge badge-active">有効</span>
                       )}
+                    </td>
+                    <td className="op">
+                      <Button
+                        className="btn-sm"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setChanging({
+                            targetType: 'cash_record',
+                            targetId: record.id,
+                            targetLabel: `${record.recordDate} ${record.kind === 'income' ? '入金' : '経費'} ${record.description}`
+                          })
+                        }}
+                      >
+                        案件を変更
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -273,6 +315,20 @@ export function ProjectDetailPage({
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>
         </>
+      ) : null}
+
+      {changing && project ? (
+        <ProjectChangeDialog
+          targetType={changing.targetType}
+          targetId={changing.targetId}
+          targetLabel={changing.targetLabel}
+          current={toRef(project)}
+          onClose={() => setChanging(null)}
+          onChanged={() => {
+            setChanging(null)
+            void reload()
+          }}
+        />
       ) : null}
     </AppShell>
   )

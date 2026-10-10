@@ -3,6 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
+import { ProjectLinkPanel } from '../components/ProjectLinkPanel'
 import type { Quote } from '@shared/types/quote'
 import { QUOTE_MESSAGES } from '@shared/messages/messages'
 import { toErrorMessage } from '../utils/error-message'
@@ -22,6 +23,8 @@ interface QuoteDetailPageProps {
   onConvertedToInvoice: (invoiceId: number) => void
   /** 下書きの削除成功時に呼ぶ。省略時は`onBackToList` */
   onDeleted?: () => void
+  /** 紐づく案件の名称押下時に、案件詳細画面へ遷移する */
+  onOpenProject?: (id: number) => void
 }
 
 /**
@@ -36,11 +39,14 @@ export function QuoteDetailPage({
   onBackToList,
   onEdit,
   onConvertedToInvoice,
-  onDeleted
+  onDeleted,
+  onOpenProject
 }: QuoteDetailPageProps): ReactElement {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -59,7 +65,7 @@ export function QuoteDetailPage({
     return () => {
       cancelled = true
     }
-  }, [quoteId])
+  }, [quoteId, reloadCount])
 
   /** [F-26]下書きの削除(詳細設計書4.26章) */
   async function handleDeleteDraft(): Promise<void> {
@@ -214,6 +220,15 @@ export function QuoteDetailPage({
               </dl>
             ) : null}
           </div>
+          <ProjectLinkPanel
+            targetType="quote"
+            targetId={quoteId}
+            targetLabel={`見積書 ${quote.quoteNumber ?? '下書き'}`}
+            project={quote.project ?? null}
+            canChange={true}
+            onOpenProject={onOpenProject}
+            onChanged={() => setReloadCount((count) => count + 1)}
+          />
           <div className="back-link">
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>

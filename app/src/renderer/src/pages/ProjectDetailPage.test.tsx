@@ -89,7 +89,12 @@ describe('ProjectDetailPage(F-27・F-29。詳細設計書3.24章)', () => {
       getProject,
       completeProject: vi.fn().mockResolvedValue({ success: true }),
       reopenProject: vi.fn().mockResolvedValue({ success: true }),
-      deleteProject: vi.fn().mockResolvedValue({ success: true })
+      deleteProject: vi.fn().mockResolvedValue({ success: true }),
+      listSelectableProjects: vi.fn().mockResolvedValue([
+        { id: 7, name: 'サンプル商事 Webサイト制作', status: 'active' },
+        { id: 8, name: '別の案件', status: 'active' }
+      ]),
+      changeProjectLink: vi.fn().mockResolvedValue({ changed: true })
     } as unknown as Window['jimuhubApi']
   })
   afterEach(() => vi.restoreAllMocks())
@@ -186,5 +191,36 @@ describe('ProjectDetailPage(F-27・F-29。詳細設計書3.24章)', () => {
     await userEvent.click(screen.getByText(/一覧へ戻る/))
     expect(h.onBackToList).toHaveBeenCalled()
     expect(within(document.body).queryByRole('button', { name: '編集' })).not.toBeInTheDocument()
+  })
+
+  it('紐づく行の「案件を変更」から、案件を付け替えると、詳細を再取得する', async () => {
+    render(<ProjectDetailPage projectId={7} {...handlers()} />)
+    const buttons = await screen.findAllByRole('button', { name: '案件を変更' })
+    expect(buttons).toHaveLength(4)
+
+    await userEvent.click(buttons[0]!)
+    expect(screen.getByText('請求書 下書き')).toBeInTheDocument()
+    await screen.findByRole('option', { name: '別の案件' })
+    await userEvent.selectOptions(screen.getByLabelText('変更先の案件'), '8')
+    await userEvent.click(screen.getByRole('button', { name: '変更する' }))
+
+    await waitFor(() =>
+      expect(window.jimuhubApi.changeProjectLink).toHaveBeenCalledWith({
+        targetType: 'invoice',
+        targetId: 2,
+        projectId: 8
+      })
+    )
+    await waitFor(() => expect(getProject).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('入出金・経費の行の「案件を変更」は、行クリック(詳細への遷移)を起こさない', async () => {
+    const h = handlers()
+    render(<ProjectDetailPage projectId={7} {...h} />)
+    const buttons = await screen.findAllByRole('button', { name: '案件を変更' })
+    await userEvent.click(buttons[2]!)
+    expect(h.onOpenRecord).not.toHaveBeenCalled()
+    expect(screen.getByText(/2026-09-15 経費 デザイン作業の外注/)).toBeInTheDocument()
   })
 })

@@ -31,6 +31,7 @@ import { RecordsIpcHandler } from './ipc/records.ipc-handler'
 import { createRecordServices } from './services/record-services'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
 import { ProjectsIpcHandler } from './ipc/projects.ipc-handler'
+import { ProjectLinkService } from './services/project-link.service'
 import { ProjectService } from './services/project.service'
 import { ProjectRepository } from './repositories/project.repository'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
@@ -150,6 +151,7 @@ app.whenReady().then(() => {
     })
 
     const recordServices = createRecordServices(database, documentsDir)
+    const projectRepository = new ProjectRepository(database)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
@@ -172,11 +174,13 @@ app.whenReady().then(() => {
     ).registerHandlers()
     new RecordsIpcHandler(
       recordServices.cashRecordService,
-      recordServices.historyService
+      recordServices.historyService,
+      projectRepository
     ).registerHandlers()
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
     new ProjectsIpcHandler(
-      new ProjectService(database, new ProjectRepository(database))
+      new ProjectService(database, projectRepository),
+      new ProjectLinkService(database, projectRepository)
     ).registerHandlers()
     const restoreStore = new RestoreSessionStore()
     new DataIpcHandler(backupService, {
@@ -188,8 +192,13 @@ app.whenReady().then(() => {
       })
     }).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
-    new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()
-    new InvoicesIpcHandler(invoiceService, documentsDir).registerHandlers()
+    new QuotesIpcHandler(
+      quoteService,
+      invoiceService,
+      documentsDir,
+      projectRepository
+    ).registerHandlers()
+    new InvoicesIpcHandler(invoiceService, documentsDir, projectRepository).registerHandlers()
   }
 
   createMainWindow()

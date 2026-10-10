@@ -3,20 +3,24 @@ import { IPC_CHANNELS } from '@shared/ipc/channels'
 import {
   ProjectIdSchema,
   ProjectInputSchema,
+  ProjectLinkChangeSchema,
   ProjectLinkHistoryQuerySchema,
   ProjectListFilterSchema,
   ProjectSelectableQuerySchema
 } from '@shared/schemas/project.schema'
 import type { ProjectService } from '../services/project.service'
+import type { ProjectLinkService } from '../services/project-link.service'
 
 /**
  * `projects:*`・`projectLinks:history`チャンネルを受信し`ProjectService`を呼び出すIPC層。
  * IPC境界でid・filter・入力をZodスキーマにより再検証する(詳細設計書4.27〜4.30章)。
- * `projectLinks:change`は、T-63-4で`ProjectLinkService`とともに登録する。
  * 参照元: 詳細設計書 5章(`ProjectsIpcHandler`)、7章
  */
 export class ProjectsIpcHandler {
-  constructor(private readonly service: ProjectService) {}
+  constructor(
+    private readonly service: ProjectService,
+    private readonly linkService: ProjectLinkService
+  ) {}
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.projectsList, async (_event, filter?: unknown) =>
@@ -45,6 +49,10 @@ export class ProjectsIpcHandler {
         ProjectSelectableQuerySchema.parse({ includeId: includeId ?? undefined }).includeId
       )
     )
+    ipcMain.handle(IPC_CHANNELS.projectLinksChange, async (_event, change: unknown) => {
+      const { targetType, targetId, projectId } = ProjectLinkChangeSchema.parse(change)
+      return this.linkService.changeLink(targetType, targetId, projectId)
+    })
     ipcMain.handle(
       IPC_CHANNELS.projectLinksHistory,
       async (_event, targetType: unknown, targetId: unknown) => {

@@ -65,6 +65,7 @@ function setup(getInvoice: unknown) {
   const showInvoicePdfInFolder = vi.fn().mockResolvedValue({ success: true })
   const updateInvoicePaymentStatus = vi.fn().mockResolvedValue({ success: true })
   window.jimuhubApi = {
+    listProjectLinkHistory: vi.fn().mockResolvedValue([]),
     getInvoice,
     updateInvoicePaymentStatus,
     openInvoicePdf,

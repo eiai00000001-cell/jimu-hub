@@ -61,6 +61,7 @@ function setup(
 ): Record<string, ReturnType<typeof vi.fn>> {
   const api = {
     getRecord: vi.fn().mockResolvedValue(record),
+    listProjectLinkHistory: vi.fn().mockResolvedValue([]),
     deleteRecord: vi.fn().mockResolvedValue({ success: true }),
     ...overrides
   }
@@ -276,6 +277,29 @@ describe('CashRecordDetailPage(F-18・F-20)', () => {
       expect(await screen.findByText('外した領収書')).toBeInTheDocument()
       await userEvent.click(screen.getByText('開く'))
       expect(await screen.findByText('領収書ファイルが見つかりません。案内')).toBeInTheDocument()
+    })
+  })
+
+  describe('案件(F-30)', () => {
+    it('紐づく案件と「案件を変更」を表示する。案件がなければ「案件なし」', async () => {
+      setup({ ...base, project: { id: 7, name: 'アルファ保守', status: 'active' } })
+      const onOpenProject = vi.fn()
+      render(<CashRecordDetailPage {...props()} onOpenProject={onOpenProject} />)
+      await userEvent.click(await screen.findByText('アルファ保守'))
+      expect(onOpenProject).toHaveBeenCalledWith(7)
+      expect(screen.getByRole('button', { name: '案件を変更' })).toBeInTheDocument()
+    })
+
+    it('取消済の記録でも「案件を変更」を表示するが、削除済みの記録(読み取り専用)では表示しない', async () => {
+      setup({ ...base, status: 'cancelled' })
+      const { unmount } = render(<CashRecordDetailPage {...props()} />)
+      expect(await screen.findByRole('button', { name: '案件を変更' })).toBeInTheDocument()
+      unmount()
+
+      setup({ ...base, isDeleted: true })
+      render(<CashRecordDetailPage {...props()} />)
+      await screen.findByText('案件なし')
+      expect(screen.queryByRole('button', { name: '案件を変更' })).not.toBeInTheDocument()
     })
   })
 })

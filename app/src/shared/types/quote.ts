@@ -1,4 +1,5 @@
 import type { Honorific } from './client'
+import type { ProjectRef } from './project'
 import type { TaxRate } from '../calculations/tax-calculation'
 
 /**
@@ -49,6 +50,8 @@ export interface Quote {
   lineItems: QuoteLineItem[]
   createdAt: string
   updatedAt: string
+  /** 紐づく案件(詳細取得時にIPC層が付与する。案件なしはnull。詳細設計書3.26章) */
+  project?: ProjectRef | null
 }
 
 /** 見積書一覧の1行(一覧表示用の要約データ) */

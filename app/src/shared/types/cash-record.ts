@@ -1,3 +1,4 @@
+import type { ProjectRef } from './project'
 import type { ReceiptCheckState, ReceiptView } from './receipt'
 import type {
   HISTORY_OPERATIONS,
@@ -159,4 +160,6 @@ export interface CashRecordDetail {
   receipts: ReceiptView[]
   history: HistoryEntryView[]
   integrity: RecordIntegrity
+  /** 紐づく案件(詳細取得時にIPC層が付与する。案件なしはnull。詳細設計書3.26章) */
+  project?: ProjectRef | null
 }

@@ -229,6 +229,7 @@ export function App(): ReactElement {
               setRoute({ name: 'cashList', flashMessage: RECORD_MESSAGES.deleteSuccess })
             }
             onOpenInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
+            onOpenProject={(id) => setRoute({ name: 'projectDetail', id })}
           />
         )
       case 'clientNew':
@@ -360,6 +361,7 @@ export function App(): ReactElement {
                 flashMessage: INVOICE_MESSAGES.convertSuccess
               })
             }
+            onOpenProject={(id) => setRoute({ name: 'projectDetail', id })}
           />
         )
       case 'invoiceNew':
@@ -433,6 +435,7 @@ export function App(): ReactElement {
             }
             onOpenQuote={(quoteId) => setRoute({ name: 'quoteDetail', id: quoteId })}
             onOpenCashRecord={(id) => setRoute({ name: 'cashDetail', id, from: 'records' })}
+            onOpenProject={(id) => setRoute({ name: 'projectDetail', id })}
           />
         )
       default:

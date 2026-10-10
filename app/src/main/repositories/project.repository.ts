@@ -1,6 +1,9 @@
 import type { Database } from '../db/db'
 import type {
   Project,
+  ProjectLinkKind,
+  ProjectLinkTargetType,
+  ProjectRef,
   ProjectLinkHistoryEntry,
   ProjectLinkedDocument,
   ProjectLinkedRecord,
@@ -9,6 +12,11 @@ import type {
   ProjectStatus
 } from '@shared/types/project'
 import type { ProjectListFilter } from '@shared/schemas/project.schema'
+
+/** 見積書・請求書・入出金の詳細取得時に、紐づく案件を付与するための参照(IPC層が使う) */
+export interface ProjectRefLookup {
+  findLinkedProjectRef(targetType: ProjectLinkTargetType, targetId: number): ProjectRef | null
+}
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -223,6 +231,90 @@ export class ProjectRepository {
         .prepare(`${HISTORY_SELECT} WHERE target_type = ? AND target_id = ? ORDER BY id DESC`)
         .all(targetType, targetId)
     )
+  }
+
+  /** 付け替えの対象(見積書・請求書・入出金)の現在の案件・表示用の名称・削除状態。存在しなければnull */
+  findLinkTarget(
+    targetType: ProjectLinkTargetType,
+    targetId: number
+  ): { projectId: number | null; label: string; deleted: boolean } | null {
+    if (targetType === 'cash_record') {
+      const row = this.sqlite
+        .prepare(
+          'SELECT project_id AS projectId, record_date AS date, description, is_deleted AS deleted FROM cash_records WHERE id = ?'
+        )
+        .get(targetId) as
+        { projectId: number | null; date: string; description: string; deleted: number } | undefined
+      return row
+        ? {
+            projectId: row.projectId,
+            label: `${row.date} ${row.description}`.slice(0, 30),
+            deleted: row.deleted === 1
+          }
+        : null
+    }
+    const table = targetType === 'quote' ? 'quotes' : 'invoices'
+    const numberColumn = targetType === 'quote' ? 'quote_number' : 'invoice_number'
+    const row = this.sqlite
+      .prepare(
+        `SELECT project_id AS projectId, ${numberColumn} AS documentNumber FROM ${table} WHERE id = ?`
+      )
+      .get(targetId) as { projectId: number | null; documentNumber: string | null } | undefined
+    return row
+      ? { projectId: row.projectId, label: row.documentNumber ?? '下書き', deleted: false }
+      : null
+  }
+
+  /**
+   * 対象の`project_id`のみを更新する。`updated_at`・`pdf_hash`・`record_hash`・`pdf_hash_mismatch`は更新しない
+   * (案件の紐づけは、書類・記録の本体とは別に管理する。詳細設計書4.30章手順2-4)。
+   */
+  setProjectId(
+    targetType: ProjectLinkTargetType,
+    targetId: number,
+    projectId: number | null
+  ): void {
+    const table =
+      targetType === 'quote' ? 'quotes' : targetType === 'invoice' ? 'invoices' : 'cash_records'
+    this.sqlite.prepare(`UPDATE ${table} SET project_id = ? WHERE id = ?`).run(projectId, targetId)
+  }
+
+  insertHistory(entry: {
+    targetType: ProjectLinkTargetType
+    targetId: number
+    targetLabel: string
+    fromProjectId: number | null
+    fromProjectName: string | null
+    toProjectId: number | null
+    toProjectName: string | null
+    kind: ProjectLinkKind
+  }): void {
+    this.sqlite
+      .prepare(
+        `INSERT INTO project_link_history
+           (operated_at, target_type, target_id, target_label, from_project_id, from_project_name,
+            to_project_id, to_project_name, kind)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        nowIso(),
+        entry.targetType,
+        entry.targetId,
+        entry.targetLabel,
+        entry.fromProjectId,
+        entry.fromProjectName,
+        entry.toProjectId,
+        entry.toProjectName,
+        entry.kind
+      )
+  }
+
+  /** 対象に紐づく案件(名称・状態つき)。紐づけがなければnull */
+  findLinkedProjectRef(targetType: ProjectLinkTargetType, targetId: number): ProjectRef | null {
+    const target = this.findLinkTarget(targetType, targetId)
+    if (!target || target.projectId === null) return null
+    const project = this.findById(target.projectId)
+    return project ? { id: project.id, name: project.name, status: project.status } : null
   }
 
   private mapHistory(rows: unknown[]): ProjectLinkHistoryEntry[] {

@@ -15,11 +15,13 @@ vi.mock('electron', () => ({
 
 import { ProjectsIpcHandler } from './projects.ipc-handler'
 import type { ProjectService } from '../services/project.service'
+import type { ProjectLinkService } from '../services/project-link.service'
 
 const validInput = { name: '案件', clientId: null, startDate: '', endDate: '', memo: '' }
 
 describe('ProjectsIpcHandler(IPC境界での再検証)', () => {
   let service: Record<string, ReturnType<typeof vi.fn>>
+  let linkService: { changeLink: ReturnType<typeof vi.fn> }
 
   beforeEach(() => {
     handlers.clear()
@@ -34,7 +36,11 @@ describe('ProjectsIpcHandler(IPC境界での再検証)', () => {
       listSelectable: vi.fn().mockReturnValue([]),
       listHistory: vi.fn().mockReturnValue([])
     }
-    new ProjectsIpcHandler(service as unknown as ProjectService).registerHandlers()
+    linkService = { changeLink: vi.fn().mockReturnValue({ changed: true }) }
+    new ProjectsIpcHandler(
+      service as unknown as ProjectService,
+      linkService as unknown as ProjectLinkService
+    ).registerHandlers()
   })
 
   const call = (channel: string, ...args: unknown[]): unknown => handlers.get(channel)!({}, ...args)
@@ -49,6 +55,7 @@ describe('ProjectsIpcHandler(IPC境界での再検証)', () => {
       IPC_CHANNELS.projectsComplete,
       IPC_CHANNELS.projectsReopen,
       IPC_CHANNELS.projectsListSelectable,
+      IPC_CHANNELS.projectLinksChange,
       IPC_CHANNELS.projectLinksHistory
     ]) {
       expect(handlers.has(channel)).toBe(true)
@@ -115,5 +122,33 @@ describe('ProjectsIpcHandler(IPC境界での再検証)', () => {
     expect(service.listHistory).toHaveBeenCalledWith('quote', 5)
     await expect(call(IPC_CHANNELS.projectLinksHistory, 'other', 5)).rejects.toThrow()
     await expect(call(IPC_CHANNELS.projectLinksHistory, 'quote', 0)).rejects.toThrow()
+  })
+
+  it('案件の紐づけ・付け替え・解除は、入力を検証してProjectLinkServiceへ渡す', async () => {
+    expect(
+      await call(IPC_CHANNELS.projectLinksChange, {
+        targetType: 'invoice',
+        targetId: 2,
+        projectId: 7
+      })
+    ).toEqual({ changed: true })
+    expect(linkService.changeLink).toHaveBeenCalledWith('invoice', 2, 7)
+    await call(IPC_CHANNELS.projectLinksChange, {
+      targetType: 'quote',
+      targetId: 1,
+      projectId: null
+    })
+    expect(linkService.changeLink).toHaveBeenLastCalledWith('quote', 1, null)
+
+    await expect(
+      call(IPC_CHANNELS.projectLinksChange, { targetType: 'client', targetId: 1, projectId: 1 })
+    ).rejects.toThrow()
+    await expect(
+      call(IPC_CHANNELS.projectLinksChange, { targetType: 'quote', targetId: 0, projectId: 1 })
+    ).rejects.toThrow()
+    await expect(
+      call(IPC_CHANNELS.projectLinksChange, { targetType: 'quote', targetId: 1, projectId: 0 })
+    ).rejects.toThrow()
+    expect(linkService.changeLink).toHaveBeenCalledTimes(2)
   })
 })

@@ -13,6 +13,7 @@ import type {
   OpenPdfResult
 } from '@shared/ipc/api'
 import type { InvoiceService } from '../services/invoice.service'
+import type { ProjectRefLookup } from '../repositories/project.repository'
 import { PdfOpener } from './pdf-opener'
 
 function parseId(id: unknown): number {
@@ -32,7 +33,8 @@ export class InvoicesIpcHandler {
 
   constructor(
     private readonly service: InvoiceService,
-    documentsDir: string
+    documentsDir: string,
+    private readonly projectRefs?: ProjectRefLookup
   ) {
     this.pdfOpener = new PdfOpener(documentsDir)
   }
@@ -44,9 +46,12 @@ export class InvoicesIpcHandler {
     ipcMain.handle(IPC_CHANNELS.invoicesDeleteDraft, async (_event, id: unknown) =>
       this.service.deleteDraft(parseId(id))
     )
-    ipcMain.handle(IPC_CHANNELS.invoicesGet, async (_event, id: unknown) =>
-      this.service.getInvoice(parseId(id))
-    )
+    ipcMain.handle(IPC_CHANNELS.invoicesGet, async (_event, id: unknown) => {
+      const invoice = this.service.getInvoice(parseId(id))
+      return this.projectRefs
+        ? { ...invoice, project: this.projectRefs.findLinkedProjectRef('invoice', invoice.id) }
+        : invoice
+    })
     ipcMain.handle(
       IPC_CHANNELS.invoicesSaveDraft,
       async (_event, payload: SaveInvoiceDraftRequest) => {
