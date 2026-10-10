@@ -33,7 +33,9 @@ const sampleData: BackupFile = {
     accounts: [],
     cashRecords: [],
     receipts: [],
-    cashRecordHistory: []
+    cashRecordHistory: [],
+    projects: [],
+    projectLinkHistory: []
   }
 }
 

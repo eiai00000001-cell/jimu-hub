@@ -62,6 +62,8 @@ function buildBrokenPayload(): BackupFile {
       cashRecords: [],
       receipts: [],
       cashRecordHistory: [],
+      projects: [],
+      projectLinkHistory: [],
       clients: [
         {
           id: 999,
@@ -344,6 +346,7 @@ describe('BackupService', () => {
       expect(result).toEqual({
         success: true,
         importedCount: 3,
+        projectLinkFixCount: 0,
         pdfHashMismatchCount: 0,
         receiptHashMismatchCount: 0,
         recordHashMismatchCount: 0
@@ -443,7 +446,7 @@ describe('BackupService', () => {
 
       const result = await service.importData(jsonPath)
 
-      expect(result).toEqual({ success: true, importedCount: 1 })
+      expect(result).toEqual({ success: true, importedCount: 1, projectLinkFixCount: 0 })
       expect(repository.findById(50)?.furigana).toBeNull()
       expect(existsSync(pdfPath)).toBe(true)
       expect(new QuoteRepository(db).findAll()).toHaveLength(0)

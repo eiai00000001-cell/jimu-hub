@@ -29,7 +29,12 @@ import type { Database } from '../db/db'
 import type { DataProgress } from '@shared/ipc/api'
 import type { ClientRepository } from '../repositories/client.repository'
 import type { MigrationService } from './migration.service'
-import { CASH_RECORD_HISTORY_TRIGGERS_SQL, CASH_RECORD_HISTORY_TRIGGER_NAMES } from '../db/db'
+import {
+  CASH_RECORD_HISTORY_TRIGGERS_SQL,
+  CASH_RECORD_HISTORY_TRIGGER_NAMES,
+  PROJECT_LINK_HISTORY_TRIGGERS_SQL,
+  PROJECT_LINK_HISTORY_TRIGGER_NAMES
+} from '../db/db'
 import { CashRecordHistoryRepository } from '../repositories/cash-record-history.repository'
 import { CashRecordRepository } from '../repositories/cash-record.repository'
 import { ReceiptRepository } from '../repositories/receipt.repository'
@@ -53,6 +58,8 @@ import {
   BACKUP_TABLES,
   RECEIPTS_TABLE,
   INVOICES_TABLE,
+  CASH_RECORDS_TABLE,
+  PROJECTS_TABLE,
   QUOTES_TABLE,
   insertRow,
   type TableDef
@@ -114,6 +121,8 @@ export interface ImportDataResult {
   receiptHashMismatchCount?: number
   /** 記録ハッシュ・履歴ハッシュの不一致の件数(新形式のみ) */
   recordHashMismatchCount?: number
+  /** 存在しない案件・取引先を指していて、「なし」に補正した件数(詳細設計書4.3章手順6。★F8) */
+  projectLinkFixCount?: number
   error?: string
 }
 
@@ -159,6 +168,8 @@ interface PreparedRestore {
 
 interface RestoreSummary {
   importedCount: number
+  /** 存在しない案件・取引先を指していて、「なし」に補正した件数(★F8) */
+  projectLinkFixCount: number
   pdfHashMismatchCount: number
   receiptHashMismatchCount: number
   recordHashMismatchCount: number
@@ -378,6 +389,7 @@ export class BackupService {
         return {
           success: true,
           importedCount: summary.importedCount,
+          projectLinkFixCount: summary.projectLinkFixCount,
           ...(prepared.hasDocuments
             ? {
                 pdfHashMismatchCount: summary.pdfHashMismatchCount,
@@ -550,10 +562,15 @@ export class BackupService {
 
     // 履歴テーブルの更新・削除を拒否するトリガーは、全件削除・再投入のため一時的に削除し、コミット前に再作成する
     // (SQLiteのDDLはトランザクション内で巻き戻せるため、失敗時はトリガーも元に戻る)
-    for (const name of CASH_RECORD_HISTORY_TRIGGER_NAMES) {
+    for (const name of [
+      ...CASH_RECORD_HISTORY_TRIGGER_NAMES,
+      ...PROJECT_LINK_HISTORY_TRIGGER_NAMES
+    ]) {
       sqlite.exec(`DROP TRIGGER IF EXISTS ${name}`)
     }
+    // 外部キーの参照元(見積書・請求書・入出金が案件を、案件が取引先を参照する)から先に削除する
     for (const table of [
+      'project_link_history',
       'cash_record_history',
       'receipts',
       'cash_records',
@@ -562,6 +579,7 @@ export class BackupService {
       'invoices',
       'quote_line_items',
       'quotes',
+      'projects',
       'company_profile',
       'document_number_sequences'
     ]) {
@@ -570,6 +588,17 @@ export class BackupService {
     this.deps.clientRepository.deleteAll()
 
     const counts: Record<string, number> = {}
+    // 案件の整合の補正(★F8): 存在しない案件・取引先を指す紐づけは「なし」にして保存し、件数を数える(復元は中断しない)
+    const importedClientIds = new Set<number>()
+    const importedProjectIds = new Set<number>()
+    let projectLinkFixCount = 0
+    const projectIdOverride = (row: BackupRow): Record<string, unknown> => {
+      const projectId = row.projectId
+      if (projectId === undefined || projectId === null) return {}
+      if (typeof projectId === 'number' && importedProjectIds.has(projectId)) return {}
+      projectLinkFixCount += 1
+      return { projectId: null }
+    }
     const pdfChecks: PdfCheck[] = []
     const sequences = { quote: new Map<number, number>(), invoice: new Map<number, number>() }
     // pdf_pathは現在のデータ保存先の絶対パスへ変換し、照合結果(pdf_hash_mismatch)は後段で設定する
@@ -577,15 +606,37 @@ export class BackupService {
       (def: TableDef, key: 'quote' | 'invoice') =>
       (row: BackupRow): void => {
         const pdfPath = this.toAbsolutePdfPath(row.pdfPath)
-        insertRow(sqlite, def, row, { pdfPath, pdfHashMismatch: false })
+        insertRow(sqlite, def, row, {
+          pdfPath,
+          pdfHashMismatch: false,
+          ...projectIdOverride(row)
+        })
         if (pdfPath && typeof row.pdfHash === 'string' && row.pdfHash !== '') {
           pdfChecks.push({ table: def.table, id: Number(row.id), pdfPath, hash: row.pdfHash })
         }
         this.trackSequence(sequences[key], row[key === 'quote' ? 'quoteNumber' : 'invoiceNumber'])
       }
     const inserters: Record<string, (row: BackupRow) => void> = {
-      clients: (row) =>
-        this.deps.clientRepository.insertWithId(BackupClientRecordSchema.parse(row)),
+      clients: (row) => {
+        const client = BackupClientRecordSchema.parse(row)
+        this.deps.clientRepository.insertWithId(client)
+        importedClientIds.add(client.id)
+      },
+      projects: (row) => {
+        const clientId = row.clientId
+        const overrides: Record<string, unknown> = {}
+        if (
+          clientId !== undefined &&
+          clientId !== null &&
+          !importedClientIds.has(Number(clientId))
+        ) {
+          overrides.clientId = null
+          projectLinkFixCount += 1
+        }
+        insertRow(sqlite, PROJECTS_TABLE, row, overrides)
+        importedProjectIds.add(Number(row.id))
+      },
+      cashRecords: (row) => insertRow(sqlite, CASH_RECORDS_TABLE, row, projectIdOverride(row)),
       quotes: documentInserter(QUOTES_TABLE, 'quote'),
       invoices: documentInserter(INVOICES_TABLE, 'invoice'),
       // 領収書の保存先は、所定の形式に一致するものだけを採用し、一致しないものは空文字とする(照合で欠落扱いになる)
@@ -598,6 +649,7 @@ export class BackupService {
       counts[entry.name] = source.readSync(entry.name, insert)
     }
     sqlite.exec(CASH_RECORD_HISTORY_TRIGGERS_SQL)
+    sqlite.exec(PROJECT_LINK_HISTORY_TRIGGERS_SQL)
     this.rebuildNumberSequences(sequences)
 
     const importedCount =
@@ -608,6 +660,7 @@ export class BackupService {
     if (!prepared.hasDocuments) {
       return {
         importedCount,
+        projectLinkFixCount,
         pdfHashMismatchCount: 0,
         receiptHashMismatchCount: 0,
         recordHashMismatchCount: 0
@@ -619,7 +672,7 @@ export class BackupService {
       prepared.hashes,
       onProgress
     )
-    return { importedCount, pdfHashMismatchCount, ...this.verifyRecords() }
+    return { importedCount, projectLinkFixCount, pdfHashMismatchCount, ...this.verifyRecords() }
   }
 
   /** 見積書番号・請求書番号(`YYYY-NNN`)から、年ごとの最大採番値を集計する */

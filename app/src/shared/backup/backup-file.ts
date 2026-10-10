@@ -54,7 +54,10 @@ export const BackupFileSchema = z.object({
     accounts: z.array(BackupRowSchema).default([]),
     cashRecords: z.array(BackupRowSchema).default([]),
     receipts: z.array(BackupRowSchema).default([]),
-    cashRecordHistory: z.array(BackupRowSchema).default([])
+    cashRecordHistory: z.array(BackupRowSchema).default([]),
+    // スキーマバージョン4以前のファイルには存在しない(案件なし。詳細設計書4.3章手順4)
+    projects: z.array(BackupRowSchema).default([]),
+    projectLinkHistory: z.array(BackupRowSchema).default([])
   })
 })
 /** 検証・正規化後のバックアップ構造(省略可能なテーブルは既定値で補われている) */

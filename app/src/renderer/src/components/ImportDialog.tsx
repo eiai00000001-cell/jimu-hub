@@ -105,7 +105,8 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
           response.importedCount,
           response.pdfHashMismatchCount,
           response.receiptHashMismatchCount,
-          response.recordHashMismatchCount
+          response.recordHashMismatchCount,
+          response.projectLinkFixCount
         )
       })
       onImported(response.importedCount)

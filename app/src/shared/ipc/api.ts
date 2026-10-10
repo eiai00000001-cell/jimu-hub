@@ -81,6 +81,8 @@ export interface ImportDataResult {
   pdfHashMismatchCount?: number
   receiptHashMismatchCount?: number
   recordHashMismatchCount?: number
+  /** 存在しない案件・取引先を指していて、「なし」に補正した件数 */
+  projectLinkFixCount?: number
   error?: string
 }
 

@@ -346,8 +346,8 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     const exp: Array<[string, number, number]> = []
     await src.service.exportData(zipPath, (p) => exp.push([p.stage, p.current, p.total]))
     const records = exp.filter(([stage]) => stage === 'records')
-    expect(records).toHaveLength(10)
-    expect(records.at(-1)).toEqual(['records', 10, 10])
+    expect(records).toHaveLength(12)
+    expect(records.at(-1)).toEqual(['records', 12, 12])
     // PDF・領収書ファイル(領収書2件)は、1件ごとに通知する。最後はZIPの仕上げ中を示す通知(packing)
     expect(exp.filter(([stage]) => stage === 'files')).toEqual([
       ['files', 1, 2],
@@ -359,8 +359,8 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     await dst.service.importData(zipPath, (p) => imp.push([p.phase, p.stage, p.current, p.total]))
     // 展開したファイル(manifest・.jsonl・領収書)ごとに通知する
     const extract = imp.filter(([, stage]) => stage === 'extract')
-    expect(extract).toHaveLength(13)
-    expect(extract.at(-1)).toEqual(['import', 'extract', 13, 13])
+    expect(extract).toHaveLength(15)
+    expect(extract.at(-1)).toEqual(['import', 'extract', 15, 15])
     expect(imp.every(([phase]) => phase === 'import')).toBe(true)
   })
 

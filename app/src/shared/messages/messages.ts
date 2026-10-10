@@ -146,7 +146,8 @@ export const BACKUP_MESSAGES = {
     count: number,
     pdfHashMismatchCount = 0,
     receiptHashMismatchCount = 0,
-    recordHashMismatchCount = 0
+    recordHashMismatchCount = 0,
+    projectLinkFixCount = 0
   ): string => {
     const warnings: string[] = []
     if (pdfHashMismatchCount > 0) {
@@ -162,6 +163,11 @@ export const BACKUP_MESSAGES = {
     if (recordHashMismatchCount > 0) {
       warnings.push(
         `記録の改変が疑われる入出金・経費が${recordHashMismatchCount}件あります。該当の詳細画面でご確認ください`
+      )
+    }
+    if (projectLinkFixCount > 0) {
+      warnings.push(
+        `案件への紐づけ${projectLinkFixCount}件を、対応する案件が無いため「案件なし」にしました`
       )
     }
     return warnings.length > 0

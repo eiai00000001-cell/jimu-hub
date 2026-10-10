@@ -72,4 +72,29 @@ test.describe('データ復元: 領収書が消える場合の確認(F-33)', () 
     await window.getByRole('button', { name: '復元する' }).click()
     await expect(window.getByText(/復元が完了しました/)).toBeVisible()
   })
+
+  test('現在の案件がある状態で、案件を含まない旧形式を復元しようとすると、案件が消える旨の確認画面を表示する', async () => {
+    const { window } = launched
+
+    await window.getByRole('button', { name: '案件管理' }).click()
+    await window.getByRole('button', { name: '+ 案件を登録' }).click()
+    await window.getByLabel('案件名').fill('確認画面の検証案件')
+    await window.getByRole('button', { name: '登録', exact: true }).click()
+    await expect(window.getByText('案件を保存しました')).toBeVisible()
+
+    await window.getByRole('button', { name: 'ホーム' }).click()
+    await window.getByRole('button', { name: 'データを復元' }).click()
+    await window.getByRole('button', { name: 'ファイルを選択して復元' }).click()
+    await window.getByRole('button', { name: '続行' }).click()
+    await expect(window.getByText('復元前の確認')).toBeVisible()
+    await expect(
+      window.getByText(/現在の案件\(1件\)と、案件への紐づけ・付け替え履歴はすべて消えます/)
+    ).toBeVisible()
+
+    await window.getByRole('button', { name: '復元する' }).click()
+    await expect(window.getByText(/復元が完了しました/)).toBeVisible()
+    await window.getByLabel('閉じる').click()
+    await window.getByRole('button', { name: '案件管理' }).click()
+    await expect(window.getByText('該当する案件がありません')).toBeVisible()
+  })
 })
