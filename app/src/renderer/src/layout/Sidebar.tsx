@@ -1,14 +1,15 @@
 import type { ReactElement } from 'react'
 import { Badge } from '../components/Badge'
 
-export type SidebarKey = 'home' | 'clients' | 'documents' | 'cash'
+export type SidebarKey = 'home' | 'clients' | 'projects' | 'documents' | 'cash'
 
-const COMING_SOON_ITEMS = ['案件管理', 'タスク・期限'] as const
+const COMING_SOON_ITEMS = ['タスク・期限'] as const
 
 interface SidebarProps {
   active: SidebarKey
   onNavigateHome: () => void
   onNavigateClients: () => void
+  onNavigateProjects: () => void
   onNavigateDocuments: () => void
   onNavigateCash: () => void
   onComingSoon: (label: string) => void
@@ -22,6 +23,7 @@ export function Sidebar({
   active,
   onNavigateHome,
   onNavigateClients,
+  onNavigateProjects,
   onNavigateDocuments,
   onNavigateCash,
   onComingSoon
@@ -44,6 +46,14 @@ export function Sidebar({
             onClick={onNavigateClients}
           >
             <span>取引先管理</span>
+          </button>
+        </li>
+        <li>
+          <button
+            className={`sidebar-item${active === 'projects' ? ' active' : ''}`}
+            onClick={onNavigateProjects}
+          >
+            <span>案件管理</span>
           </button>
         </li>
         <li>

@@ -4,6 +4,7 @@ import { createContext } from 'react'
 export interface NavigationActions {
   goHome: () => void
   goClients: () => void
+  goProjects: () => void
   goDocuments: () => void
   goCash: () => void
 }
@@ -13,6 +14,7 @@ const noop = (): void => {}
 export const NavigationContext = createContext<NavigationActions>({
   goHome: noop,
   goClients: noop,
+  goProjects: noop,
   goDocuments: noop,
   goCash: noop
 })

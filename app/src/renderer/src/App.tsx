@@ -12,6 +12,9 @@ import { CashRecordListPage, type CashTab } from './pages/CashRecordListPage'
 import { CashRecordFormPage } from './pages/CashRecordFormPage'
 import { CashRecordDetailPage } from './pages/CashRecordDetailPage'
 import { AccountListPage } from './pages/AccountListPage'
+import { ProjectListPage } from './pages/ProjectListPage'
+import { ProjectFormPage } from './pages/ProjectFormPage'
+import { ProjectDetailPage } from './pages/ProjectDetailPage'
 import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { NavigationContext } from './layout/NavigationContext'
@@ -22,6 +25,7 @@ import {
   COMPANY_MESSAGES,
   QUOTE_MESSAGES,
   INVOICE_MESSAGES,
+  PROJECT_MESSAGES,
   RECORD_MESSAGES
 } from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
@@ -38,6 +42,10 @@ type Route =
   | { name: 'clientList'; flashMessage?: string }
   | { name: 'clientNew' }
   | { name: 'accountList' }
+  | { name: 'projectList'; flashMessage?: string }
+  | { name: 'projectNew' }
+  | { name: 'projectEdit'; id: number }
+  | { name: 'projectDetail'; id: number; flashMessage?: string }
   | { name: 'cashList'; tab?: CashTab; flashMessage?: string }
   | { name: 'cashNew'; kind: 'income' | 'expense' }
   | { name: 'cashEdit'; id: number }
@@ -82,6 +90,7 @@ export function App(): ReactElement {
       value={{
         goHome: () => setRoute({ name: 'top' }),
         goClients: () => setRoute({ name: 'clientList' }),
+        goProjects: () => setRoute({ name: 'projectList' }),
         goDocuments: () => setRoute({ name: 'documentList' }),
         goCash: () => setRoute({ name: 'cashList' })
       }}
@@ -125,6 +134,51 @@ export function App(): ReactElement {
             onNavigateDocuments={() => setRoute({ name: 'documentList' })}
             onNewClient={() => setRoute({ name: 'clientNew' })}
             onSelectClient={(id) => setRoute({ name: 'clientDetail', id })}
+          />
+        )
+      case 'projectList':
+        return (
+          <ProjectListPage
+            flashMessage={route.flashMessage}
+            onNewProject={() => setRoute({ name: 'projectNew' })}
+            onSelectProject={(id) => setRoute({ name: 'projectDetail', id })}
+          />
+        )
+      case 'projectNew':
+        return (
+          <ProjectFormPage
+            mode="new"
+            onSaved={(id) =>
+              setRoute({ name: 'projectDetail', id, flashMessage: PROJECT_MESSAGES.saveSuccess })
+            }
+            onCancel={() => setRoute({ name: 'projectList' })}
+          />
+        )
+      case 'projectEdit':
+        return (
+          <ProjectFormPage
+            mode="edit"
+            projectId={route.id}
+            onSaved={(id) =>
+              setRoute({ name: 'projectDetail', id, flashMessage: PROJECT_MESSAGES.saveSuccess })
+            }
+            onCancel={() => setRoute({ name: 'projectDetail', id: route.id })}
+          />
+        )
+      case 'projectDetail':
+        return (
+          <ProjectDetailPage
+            key={route.id}
+            projectId={route.id}
+            flashMessage={route.flashMessage}
+            onBackToList={() => setRoute({ name: 'projectList' })}
+            onEdit={(id) => setRoute({ name: 'projectEdit', id })}
+            onDeleted={() =>
+              setRoute({ name: 'projectList', flashMessage: PROJECT_MESSAGES.deleteSuccess })
+            }
+            onOpenQuote={(id) => setRoute({ name: 'quoteDetail', id })}
+            onOpenInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
+            onOpenRecord={(id) => setRoute({ name: 'cashDetail', id, from: 'records' })}
           />
         )
       case 'accountList':

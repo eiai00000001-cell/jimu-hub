@@ -12,6 +12,7 @@ interface AppShellProps {
   /** サイドバーの遷移先。未指定の場合はNavigationContext(App側)の既定の遷移を使う */
   onNavigateHome?: () => void
   onNavigateClients?: () => void
+  onNavigateProjects?: () => void
   onNavigateDocuments?: () => void
   onNavigateCash?: () => void
   /** 「準備中」メニュー押下時の処理。未指定の場合はAppShellが案内メッセージを表示する */
@@ -35,6 +36,7 @@ export function AppShell({
   headerActions,
   onNavigateHome,
   onNavigateClients,
+  onNavigateProjects,
   onNavigateDocuments,
   onNavigateCash,
   onComingSoon,
@@ -59,6 +61,7 @@ export function AppShell({
           active={activeMenu}
           onNavigateHome={guarded(onNavigateHome ?? navigation.goHome)}
           onNavigateClients={guarded(onNavigateClients ?? navigation.goClients)}
+          onNavigateProjects={guarded(onNavigateProjects ?? navigation.goProjects)}
           onNavigateDocuments={guarded(onNavigateDocuments ?? navigation.goDocuments)}
           onNavigateCash={guarded(onNavigateCash ?? navigation.goCash)}
           onComingSoon={onComingSoon ?? setComingSoonLabel}

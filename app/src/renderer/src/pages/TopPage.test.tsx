@@ -71,7 +71,7 @@ describe('TopPage', () => {
       />
     )
 
-    await userEvent.click(screen.getByText('案件管理'))
+    await userEvent.click(screen.getByText('タスク・期限'))
     expect(await screen.findByText(/実装予定です/)).toBeInTheDocument()
   })
 

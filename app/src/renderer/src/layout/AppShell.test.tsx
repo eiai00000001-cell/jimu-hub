@@ -6,7 +6,13 @@ import { AppShell } from './AppShell'
 import { NavigationContext } from './NavigationContext'
 
 function renderShell(props: Partial<Parameters<typeof AppShell>[0]> = {}) {
-  const actions = { goHome: vi.fn(), goClients: vi.fn(), goDocuments: vi.fn(), goCash: vi.fn() }
+  const actions = {
+    goHome: vi.fn(),
+    goClients: vi.fn(),
+    goProjects: vi.fn(),
+    goDocuments: vi.fn(),
+    goCash: vi.fn()
+  }
   render(
     <NavigationContext.Provider value={actions}>
       <AppShell screenName="テスト" activeMenu="documents" pageTitle="テスト" {...props}>
@@ -26,6 +32,8 @@ describe('AppShell(サイドバーの既定動作・O2)', () => {
     await userEvent.click(screen.getByText('取引先管理'))
     await userEvent.click(screen.getByText('見積書・請求書'))
     await userEvent.click(screen.getByText('入出金・経費'))
+    await userEvent.click(screen.getByText('案件管理'))
+    expect(actions.goProjects).toHaveBeenCalledTimes(1)
     expect(actions.goCash).toHaveBeenCalledTimes(1)
     expect(actions.goHome).toHaveBeenCalledTimes(1)
     expect(actions.goClients).toHaveBeenCalledTimes(1)
@@ -34,8 +42,10 @@ describe('AppShell(サイドバーの既定動作・O2)', () => {
 
   it('「準備中」メニューを押すと案内を表示する', async () => {
     renderShell()
-    await userEvent.click(screen.getByText('案件管理'))
-    expect(screen.getByText(/「案件管理」は以降のイテレーションで実装予定です/)).toBeInTheDocument()
+    await userEvent.click(screen.getByText('タスク・期限'))
+    expect(
+      screen.getByText(/「タスク・期限」は以降のイテレーションで実装予定です/)
+    ).toBeInTheDocument()
   })
 
   it('confirmLeaveがfalseを返した場合は遷移しない', async () => {

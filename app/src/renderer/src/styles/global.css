@@ -1235,3 +1235,44 @@ button {
   font-family: inherit;
   font-size: 13px;
 }
+
+/* 案件管理(詳細設計書3.22〜3.25章) */
+.kv {
+  display: flex;
+  gap: 16px;
+}
+.kv > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.count-grid {
+  display: flex;
+  gap: 16px;
+}
+.count-item {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  padding: 12px 16px;
+  background: var(--color-white);
+}
+.count-item .label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.count-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.count-item .value small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.note-text {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 10px 0 0;
+  line-height: 1.6;
+}
