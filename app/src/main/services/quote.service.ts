@@ -63,8 +63,8 @@ export interface QuoteServiceDeps {
   companyProfileRepository: CompanyProfileRepository
   numberingService: NumberingService
   pdfService: PdfService
-  /** 案件の紐づけ(F-30)。未指定の場合、案件は扱わない(本番では必ず指定する) */
-  projectLinkService?: ProjectLinkService
+  /** 案件の紐づけ(F-30)。組み立て漏れで付け替え履歴・削除に伴う解除が抜けないよう、必須とする */
+  projectLinkService: ProjectLinkService
 }
 
 /**
@@ -98,7 +98,7 @@ export class QuoteService {
       } else {
         savedId = this.deps.repository.insert(validated).id
       }
-      this.deps.projectLinkService?.applyRequested('quote', savedId, validated.projectId)
+      this.deps.projectLinkService.applyRequested('quote', savedId, validated.projectId)
       return { id: savedId }
     })
   }
@@ -123,7 +123,7 @@ export class QuoteService {
         this.deps.repository.update(id, validated)
       }
       const targetId = id ?? this.deps.repository.insert(validated).id
-      this.deps.projectLinkService?.applyRequested('quote', targetId, validated.projectId)
+      this.deps.projectLinkService.applyRequested('quote', targetId, validated.projectId)
 
       const year = Number(validated.issueDate.slice(0, 4))
       const number = this.deps.numberingService.issueNumber('quote', year)
@@ -165,7 +165,7 @@ export class QuoteService {
       throw new QuoteNotDeletableError(QUOTE_MESSAGES.hasDerivedInvoice)
     }
     this.deps.database.transaction(() => {
-      this.deps.projectLinkService?.releaseOnDelete('quote', id)
+      this.deps.projectLinkService.releaseOnDelete('quote', id)
       this.deps.repository.delete(id)
     })
     return { success: true }

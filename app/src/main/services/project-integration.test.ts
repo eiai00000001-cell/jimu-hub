@@ -330,4 +330,17 @@ describe('案件の紐づけと、見積書・請求書・入出金・経費の�
       expect(() => projects.deleteProject(a)).not.toThrow()
     })
   })
+
+  it('projectLinkServiceは必須の依存で、組み立て漏れは型エラーとして検知される(差異No.37。★R6)', () => {
+    const omitted = (): unknown =>
+      // @ts-expect-error projectLinkServiceを渡さない組み立ては、型チェックで拒否される
+      new QuoteService({
+        database: db,
+        repository: new QuoteRepository(db),
+        companyProfileRepository: new CompanyProfileRepository(db),
+        numberingService: new NumberingService(new DocumentNumberSequenceRepository(db)),
+        pdfService: {} as never
+      })
+    expect(typeof omitted).toBe('function')
+  })
 })

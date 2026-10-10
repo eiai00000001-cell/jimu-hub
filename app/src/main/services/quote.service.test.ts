@@ -1,3 +1,5 @@
+import { ProjectRepository } from '../repositories/project.repository'
+import { ProjectLinkService } from './project-link.service'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
@@ -86,6 +88,7 @@ describe('QuoteService', () => {
   } {
     const service = new QuoteService({
       database: db,
+      projectLinkService: new ProjectLinkService(db, new ProjectRepository(db)),
       repository: quoteRepository,
       companyProfileRepository,
       numberingService,

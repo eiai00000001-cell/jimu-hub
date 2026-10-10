@@ -5,7 +5,7 @@
 ## 1. 文書情報
 
 - 作成日: 2026-09-26(初版)/ 2026-10-10(v3.4改訂)
-- 版数: v3.4
+- 版数: v3.5
 - 対象イテレーション: イテレーション3(案件管理+バックアップ・復元のメモリ使用量改善)の実装フェーズのうち、T-61(F-32・F-33)・T-62(`npm audit fix`)・T-63(案件管理 F-27〜F-30)・T-64(案件別収支 F-31)完了時点(イテレーション3の実装フェーズは完了)。レビュー・テスト・セキュリティの各フェーズはこれから実施します
 - 参照元: 詳細設計書.md v3.3、基本設計書.md v3.3、デザインガイド.md v3.2、コーディング規約.md v3.1(いずれも `docs/` 配下)
 
@@ -253,7 +253,7 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | 34 | (T-63で解消)案件の整合の補正(`projectLinkFixCount`)、`projects`・`projectLinkHistory`のバックアップ対象への追加、DBスキーマv5への移行を実装した | T-61時点では案件テーブルが未実装だったため。復元の取り込み順は、取引先→案件→自社情報→見積書…(外部キーの参照先から先)とし、削除は逆順とした |
 | 35 | 案件のIPCは、設計書7章の`{ id } & ProjectInput`等のオブジェクト形式ではなく、既存の取引先・勘定科目と同じ位置引数(`createProject(input)`・`updateProject(id, input)`・`listSelectableProjects(includeId?)`・`listProjectLinkHistory(targetType, targetId)`)とした。`projects:list`は条件オブジェクト、`projectLinks:change`は`{ targetType, targetId, projectId }`のまま | 既存IPCの記法との一貫性(差異No.19と同じ方針)。入力は境界でZodにより検証している |
 | 36 | `quotes:get`・`invoices:get`・`records:get`の応答の`project`は、Service層ではなくIPC層(`ProjectRefLookup`)が付与する。型は`project?: ProjectRef \| null`(任意) | 既存のService・テストへの影響を避けるため。Rendererへ返す内容は設計どおり |
-| 37 | `QuoteService`・`InvoiceService`・`CashRecordService`の`projectLinkService`は、依存として任意とした(本番の組み立て`index.ts`・`createRecordServices`では必ず渡す) | 案件を扱わない既存のテストを変更せずに維持するため |
+| 37 | (必須化済み。★R6)`QuoteService`・`InvoiceService`・`CashRecordService`の`projectLinkService`は、必須の依存とした(当初は任意)。組み立て漏れは、型チェックで検知される | 組み立て漏れがあると、付け替え履歴と削除に伴う解除がエラーにならずに抜けてしまうため(差異No.26と同じ考え方)。既存のテストには、実体を渡している |
 | 38 | 作成画面の「案件」は、利用者が変更した場合のみ`projectId`を送る(未変更・新規で未選択の場合は送らない)。編集で変更しない場合は、案件を変えない | 完了した案件のままの下書きを、そのまま保存できるようにするため(設計書4.30章手順3の「異なる場合のみ」と同じ結果) |
 | 39 | (T-64で解消)案件一覧・詳細の売上・経費・差引・件数の内訳(F-31)を追加した。`ProjectDetail`の`summary`に`withholding`と`counts`を含める | 実装順序(計画どおり) |
 
@@ -302,3 +302,4 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | v3.2 | 2026-10-08 | T-62(SEC-17)。`npm audit fix`(`--force`なし)で間接依存の`http-cache-semantics`(4.3.0)・`source-map-js`(1.2.2)を更新し、高の脆弱性2件を解消した(`package-lock.json`のみの変更)。単体843件・E2E 4件・`.dmg`の再ビルド(署名なし)・パッケージ版の起動を確認した。残る中8件は`--force`が必要なため未対応(★F3)。 |
 | v3.3 | 2026-10-10 | イテレーション3のT-63(案件管理 F-27〜F-30)の実装完了に伴い改訂。DBスキーマv5への移行(移行前の自動退避)、案件・付け替え履歴のバックアップ対象への追加と整合の補正(★F8)、実装状況、テスト結果(974件・E2E 6件)、差異34〜39を追記した。 |
 | v3.4 | 2026-10-10 | イテレーション3のT-64(案件別収支 F-31)の実装完了に伴い改訂。実装状況・テスト結果(986件・E2E 6件。カバレッジは再計測)・差異No.39の解消を記載した。 |
+| v3.5 | 2026-10-10 | レビュー指摘★R6への対応。`projectLinkService`を必須の依存に変更した(差異No.37を「必須化済み」に更新)。 |

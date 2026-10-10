@@ -61,8 +61,8 @@ export interface InvoiceServiceDeps {
   pdfService: PdfService
   /** 入金記録の自動作成・取消(F-21)。入金ステータス変更と不可分のため必須。本番では`CashRecordService`を渡す */
   paymentRecorder: InvoicePaymentRecorder
-  /** 案件の紐づけ(F-30)。未指定の場合、案件は扱わない(本番では必ず指定する) */
-  projectLinkService?: ProjectLinkService
+  /** 案件の紐づけ(F-30)。組み立て漏れで付け替え履歴・削除に伴う解除が抜けないよう、必須とする */
+  projectLinkService: ProjectLinkService
 }
 
 /**
@@ -101,7 +101,7 @@ export class InvoiceService {
       } else {
         savedId = this.deps.repository.insert(validated).id
       }
-      this.deps.projectLinkService?.applyRequested('invoice', savedId, validated.projectId)
+      this.deps.projectLinkService.applyRequested('invoice', savedId, validated.projectId)
       return { id: savedId }
     })
   }
@@ -119,7 +119,7 @@ export class InvoiceService {
         this.deps.repository.update(id, validated)
       }
       const targetId = id ?? this.deps.repository.insert(validated).id
-      this.deps.projectLinkService?.applyRequested('invoice', targetId, validated.projectId)
+      this.deps.projectLinkService.applyRequested('invoice', targetId, validated.projectId)
 
       const year = Number(validated.issueDate.slice(0, 4))
       const number = this.deps.numberingService.issueNumber('invoice', year)
@@ -184,7 +184,7 @@ export class InvoiceService {
         quote.id
       )
       // 変換元の見積書の案件が進行中の場合のみ、請求書へ引き継ぐ(詳細設計書4.30章手順4)
-      this.deps.projectLinkService?.carryOverFromQuote(quote.id, created.id)
+      this.deps.projectLinkService.carryOverFromQuote(quote.id, created.id)
       return created.id
     })
     return { invoiceId: id }
@@ -255,7 +255,7 @@ export class InvoiceService {
       throw new InvoiceNotDeletableError(INVOICE_MESSAGES.hasCashRecord)
     }
     this.deps.database.transaction(() => {
-      this.deps.projectLinkService?.releaseOnDelete('invoice', id)
+      this.deps.projectLinkService.releaseOnDelete('invoice', id)
       this.deps.repository.delete(id)
     })
     return { success: true }
