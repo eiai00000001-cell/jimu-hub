@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 e2e/scenarios/i3-capacity.spec.ts:144:1 › TC-121: [F-32・★F2] 1GiBに近いバックアップのエクスポート・復元で、Mainプロセスのヒープ使用量の増加が約100MB以内。所要時間・RSS・ハッシュ一致・一時ファイルの残存なし (29.6s)
+
+  1 passed (29.9s)

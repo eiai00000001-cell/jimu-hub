@@ -71,7 +71,9 @@ test.describe('配布物(パッケージ済み.app)', () => {
       ['Preload', /out\/preload\/index\.(js|mjs|cjs)$/],
       ['Renderer', /out\/renderer\/index\.html$/],
       ['better-sqlite3 ネイティブ(darwin)', /better-sqlite3\/.*\.node$/],
-      ['adm-zip', /node_modules\/adm-zip\/adm-zip\.js$/],
+      // イテレーション3(差異No.29): ZIP処理は archiver(書き出し)・yauzl(読み込み)。adm-zipは配布物から外れた
+      ['archiver', /node_modules\/archiver\/index\.js$/],
+      ['yauzl', /node_modules\/yauzl\/index\.js$/],
       ['drizzle-orm(sqlite)', /node_modules\/drizzle-orm\/(better-sqlite3|sqlite-core)\//]
     ]
     for (const [label, re] of required) {

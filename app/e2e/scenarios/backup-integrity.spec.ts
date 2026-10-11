@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import AdmZip from 'adm-zip'
+import { readExport } from '../../src/main/services/backup/test-helpers'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
@@ -82,16 +82,16 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     await window.getByLabel('閉じる').click()
 
     // TC-05: エクスポートされたファイルの構造を直接確認する(詳細設計書4.2章)
-    // T-34以降のエクスポートはZIP形式(data.json+PDF)。schemaVersionは3
-    const exported = JSON.parse(
-      new AdmZip(filePath).getEntry('data.json')!.getData().toString('utf-8')
-    )
-    expect(exported.schemaVersion).toBe(4)
-    expect(typeof exported.appVersion).toBe('string')
-    expect(typeof exported.exportedAt).toBe('string')
-    expect(Array.isArray(exported.data.clients)).toBe(true)
-    expect(exported.data.clients).toHaveLength(1)
-    expect(exported.data.clients[0]).toMatchObject({ name: '全置換確認用_A', status: 'active' })
+    // イテレーション3以降のエクスポートは manifest.json + テーブルごとのJSON Lines(スキーマ版5。詳細設計書4.2章)
+    const exported = readExport(filePath)
+    expect(exported.manifest.format).toBeTruthy()
+    expect(exported.manifest.schemaVersion).toBe(5)
+    expect(typeof exported.manifest.appVersion).toBe('string')
+    expect(typeof exported.manifest.exportedAt).toBe('string')
+    expect(exported.manifest.tables.clients.count).toBe(1)
+    const clientRows = exported.records('clients')
+    expect(clientRows).toHaveLength(1)
+    expect(clientRows[0]).toMatchObject({ name: '全置換確認用_A', status: 'active' })
 
     // Bを追加登録(この時点でDBにはA・Bの2件が存在する。エクスポートファイルにはAのみ)
     await window.getByRole('button', { name: '取引先管理' }).click()

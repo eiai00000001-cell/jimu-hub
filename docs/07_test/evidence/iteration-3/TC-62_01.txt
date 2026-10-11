@@ -1,0 +1,20 @@
+entries:
+data/accounts.jsonl
+data/cashRecordHistory.jsonl
+data/cashRecords.jsonl
+data/clients.jsonl
+data/companyProfile.jsonl
+data/invoiceLineItems.jsonl
+data/invoices.jsonl
+data/projectLinkHistory.jsonl
+data/projects.jsonl
+data/quoteLineItems.jsonl
+data/quotes.jsonl
+data/receipts.jsonl
+documents/invoices/2026/2026-001_ZIP往復商事株式会社.pdf
+documents/quotes/2026/2026-001_ZIP往復商事株式会社.pdf
+documents/quotes/2026/2026-002_ZIP往復第二商会.pdf
+manifest.json
+schemaVersion=5
+quotes=3 invoices=1 clients=2
+pdfPath例=documents/quotes/2026/2026-001_ZIP往復商事株式会社.pdf

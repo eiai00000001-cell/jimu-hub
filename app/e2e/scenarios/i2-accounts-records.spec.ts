@@ -82,7 +82,7 @@ test('TC-78: 初期科目14件(経費12・収入2)が表示順どおりに用意
   expect(db[0]).toBe('14')
   expect(db[1]).toBe('14')
   expect(db[2]).toBe('売上高|sales_revenue')
-  expect(db[3]).toBe('4')
+  expect(db[3]).toBe('5') // イテレーション3でスキーマ版5へ
   expect(db[4]).toBe('10,20,30,40,50,60,70,80,90,100,110,120')
   noteEvidence(
     'TC-78',
