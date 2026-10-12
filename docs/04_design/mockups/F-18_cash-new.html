@@ -171,7 +171,7 @@
         <ul class="sidebar-nav">
           <li class="sidebar-item"><span>ホーム</span></li>
           <li class="sidebar-item"><span>取引先管理</span></li>
-          <li class="sidebar-item disabled"><span>案件管理</span><span class="badge badge-soon">準備中</span></li>
+          <li class="sidebar-item"><span>案件管理</span></li>
           <li class="sidebar-item"><span>見積書・請求書</span></li>
           <li class="sidebar-item active"><span>入出金・経費</span></li>
           <li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li>
@@ -188,6 +188,7 @@
               <div class="field"><label>金額<span class="required">必須</span></label><input type="text" value="" placeholder="例: 6,600"><div class="hint">税込の金額を半角数字で入力します(カンマ区切り可)</div></div>
               <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option>選択してください</option><option>消耗品費</option><option>通信費</option><option>旅費交通費</option><option>外注費</option><option>新聞図書費</option><option>地代家賃</option><option>支払手数料</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
               <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><select><option>(未選択)</option><option>サンプル商事株式会社</option><option>アルファ商事株式会社</option><option>オレンジ物産株式会社</option></select></div>
+              <div class="field"><label>案件</label><select><option>案件なし</option><option>サンプル商事 Webサイト制作</option><option>アルファ商事 保守契約</option></select><div class="hint">進行中の案件から選べます(任意。登録後は詳細画面の「案件を変更」で変更します)</div></div>
               <div class="field"><label>支払方法</label><select><option>(未選択)</option><option>現金</option><option>振込</option><option>クレジットカード</option><option>その他</option></select></div>
               <div class="field"><label>税区分</label><select><option>(未選択)</option><option>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
               <div class="field"><label>消費税額</label><div class="readonly">¥0</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>
@@ -200,6 +201,7 @@
               <div class="field"><label>金額<span class="required">必須</span></label><input type="text" value="6,600" placeholder="例: 6,600"><div class="hint">税込の金額を半角数字で入力します(カンマ区切り可)</div></div>
               <div class="field"><label>勘定科目<span class="required">必須</span></label><select><option>消耗品費</option><option selected>通信費</option><option>旅費交通費</option><option>外注費</option><option>新聞図書費</option><option>地代家賃</option><option>支払手数料</option></select><div class="hint">種別に合う区分の、利用中の科目のみ表示されます</div></div>
               <div class="field"><label>摘要・メモ<span class="required">必須</span></label><input type="text" value="インターネット回線(10月分)" placeholder="例: 事務用品の購入(200文字まで)"></div></div><div><div class="field"><label>取引先</label><select><option>(未選択)</option><option>サンプル商事株式会社</option><option>アルファ商事株式会社</option><option>オレンジ物産株式会社</option></select></div>
+              <div class="field"><label>案件</label><select><option>案件なし</option><option>サンプル商事 Webサイト制作</option><option>アルファ商事 保守契約</option></select><div class="hint">進行中の案件から選べます(任意。登録後は詳細画面の「案件を変更」で変更します)</div></div>
               <div class="field"><label>支払方法</label><select><option>現金</option><option>振込</option><option selected>クレジットカード</option><option>その他</option></select></div>
               <div class="field"><label>税区分</label><select><option selected>10%</option><option>8%(軽減)</option><option>非課税</option><option>対象外</option></select></div>
               <div class="field"><label>消費税額</label><div class="readonly">¥600</div><div class="hint">金額と税区分から自動計算します(入力不可)</div></div>

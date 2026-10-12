@@ -67,6 +67,7 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}) {
     .fn()
     .mockResolvedValue({ id: 10, invoiceNumber: '2026-001', pdfPath: '/tmp/x.pdf' })
   window.jimuhubApi = {
+    listSelectableProjects: vi.fn().mockResolvedValue([]),
     listClients: vi.fn().mockResolvedValue([client]),
     createClient: vi.fn().mockResolvedValue({ id: 99 }),
     getCompanyProfile: vi.fn().mockResolvedValue(company),
@@ -301,5 +302,49 @@ describe('InvoiceFormPage', () => {
     ).toBeInTheDocument()
     await userEvent.click(screen.getByText('元の見積書を見る'))
     expect(onOpenSourceQuote).toHaveBeenCalledWith(3)
+  })
+})
+
+describe('InvoiceFormPage: 案件(F-30。詳細設計書3.26章)', () => {
+  const projects = [{ id: 3, name: 'アルファ保守', status: 'active' }]
+
+  it('新規作成: 案件を選んで保存すると、projectIdを送る', async () => {
+    const { saveInvoiceDraft } = setupApi({
+      listSelectableProjects: vi.fn().mockResolvedValue(projects)
+    })
+    renderNew()
+    await screen.findByRole('option', { name: 'アルファ保守' })
+    await userEvent.selectOptions(screen.getByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), '制作')
+    await userEvent.selectOptions(screen.getByLabelText('案件'), '3')
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() =>
+      expect(saveInvoiceDraft).toHaveBeenCalledWith(expect.objectContaining({ projectId: 3 }))
+    )
+  })
+
+  it('編集(見積書から変換した請求書など): 引き継いだ案件を初期値として表示し、変更しなければ送らない', async () => {
+    const { saveInvoiceDraft } = setupApi({
+      listSelectableProjects: vi.fn().mockResolvedValue(projects),
+      getInvoice: vi.fn().mockResolvedValue({
+        ...draftInvoice,
+        project: { id: 3, name: 'アルファ保守', status: 'active' }
+      })
+    })
+    render(
+      <InvoiceFormPage
+        mode="edit"
+        invoiceId={7}
+        onSavedDraft={vi.fn()}
+        onFinalized={vi.fn()}
+        onCancel={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+      />
+    )
+    await screen.findByDisplayValue('既存品目')
+    expect(screen.getByLabelText('案件')).toHaveValue('3')
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() => expect(saveInvoiceDraft).toHaveBeenCalledTimes(1))
+    expect(saveInvoiceDraft.mock.calls[0]![0]).not.toHaveProperty('projectId')
   })
 })

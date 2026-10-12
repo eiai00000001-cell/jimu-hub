@@ -55,6 +55,30 @@ export const ACCOUNT_MESSAGES = {
   confirmDelete: (name: string): string => `「${name}」を削除します。よろしいですか`
 } as const
 
+export const PROJECT_MESSAGES = {
+  nameRequired: '案件名を入力してください',
+  nameTooLong: '案件名は100文字以内で入力してください',
+  memoTooLong: 'メモは1000文字以内で入力してください',
+  periodInvalid: '終了日は、開始日以降の日付を入力してください',
+  periodFilterInvalid: '期間の終了日は、開始日以降の日付を入力してください',
+  clientNotSelectable: '利用停止中の取引先は選択できません',
+  notFound: '指定された案件が見つかりません',
+  hasLinks: '紐づけがあるため削除できません。完了にして、一覧の絞り込みでご確認ください',
+  alreadyCompleted: 'すでに完了の案件です',
+  alreadyActive: 'すでに進行中の案件です',
+  targetNotFound: '対象が見つかりません',
+  targetDeleted: '削除した記録は案件に紐づけられません',
+  projectNotSelectable: '完了の案件には、新しく紐づけられません',
+  linkHistoryWriteFailure: '付け替え履歴を記録できなかったため、変更できませんでした',
+  confirmComplete: 'この案件を完了にします。完了にしても、データは残ります。よろしいですか',
+  confirmReopen: 'この案件を進行中に戻します。よろしいですか',
+  confirmDelete: 'この案件を削除します。削除すると元に戻せません。よろしいですか',
+  salesNote: '売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。',
+  empty: '該当する案件がありません',
+  saveSuccess: '案件を保存しました',
+  deleteSuccess: '案件を削除しました'
+} as const
+
 export const RECORD_MESSAGES = {
   dateRequired: '日付を入力してください',
   dateOutOfRange: '日付は2000年〜2099年の範囲で入力してください',
@@ -122,7 +146,8 @@ export const BACKUP_MESSAGES = {
     count: number,
     pdfHashMismatchCount = 0,
     receiptHashMismatchCount = 0,
-    recordHashMismatchCount = 0
+    recordHashMismatchCount = 0,
+    projectLinkFixCount = 0
   ): string => {
     const warnings: string[] = []
     if (pdfHashMismatchCount > 0) {
@@ -140,6 +165,11 @@ export const BACKUP_MESSAGES = {
         `記録の改変が疑われる入出金・経費が${recordHashMismatchCount}件あります。該当の詳細画面でご確認ください`
       )
     }
+    if (projectLinkFixCount > 0) {
+      warnings.push(
+        `案件への紐づけ${projectLinkFixCount}件を、対応する案件が無いため「案件なし」にしました`
+      )
+    }
     return warnings.length > 0
       ? `復元が完了しました(${count}件)。${warnings.join('。')}`
       : `復元が完了しました(${count}件)`
@@ -148,6 +178,7 @@ export const BACKUP_MESSAGES = {
     '領収書の容量が大きいため、このファイルは復元できない可能性があります。続行しますか',
   exportTooLarge:
     '領収書・PDFの容量が復元できる上限(1GB)を超えるため、エクスポートを中止しました。復元できないファイルになってしまうため、書き出していません',
+  exportRecords: 'データを書き出しています',
   exportPacking: 'ファイルを整理しています…',
   exportProgress: (current: number, total: number): string =>
     `領収書を書き出しています(${current}/${total})`,
@@ -155,6 +186,20 @@ export const BACKUP_MESSAGES = {
     `領収書・PDFを復元しています(${current}/${total})`,
   importParseFailure:
     '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください',
+  importVerify: (current: number, total: number): string =>
+    `復元したファイルを確認しています(${current}/${total})`,
+  importFileChanged:
+    '選択したファイルが変更されたか、無効になりました。もう一度ファイルを選択してください',
+  confirmTitle: '復元前の確認',
+  confirmLead: '選択したバックアップを復元すると、次のデータが消えます。',
+  confirmNoReceipts: (count: number): string =>
+    `このバックアップには領収書が含まれていないため、復元すると現在の領収書(${count}件)はすべて消えます。`,
+  confirmNoProjects: (count: number): string =>
+    `このバックアップには案件のデータが含まれていないため、復元すると現在の案件(${count}件)と、案件への紐づけ・付け替え履歴はすべて消えます。`,
+  confirmBackupNotice: '復元前の状態は自動で退避され、直近3回分が保存されます。',
+  confirmRestore: '復元する',
+  importDiskShort:
+    'ディスクの空き容量が足りないため、復元できませんでした。空き容量を確保してから、もう一度お試しください',
   importTooLarge: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした',
   importVersionTooNew:
     'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください',
@@ -210,6 +255,11 @@ export const INVOICE_MESSAGES = {
   paymentRequiresFinalized: 'PDF保存済みの請求書のみ入金ステータスを変更できます',
   convertSuccess: '見積書から請求書(下書き)を作成しました',
   convertRequiresFinalized: 'PDF保存済みの見積書のみ請求書に変換できます'
+} as const
+
+export const DB_MIGRATION_MESSAGES = {
+  preBackupFailure:
+    'データを更新する前の退避に失敗したため、起動できませんでした。空き容量・権限をご確認ください'
 } as const
 
 export const STARTUP_MESSAGES = {

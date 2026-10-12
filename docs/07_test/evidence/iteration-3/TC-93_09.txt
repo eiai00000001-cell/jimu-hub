@@ -1,0 +1,2 @@
+復元結果: {"success":true,"importedCount":8,"projectLinkFixCount":0,"pdfHashMismatchCount":0,"receiptHashMismatchCount":0,"recordHashMismatchCount":0}
+書き出されたファイル(documents配下): documents/invoices/2026/2026-001_往復確認商事.pdf, documents/quotes/2026/2026-001_往復確認商事.pdf, documents/receipts/2026/60f45998-a8e6-4190-bc0d-f469f43cf821.jpg, documents/receipts/2026/6fd3f7e2-6c39-4f56-8b90-f4db3b10528e.png, documents/receipts/2026/e91d1d7a-eae8-4725-ad04-05021181c46a.pdf

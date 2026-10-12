@@ -1,3 +1,4 @@
+import type { ProjectRef } from './project'
 import type { Honorific } from './client'
 import type { TaxRate } from '../calculations/tax-calculation'
 import type { InvoiceFormat } from './quote'
@@ -74,6 +75,8 @@ export interface LinkedCashRecord {
 /** `invoices:get`の応答(請求書+紐づく入金記録。新しい順) */
 export interface InvoiceDetail extends Invoice {
   linkedRecords: LinkedCashRecord[]
+  /** 紐づく案件(詳細取得時にIPC層が付与する。案件なしはnull。詳細設計書3.26章) */
+  project?: ProjectRef | null
 }
 
 /** 請求書一覧の1行(一覧表示用の要約データ) */

@@ -1,3 +1,5 @@
+import { ProjectRepository } from '../repositories/project.repository'
+import { ProjectLinkService } from './project-link.service'
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { Database } from '../db/db'
 import { AccountRepository } from '../repositories/account.repository'
@@ -50,6 +52,7 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
     receiptService = new ReceiptService(join(work, 'documents'), new ReceiptStagingStore())
     service = new CashRecordService({
       database: db,
+      projectLinkService: new ProjectLinkService(db, new ProjectRepository(db)),
       repository: recordRepo,
       receiptRepository: receiptRepo,
       accountRepository: accounts,

@@ -1,9 +1,12 @@
 import { app, BrowserWindow, session } from 'electron'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { ClientRepository } from './repositories/client.repository'
 import { ClientService } from './services/client.service'
-import { BackupService } from './services/backup.service'
+import { BackupService, DEFAULT_RESTORE_LIMITS } from './services/backup.service'
+import { RestoreInspector } from './services/backup/restore-inspector'
+import { RestoreSessionStore } from './services/backup/restore-session-store'
+import { BackupStagingArea } from './services/backup/staging-area'
 import { MigrationService } from './services/migration.service'
 import { CompanyProfileRepository } from './repositories/company-profile.repository'
 import { CompanyService } from './services/company.service'
@@ -27,6 +30,9 @@ import { ReceiptsIpcHandler } from './ipc/receipts.ipc-handler'
 import { RecordsIpcHandler } from './ipc/records.ipc-handler'
 import { createRecordServices } from './services/record-services'
 import { ClientIpcHandler } from './ipc/client.ipc-handler'
+import { ProjectsIpcHandler } from './ipc/projects.ipc-handler'
+import { ProjectSummaryRepository } from './repositories/project-summary.repository'
+import { ProjectService } from './services/project.service'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
@@ -94,10 +100,13 @@ app.whenReady().then(() => {
   // 異常終了で残ったPDF生成用の一時HTML(書類の内容を含む)を削除する(SEC-11)
   cleanupLeftoverPdfTempFiles()
 
+  // 異常終了で残ったバックアップ・復元用の一時フォルダ(データの一部を含む)を削除する(F-32。詳細設計書4.1章手順0-2)
+  new BackupStagingArea(join(dirname(dbFilePath), 'tmp')).removeLeftovers()
+
   // BUG-01修正: データベース接続の初期化(コンストラクタ時点の例外を含む)は
   // initializeStartup()内でtry/catchされ、例外を外へ投げない(startup.ts参照)。
   // これにより、データベースファイル破損時もここで処理が中断されず、必ずcreateMainWindow()まで到達する。
-  const { status: startupStatus, database } = initializeStartup(dbFilePath)
+  const { status: startupStatus, database } = initializeStartup(dbFilePath, backupsDir)
 
   new AppIpcHandler(startupStatus).registerHandlers()
 
@@ -132,15 +141,17 @@ app.whenReady().then(() => {
     const quoteRepository = new QuoteRepository(database)
     const numberingService = new NumberingService(new DocumentNumberSequenceRepository(database))
     const pdfService = new PdfService({ documentsDir })
+    const recordServices = createRecordServices(database, documentsDir)
+    const { projectRepository, projectLinkService } = recordServices
     const quoteService = new QuoteService({
       database,
       repository: quoteRepository,
       companyProfileRepository,
       numberingService,
-      pdfService
+      pdfService,
+      projectLinkService
     })
 
-    const recordServices = createRecordServices(database, documentsDir)
     const invoiceService = new InvoiceService({
       database,
       repository: new InvoiceRepository(database),
@@ -148,7 +159,8 @@ app.whenReady().then(() => {
       companyProfileRepository,
       numberingService,
       pdfService,
-      paymentRecorder: recordServices.cashRecordService
+      paymentRecorder: recordServices.cashRecordService,
+      projectLinkService
     })
 
     new ClientIpcHandler(clientService).registerHandlers()
@@ -163,13 +175,31 @@ app.whenReady().then(() => {
     ).registerHandlers()
     new RecordsIpcHandler(
       recordServices.cashRecordService,
-      recordServices.historyService
+      recordServices.historyService,
+      projectRepository
     ).registerHandlers()
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
-    new DataIpcHandler(backupService).registerHandlers()
+    new ProjectsIpcHandler(
+      new ProjectService(database, projectRepository, new ProjectSummaryRepository(database)),
+      projectLinkService
+    ).registerHandlers()
+    const restoreStore = new RestoreSessionStore()
+    new DataIpcHandler(backupService, {
+      store: restoreStore,
+      inspector: new RestoreInspector({
+        database,
+        store: restoreStore,
+        ...DEFAULT_RESTORE_LIMITS
+      })
+    }).registerHandlers()
     new CompanyIpcHandler(companyService).registerHandlers()
-    new QuotesIpcHandler(quoteService, invoiceService, documentsDir).registerHandlers()
-    new InvoicesIpcHandler(invoiceService, documentsDir).registerHandlers()
+    new QuotesIpcHandler(
+      quoteService,
+      invoiceService,
+      documentsDir,
+      projectRepository
+    ).registerHandlers()
+    new InvoicesIpcHandler(invoiceService, documentsDir, projectRepository).registerHandlers()
   }
 
   createMainWindow()

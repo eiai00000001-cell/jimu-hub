@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
+import { ProjectSelectField } from '../components/ProjectSelectField'
 import { AppShell } from '../layout/AppShell'
 import { Button } from '../components/Button'
 import { Message } from '../components/Message'
@@ -53,6 +54,8 @@ export function CashRecordFormPage({
   const [accountId, setAccountId] = useState('')
   const [description, setDescription] = useState('')
   const [clientId, setClientId] = useState('')
+  /** 案件(登録時のみ。編集画面には置かず、詳細画面の「案件を変更」で変更する) */
+  const [projectId, setProjectId] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
   const [taxCategory, setTaxCategory] = useState<TaxCategory | ''>('')
   const [reason, setReason] = useState('')
@@ -176,7 +179,8 @@ export function CashRecordFormPage({
       if (mode === 'new') {
         const { id } = await window.jimuhubApi.createRecord({
           ...parsed.data,
-          receiptTokens: addTokens
+          receiptTokens: addTokens,
+          ...(projectId !== null ? { projectId } : {})
         })
         onSaved(id, RECORD_MESSAGES.createSuccess)
       } else {
@@ -335,6 +339,13 @@ export function CashRecordFormPage({
                     </select>
                   )}
                 </div>
+                {mode === 'new' ? (
+                  <ProjectSelectField
+                    id="record-project"
+                    value={projectId}
+                    onChange={setProjectId}
+                  />
+                ) : null}
                 <div className="field">
                   <label htmlFor="record-payment">支払方法</label>
                   <select

@@ -32,6 +32,7 @@ vi.mock('electron', () => ({
 
 import { DataIpcHandler } from './data.ipc-handler'
 import type { BackupService } from '../services/backup.service'
+import { BackupFileChangedError, BackupSizeLimitError } from '../services/backup/errors'
 
 function createFakeBackupService(): BackupService {
   return {
@@ -251,6 +252,123 @@ describe('DataIpcHandler', () => {
         current: 1,
         total: 1
       })
+    })
+  })
+})
+
+describe('DataIpcHandler: 復元前の確認(F-33。data:inspectBackup / data:discardBackup / data:import)', () => {
+  const inspection = {
+    token: 't-1',
+    fileName: 'b.zip',
+    schemaVersion: 5,
+    hasReceipts: false,
+    hasProjects: false,
+    currentReceiptCount: 2,
+    currentProjectCount: 0,
+    needsConfirmation: true
+  }
+  let service: BackupService
+  let inspector: { inspect: ReturnType<typeof vi.fn> }
+  let store: { resolve: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    handlers.clear()
+    showOpenDialog.mockReset()
+    service = {
+      exportData: vi.fn(),
+      importData: vi.fn().mockResolvedValue({ success: true, importedCount: 3 })
+    } as unknown as BackupService
+    inspector = { inspect: vi.fn().mockResolvedValue(inspection) }
+    store = { resolve: vi.fn().mockReturnValue('/tmp/b.zip'), discard: vi.fn() }
+    new DataIpcHandler(service, { inspector, store } as never).registerHandlers()
+  })
+  afterEach(() => {
+    delete process.env.JIMUHUB_E2E_IMPORT_PATH
+  })
+
+  it('data:inspectBackupは、選択したファイルを確認して結果を返す(復元は実行しない)', async () => {
+    showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/b.zip'] })
+
+    const result = await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})
+
+    expect(inspector.inspect).toHaveBeenCalledWith('/tmp/b.zip')
+    expect(result).toEqual({ success: true, inspection })
+    expect(service.importData).not.toHaveBeenCalled()
+  })
+
+  it('data:inspectBackupは、ダイアログがキャンセルされた場合canceledを返す', async () => {
+    showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
+    expect(await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})).toEqual({
+      success: false,
+      canceled: true
+    })
+    expect(inspector.inspect).not.toHaveBeenCalled()
+  })
+
+  it('data:inspectBackupは、確認で失敗した場合に利用者向けの文言を返す', async () => {
+    showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/b.zip'] })
+    inspector.inspect.mockRejectedValue(new BackupSizeLimitError('x'))
+    expect(await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})).toEqual({
+      success: false,
+      error: BACKUP_MESSAGES.importTooLarge
+    })
+    inspector.inspect.mockRejectedValue(new Error('x'))
+    expect(await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})).toEqual({
+      success: false,
+      error: BACKUP_MESSAGES.importParseFailure
+    })
+  })
+
+  it('data:inspectBackupは、E2E用の環境変数のパスがあればダイアログを省略する', async () => {
+    process.env.JIMUHUB_E2E_IMPORT_PATH = '/tmp/e2e.zip'
+    await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})
+    expect(showOpenDialog).not.toHaveBeenCalled()
+    expect(inspector.inspect).toHaveBeenCalledWith('/tmp/e2e.zip')
+  })
+
+  it('確認の部品が無い場合(起動エラー画面)のdata:inspectBackupはエラーを返す', async () => {
+    handlers.clear()
+    new DataIpcHandler(service).registerHandlers()
+    expect(await handlers.get(IPC_CHANNELS.dataInspectBackup)!({})).toMatchObject({
+      success: false
+    })
+  })
+
+  it('data:importは、識別子から取り出したファイルで復元し、識別子を破棄する', async () => {
+    const result = await handlers.get(IPC_CHANNELS.dataImport)!(
+      { sender: { isDestroyed: () => false, send: vi.fn() } },
+      { token: 't-1' }
+    )
+
+    expect(store.resolve).toHaveBeenCalledWith('t-1')
+    expect(service.importData).toHaveBeenCalledWith('/tmp/b.zip', expect.any(Function))
+    expect(store.discard).toHaveBeenCalledWith('t-1')
+    expect(result).toEqual({ success: true, importedCount: 3 })
+    expect(showOpenDialog).not.toHaveBeenCalled()
+  })
+
+  it('data:importは、ファイルが変更された・識別子が無効な場合は復元せず、専用の文言を返す', async () => {
+    store.resolve.mockImplementation(() => {
+      throw new BackupFileChangedError('changed')
+    })
+
+    const result = await handlers.get(IPC_CHANNELS.dataImport)!(
+      { sender: { isDestroyed: () => false, send: vi.fn() } },
+      { token: 't-1' }
+    )
+
+    expect(result).toEqual({ success: false, error: BACKUP_MESSAGES.importFileChanged })
+    expect(service.importData).not.toHaveBeenCalled()
+    expect(store.discard).toHaveBeenCalledWith('t-1')
+  })
+
+  it('data:discardBackupは、識別子を破棄する', async () => {
+    expect(await handlers.get(IPC_CHANNELS.dataDiscardBackup)!({}, { token: 't-9' })).toEqual({
+      success: true
+    })
+    expect(store.discard).toHaveBeenCalledWith('t-9')
+    expect(await handlers.get(IPC_CHANNELS.dataDiscardBackup)!({}, undefined)).toEqual({
+      success: true
     })
   })
 })

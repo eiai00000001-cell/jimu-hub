@@ -11,6 +11,9 @@ files:
   - '!node_modules/better-sqlite3/prebuilds/{win32,linux,linuxmusl}-*.node'
   - '!node_modules/better-sqlite3/{deps,src}/**'
   - '!node_modules/node-addon-api/**'
+  # bare-fs / bare-path / bare-url(archiver → tar-stream の間接依存): macOS(darwin-arm64/darwin-x64)以外のネイティブバイナリ
+  # (linux・win32・android・ios。BUG-01(i3)。TC-70)を除外する
+  - '!node_modules/{bare-fs,bare-path,bare-url}/prebuilds/{android,ios,linux,win32}-*/**'
   # react / react-dom / scheduler: レンダラーはviteで1つのバンドルに含めており、実行時にnode_modulesから読み込まない
   - '!node_modules/{react,react-dom,scheduler}/**'
   # drizzle-orm: SQLite(better-sqlite3)以外のデータベース用ドライバ・方言を除外

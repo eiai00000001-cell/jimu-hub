@@ -186,15 +186,16 @@ test.describe('トップ画面・画面横断の整合性', () => {
 
     // 結合確認: 見積書・請求書一覧でも「準備中」メニュー押下時は案内が表示され、画面遷移しない(BUG-03(i1)修正確認)
     await window.getByText('一覧へ戻る').click()
-    await window.getByRole('button', { name: '案件管理' }).click()
+    // (イテレーション3で「案件管理」は実装済みのため、準備中の「タスク・期限」で確認する)
+    await window.getByRole('button', { name: 'タスク・期限' }).click()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書・請求書')
     await expect(
-      window.getByText('「案件管理」は以降のイテレーションで実装予定です。')
+      window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
     ).toBeVisible()
     await shot(
       window,
       'TC-73',
-      '見積書・請求書一覧で「案件管理」(準備中)を押した直後(案内が表示される。BUG-03修正後)'
+      '見積書・請求書一覧で「タスク・期限」(準備中)を押した直後(案内が表示される。BUG-03修正後)'
     )
   })
 

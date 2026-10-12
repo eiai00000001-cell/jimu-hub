@@ -10,6 +10,7 @@ import type { QuoteListFilter } from '@shared/types/quote'
 import type { SaveQuoteDraftRequest, FinalizeQuoteRequest, OpenPdfResult } from '@shared/ipc/api'
 import type { QuoteService } from '../services/quote.service'
 import type { InvoiceService } from '../services/invoice.service'
+import type { ProjectRefLookup } from '../repositories/project.repository'
 import { PdfOpener } from './pdf-opener'
 
 function parseId(id: unknown): number {
@@ -32,7 +33,8 @@ export class QuotesIpcHandler {
   constructor(
     private readonly service: QuoteService,
     private readonly invoiceService: InvoiceService,
-    documentsDir: string
+    documentsDir: string,
+    private readonly projectRefs?: ProjectRefLookup
   ) {
     this.pdfOpener = new PdfOpener(documentsDir)
   }
@@ -44,9 +46,12 @@ export class QuotesIpcHandler {
     ipcMain.handle(IPC_CHANNELS.quotesDeleteDraft, async (_event, id: unknown) =>
       this.service.deleteDraft(parseId(id))
     )
-    ipcMain.handle(IPC_CHANNELS.quotesGet, async (_event, id: unknown) =>
-      this.service.getQuote(parseId(id))
-    )
+    ipcMain.handle(IPC_CHANNELS.quotesGet, async (_event, id: unknown) => {
+      const quote = this.service.getQuote(parseId(id))
+      return this.projectRefs
+        ? { ...quote, project: this.projectRefs.findLinkedProjectRef('quote', quote.id) }
+        : quote
+    })
     ipcMain.handle(IPC_CHANNELS.quotesSaveDraft, async (_event, payload: SaveQuoteDraftRequest) => {
       const { id, ...input } = payload
       return this.service.saveDraft(input, OptionalQuoteIdSchema.parse(id))

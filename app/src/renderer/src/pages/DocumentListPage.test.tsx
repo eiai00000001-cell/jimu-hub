@@ -264,9 +264,9 @@ describe('DocumentListPage', () => {
   it('「準備中」メニューを押すと案内を表示する(BUG-03(i1))', async () => {
     setupApi()
     render(<DocumentListPage {...baseProps} />)
-    await userEvent.click(screen.getByText('案件管理'))
+    await userEvent.click(screen.getByText('タスク・期限'))
     expect(
-      await screen.findByText(/「案件管理」は以降のイテレーションで実装予定です/)
+      await screen.findByText(/「タスク・期限」は以降のイテレーションで実装予定です/)
     ).toBeInTheDocument()
   })
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ExportDialog } from './ExportDialog'
+import type { DataProgress } from '@shared/ipc/api'
 
 function setupApi(result: {
   success: boolean
@@ -93,7 +94,7 @@ describe('ExportDialog', () => {
   })
 
   it('実行中は進捗「領収書を書き出しています(n/m)」を表示する', async () => {
-    let emit: (p: { phase: 'export' | 'import'; current: number; total: number }) => void = () => {}
+    let emit: (p: DataProgress) => void = () => {}
     let finish: (v: unknown) => void = () => {}
     window.jimuhubApi = {
       exportData: vi.fn().mockReturnValue(new Promise((resolve) => (finish = resolve))),
@@ -104,9 +105,11 @@ describe('ExportDialog', () => {
     } as unknown as Window['jimuhubApi']
     render(<ExportDialog onClose={vi.fn()} />)
     await userEvent.click(screen.getByText('エクスポート実行'))
-    act(() => emit({ phase: 'export', current: 2, total: 5 }))
+    act(() => emit({ phase: 'export', stage: 'records', current: 3, total: 10 }))
+    expect(await screen.findByText('データを書き出しています')).toBeInTheDocument()
+    act(() => emit({ phase: 'export', stage: 'files', current: 2, total: 5 }))
     expect(await screen.findByText('領収書を書き出しています(2/5)')).toBeInTheDocument()
-    act(() => emit({ phase: 'export', current: 5, total: 5, stage: 'packing' } as never))
+    act(() => emit({ phase: 'export', stage: 'packing', current: 5, total: 5 }))
     expect(await screen.findByText('ファイルを整理しています…')).toBeInTheDocument()
     finish({ success: true, filePath: '/tmp/a.zip' })
     await waitFor(() => expect(screen.queryByText(/書き出しています/)).not.toBeInTheDocument())

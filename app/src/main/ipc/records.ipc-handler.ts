@@ -8,6 +8,7 @@ import {
   RecordIdSchema,
   RecordListFilterSchema
 } from '@shared/schemas/cash-record.schema'
+import type { ProjectRefLookup } from '../repositories/project.repository'
 import type { CashRecordService } from '../services/cash-record.service'
 import type { RecordHistoryService } from '../services/record-history.service'
 
@@ -19,16 +20,20 @@ import type { RecordHistoryService } from '../services/record-history.service'
 export class RecordsIpcHandler {
   constructor(
     private readonly service: CashRecordService,
-    private readonly historyService: RecordHistoryService
+    private readonly historyService: RecordHistoryService,
+    private readonly projectRefs?: ProjectRefLookup
   ) {}
 
   registerHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.recordsList, async (_event, filter?: unknown) =>
       this.service.listRecords(RecordListFilterSchema.parse(filter ?? {}))
     )
-    ipcMain.handle(IPC_CHANNELS.recordsGet, async (_event, id: unknown) =>
-      this.service.getRecord(RecordIdSchema.parse(id))
-    )
+    ipcMain.handle(IPC_CHANNELS.recordsGet, async (_event, id: unknown) => {
+      const record = this.service.getRecord(RecordIdSchema.parse(id))
+      return this.projectRefs
+        ? { ...record, project: this.projectRefs.findLinkedProjectRef('cash_record', record.id) }
+        : record
+    })
     ipcMain.handle(IPC_CHANNELS.recordsCreate, async (_event, input: unknown) =>
       this.service.createRecord(CashRecordCreateSchema.parse(input))
     )

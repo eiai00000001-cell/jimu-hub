@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Message } from '../components/Message'
+import { ProjectSelectField } from '../components/ProjectSelectField'
+import type { ProjectRef } from '@shared/types/project'
 import { TextAreaField } from '../components/FormField'
 import { QuickClientRegisterModal } from '../components/QuickClientRegisterModal'
 import { QuoteInputSchema, type QuoteInput, type LineItemInput } from '@shared/schemas/quote.schema'
@@ -89,6 +91,10 @@ export function QuoteFormPage({
   const [clients, setClients] = useState<ClientOption[]>([])
   const [issueDate, setIssueDate] = useState(todayIsoDate())
   const [validUntil, setValidUntil] = useState('')
+  /** 案件。利用者が変更した場合のみ、保存時に送る(未変更の場合は案件を変えない) */
+  const [projectId, setProjectId] = useState<number | null>(null)
+  const [currentProject, setCurrentProject] = useState<ProjectRef | null>(null)
+  const [projectChanged, setProjectChanged] = useState(false)
   const [remarks, setRemarks] = useState('')
   const [rows, setRows] = useState<LineItemFormRow[]>([{ ...EMPTY_ROW }])
   const [errors, setErrors] = useState<FormErrors>({ rows: [] })
@@ -118,6 +124,8 @@ export function QuoteFormPage({
           return
         }
         setClientId(quote.clientId)
+        setProjectId(quote.project?.id ?? null)
+        setCurrentProject(quote.project ?? null)
         setIssueDate(quote.issueDate)
         setValidUntil(quote.validUntil ?? '')
         setRemarks(quote.remarks ?? '')
@@ -158,7 +166,8 @@ export function QuoteFormPage({
       issueDate,
       validUntil,
       remarks,
-      lineItems: toLineItemInputs(rows)
+      lineItems: toLineItemInputs(rows),
+      ...(projectChanged ? { projectId } : {})
     }
   }
 
@@ -305,6 +314,17 @@ export function QuoteFormPage({
             </div>
             {errors.clientId ? <div className="error-message">{errors.clientId}</div> : null}
           </div>
+        </div>
+        <div>
+          <ProjectSelectField
+            id="quote-project"
+            value={projectId}
+            current={currentProject}
+            onChange={(next) => {
+              setProjectId(next)
+              setProjectChanged(true)
+            }}
+          />
         </div>
       </div>
 

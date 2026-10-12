@@ -83,10 +83,10 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
   test('サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移せず、「見積書・請求書」は遷移する(TC-03)', async () => {
     const { window } = launched
 
-    // ホーム画面から「準備中」メニュー押下
-    await window.getByRole('button', { name: '案件管理' }).click()
+    // ホーム画面から「準備中」メニュー押下(イテレーション3で「案件管理」は実装済みのため、残る準備中は「タスク・期限」)
+    await window.getByRole('button', { name: 'タスク・期限' }).click()
     await expect(
-      window.getByText('「案件管理」は以降のイテレーションで実装予定です。')
+      window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
     ).toBeVisible()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム') // 画面遷移しないこと
 
@@ -106,6 +106,10 @@ test.describe('デザインガイド適合confirmation(TC-34)', () => {
     await window.getByRole('button', { name: '入出金・経費' }).click()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 入出金・経費')
     await expect(window.locator('.sidebar-item.active')).toHaveText('入出金・経費')
+    // イテレーション3で「案件管理」も実装済みとなり、画面遷移する(詳細設計書3.22章)
+    await window.getByRole('button', { name: '案件管理' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 案件一覧')
+    await expect(window.locator('.sidebar-item.active')).toHaveText('案件管理')
     await shot(window, 'TC-03', 'coming_soon_notice')
   })
 })

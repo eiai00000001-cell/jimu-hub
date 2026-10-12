@@ -24,6 +24,8 @@ const sampleClient: Client = {
 
 function setupApi(): void {
   window.jimuhubApi = {
+    listSelectableProjects: vi.fn().mockResolvedValue([]),
+    listProjectLinkHistory: vi.fn().mockResolvedValue([]),
     getStartupStatus: vi.fn().mockResolvedValue({ ok: true }),
     listClients: vi.fn().mockResolvedValue([sampleClient]),
     getClient: vi.fn().mockResolvedValue(sampleClient),

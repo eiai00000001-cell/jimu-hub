@@ -3,6 +3,7 @@ import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
+import { ProjectLinkPanel } from '../components/ProjectLinkPanel'
 import type { InvoiceDetail } from '@shared/types/invoice'
 import { INVOICE_MESSAGES, VALIDATION_MESSAGES } from '@shared/messages/messages'
 import type { OpenPdfResult } from '@shared/ipc/api'
@@ -31,6 +32,8 @@ interface InvoiceDetailPageProps {
   onDeleted?: () => void
   /** 紐づく入金記録の「入金記録を見る」リンク押下時に、入金記録の詳細画面へ遷移する */
   onOpenCashRecord?: (recordId: number) => void
+  /** 紐づく案件の名称押下時に、案件詳細画面へ遷移する */
+  onOpenProject?: (id: number) => void
 }
 
 /**
@@ -48,7 +51,8 @@ export function InvoiceDetailPage({
   onEdit,
   onOpenQuote,
   onDeleted,
-  onOpenCashRecord
+  onOpenCashRecord,
+  onOpenProject
 }: InvoiceDetailPageProps): ReactElement {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -57,6 +61,8 @@ export function InvoiceDetailPage({
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [pdfError, setPdfError] = useState<string | null>(null)
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null)
+
+  const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -73,7 +79,7 @@ export function InvoiceDetailPage({
     return () => {
       cancelled = true
     }
-  }, [invoiceId])
+  }, [invoiceId, reloadCount])
 
   async function updatePayment(
     paymentStatus: 'paid' | 'unpaid',
@@ -361,6 +367,15 @@ export function InvoiceDetailPage({
             </div>
           ) : null}
 
+          <ProjectLinkPanel
+            targetType="invoice"
+            targetId={invoiceId}
+            targetLabel={`請求書 ${invoice.invoiceNumber ?? '下書き'}`}
+            project={invoice.project ?? null}
+            canChange={true}
+            onOpenProject={onOpenProject}
+            onChanged={() => setReloadCount((count) => count + 1)}
+          />
           <div className="back-link">
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>

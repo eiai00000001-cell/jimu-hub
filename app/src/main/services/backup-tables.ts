@@ -15,6 +15,27 @@ export interface TableDef {
   jsonKeys?: readonly string[]
 }
 
+export const CLIENTS_TABLE: TableDef = {
+  table: 'clients',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['name', 'name'],
+    ['furigana', 'furigana'],
+    ['honorific', 'honorific'],
+    ['contactPerson', 'contact_person'],
+    ['postalCode', 'postal_code'],
+    ['address', 'address'],
+    ['phone', 'phone'],
+    ['email', 'email'],
+    ['invoiceRegistrationNumber', 'invoice_registration_number'],
+    ['memo', 'memo'],
+    ['status', 'status'],
+    ['createdAt', 'created_at'],
+    ['updatedAt', 'updated_at']
+  ]
+}
+
 export const COMPANY_PROFILE_TABLE: TableDef = {
   table: 'company_profile',
   orderBy: 'id',
@@ -37,6 +58,7 @@ export const QUOTES_TABLE: TableDef = {
   orderBy: 'id',
   columns: [
     ['id', 'id'],
+    ['projectId', 'project_id'],
     ['quoteNumber', 'quote_number'],
     ['clientId', 'client_id'],
     ['issueDate', 'issue_date'],
@@ -78,6 +100,7 @@ export const INVOICES_TABLE: TableDef = {
   orderBy: 'id',
   columns: [
     ['id', 'id'],
+    ['projectId', 'project_id'],
     ['invoiceNumber', 'invoice_number'],
     ['clientId', 'client_id'],
     ['sourceQuoteId', 'source_quote_id'],
@@ -142,6 +165,7 @@ export const CASH_RECORDS_TABLE: TableDef = {
   orderBy: 'id',
   columns: [
     ['id', 'id'],
+    ['projectId', 'project_id'],
     ['recordDate', 'record_date'],
     ['kind', 'kind'],
     ['amount', 'amount'],
@@ -177,6 +201,39 @@ export const RECEIPTS_TABLE: TableDef = {
   ]
 }
 
+export const PROJECTS_TABLE: TableDef = {
+  table: 'projects',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['name', 'name'],
+    ['clientId', 'client_id'],
+    ['startDate', 'start_date'],
+    ['endDate', 'end_date'],
+    ['memo', 'memo'],
+    ['status', 'status'],
+    ['createdAt', 'created_at'],
+    ['updatedAt', 'updated_at']
+  ]
+}
+
+export const PROJECT_LINK_HISTORY_TABLE: TableDef = {
+  table: 'project_link_history',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['operatedAt', 'operated_at'],
+    ['targetType', 'target_type'],
+    ['targetId', 'target_id'],
+    ['targetLabel', 'target_label'],
+    ['fromProjectId', 'from_project_id'],
+    ['fromProjectName', 'from_project_name'],
+    ['toProjectId', 'to_project_id'],
+    ['toProjectName', 'to_project_name'],
+    ['kind', 'kind']
+  ]
+}
+
 export const CASH_RECORD_HISTORY_TABLE: TableDef = {
   table: 'cash_record_history',
   orderBy: 'id',
@@ -193,12 +250,60 @@ export const CASH_RECORD_HISTORY_TABLE: TableDef = {
   ]
 }
 
+/**
+ * バックアップ対象テーブルの一覧(JSON Linesのファイル名・manifestのキー・定義)。
+ * 復元時の取り込み順は、この配列の順(外部キーの参照先から先に)とする(詳細設計書4.3章手順6)。
+ */
+export interface BackupTableEntry {
+  /** manifestの`tables`のキー兼`data/<名前>.jsonl`の名前 */
+  name: string
+  def: TableDef
+}
+
+export const BACKUP_TABLES: readonly BackupTableEntry[] = [
+  { name: 'clients', def: CLIENTS_TABLE },
+  { name: 'projects', def: PROJECTS_TABLE },
+  { name: 'companyProfile', def: COMPANY_PROFILE_TABLE },
+  { name: 'quotes', def: QUOTES_TABLE },
+  { name: 'quoteLineItems', def: QUOTE_LINE_ITEMS_TABLE },
+  { name: 'invoices', def: INVOICES_TABLE },
+  { name: 'invoiceLineItems', def: INVOICE_LINE_ITEMS_TABLE },
+  { name: 'accounts', def: ACCOUNTS_TABLE },
+  { name: 'cashRecords', def: CASH_RECORDS_TABLE },
+  { name: 'receipts', def: RECEIPTS_TABLE },
+  { name: 'cashRecordHistory', def: CASH_RECORD_HISTORY_TABLE },
+  { name: 'projectLinkHistory', def: PROJECT_LINK_HISTORY_TABLE }
+]
+
 /** テーブルの全行を、JSONキー(camelCase)のレコードとして取得する */
 export function readRows(sqlite: SqliteDatabase.Database, def: TableDef): BackupRow[] {
+  return convertRows(def, selectRows(sqlite, def, `ORDER BY ${def.orderBy}`))
+}
+
+/** 主キー(`id`)の昇順で、`afterId`より大きい行を最大`limit`件取得する(キーセット方式。詳細設計書4.2章手順4) */
+export function readRowsPage(
+  sqlite: SqliteDatabase.Database,
+  def: TableDef,
+  afterId: number,
+  limit: number
+): BackupRow[] {
+  return convertRows(
+    def,
+    selectRows(sqlite, def, 'WHERE id > ? ORDER BY id LIMIT ?', [afterId, limit])
+  )
+}
+
+function selectRows(
+  sqlite: SqliteDatabase.Database,
+  def: TableDef,
+  tail: string,
+  params: unknown[] = []
+): BackupRow[] {
   const select = def.columns.map(([key, column]) => `${column} AS ${key}`).join(', ')
-  const rows = sqlite
-    .prepare(`SELECT ${select} FROM ${def.table} ORDER BY ${def.orderBy}`)
-    .all() as BackupRow[]
+  return sqlite.prepare(`SELECT ${select} FROM ${def.table} ${tail}`).all(...params) as BackupRow[]
+}
+
+function convertRows(def: TableDef, rows: BackupRow[]): BackupRow[] {
   const boolKeys = def.columns.filter((c) => c[2]).map((c) => c[0])
   return rows.map((row) => {
     const converted: BackupRow = { ...row }

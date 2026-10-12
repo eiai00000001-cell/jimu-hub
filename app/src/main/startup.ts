@@ -1,7 +1,10 @@
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { Database, CURRENT_SCHEMA_VERSION } from './db/db'
+import { DbPreMigrationBackup } from './services/db-pre-migration-backup'
 import { AppMetaRepository } from './repositories/app-meta.repository'
 import { MigrationService } from './services/migration.service'
-import { STARTUP_MESSAGES } from '@shared/messages/messages'
+import { DB_MIGRATION_MESSAGES, STARTUP_MESSAGES } from '@shared/messages/messages'
 import type { StartupStatus } from '@shared/ipc/api'
 
 export interface StartupResult {
@@ -24,12 +27,32 @@ export interface StartupResult {
  * (`CREATE TABLE`等)が失敗するケースもあり得るため、その場合は開いたSQLite接続を
  * `close()`してからエラー状態を返す(レビュー結果報告書 v0.2 No.13: ハンドルリーク修正)。
  *
- * 参照元: 詳細設計書4.1章手順1・2・5、8章(エラーハンドリング設計)
+ * 既存のデータベースの`schema_version`が現行より小さい場合は、移行の前に`backupsDir`へ退避する。
+ * 退避に失敗した場合は、データベースを変更せず(移行せず)、起動エラーを返す(詳細設計書4.1章手順0-3)。
+ *
+ * 参照元: 詳細設計書4.1章手順0-3・1・2・5、8章(エラーハンドリング設計)
  */
-export function initializeStartup(dbFilePath: string): StartupResult {
+export function initializeStartup(
+  dbFilePath: string,
+  backupsDir: string = join(dirname(dbFilePath), 'backups')
+): StartupResult {
   let database: Database | null = null
   try {
+    const existed = existsSync(dbFilePath)
     database = new Database(dbFilePath)
+    const storedBefore = existed ? readSchemaVersion(database) : null
+    if (storedBefore !== null && storedBefore < CURRENT_SCHEMA_VERSION) {
+      try {
+        new DbPreMigrationBackup(backupsDir).create(database, storedBefore)
+      } catch (error) {
+        console.error('移行前の退避に失敗しました', error)
+        database.close()
+        return {
+          status: { ok: false, message: DB_MIGRATION_MESSAGES.preBackupFailure },
+          database: null
+        }
+      }
+    }
     database.initialize()
 
     // schema_versionが現行バージョンより小さい場合(既存インストールからの起動)は、
@@ -47,5 +70,17 @@ export function initializeStartup(dbFilePath: string): StartupResult {
     console.error('データベース初期化に失敗しました', error)
     database?.close()
     return { status: { ok: false, message: STARTUP_MESSAGES.databaseError }, database: null }
+  }
+}
+
+/** 既存のデータベースの`schema_version`を取得する(`app_meta`が無い場合はnull) */
+function readSchemaVersion(database: Database): number | null {
+  try {
+    const row = database.sqlite
+      .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
+      .get() as { value: string } | undefined
+    return row ? Number(row.value) : null
+  } catch {
+    return null
   }
 }

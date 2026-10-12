@@ -82,6 +82,7 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): {
     .mockResolvedValue({ id: 10, quoteNumber: '2026-001', pdfPath: '/tmp/2026-001.pdf' })
   const createClient = vi.fn().mockResolvedValue({ id: 99 })
   window.jimuhubApi = {
+    listSelectableProjects: vi.fn().mockResolvedValue([]),
     getStartupStatus: vi.fn(),
     listClients: vi.fn().mockResolvedValue([sampleClient]),
     getClient: vi.fn(),
@@ -441,5 +442,64 @@ describe('QuoteFormPage(編集)', () => {
     )
 
     expect(await screen.findByText('PDF保存済みの見積書は編集できません')).toBeInTheDocument()
+  })
+})
+
+describe('QuoteFormPage: 案件(F-30。詳細設計書3.26章)', () => {
+  const projects = [
+    { id: 3, name: 'アルファ保守', status: 'active' },
+    { id: 4, name: 'ベータ制作', status: 'active' }
+  ]
+  const renderForm = (props: Record<string, unknown>) =>
+    render(
+      <QuoteFormPage
+        onSavedDraft={vi.fn()}
+        onFinalized={vi.fn()}
+        onCancel={vi.fn()}
+        onNavigateCompanyProfile={vi.fn()}
+        {...(props as { mode: 'new' })}
+      />
+    )
+
+  it('新規作成: 案件を選んで保存すると、projectIdを送る。選ばない場合は送らない', async () => {
+    const { saveQuoteDraft } = setupApi({
+      listSelectableProjects: vi.fn().mockResolvedValue(projects)
+    })
+    renderForm({ mode: 'new' })
+    await screen.findByRole('option', { name: 'アルファ保守' })
+    await userEvent.selectOptions(screen.getByLabelText('取引先'), '1')
+    await userEvent.type(screen.getByLabelText('品名1'), '制作')
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() => expect(saveQuoteDraft).toHaveBeenCalledTimes(1))
+    expect(saveQuoteDraft.mock.calls[0]![0]).not.toHaveProperty('projectId')
+
+    await userEvent.selectOptions(screen.getByLabelText('案件'), '3')
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() =>
+      expect(saveQuoteDraft).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: 3 }))
+    )
+  })
+
+  it('編集: 現在の案件を初期値にし、変更しなければ送らない。「案件なし」へ変更するとnullを送る', async () => {
+    const { saveQuoteDraft } = setupApi({
+      listSelectableProjects: vi.fn().mockResolvedValue(projects),
+      getQuote: vi.fn().mockResolvedValue({
+        ...sampleQuote,
+        project: { id: 3, name: 'アルファ保守', status: 'active' }
+      })
+    })
+    renderForm({ mode: 'edit', quoteId: 7 })
+    await screen.findByDisplayValue('既存品目')
+    expect(screen.getByLabelText('案件')).toHaveValue('3')
+
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() => expect(saveQuoteDraft).toHaveBeenCalledTimes(1))
+    expect(saveQuoteDraft.mock.calls[0]![0]).not.toHaveProperty('projectId')
+
+    await userEvent.selectOptions(screen.getByLabelText('案件'), '')
+    await userEvent.click(screen.getByText('下書き保存'))
+    await waitFor(() =>
+      expect(saveQuoteDraft).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: null }))
+    )
   })
 })

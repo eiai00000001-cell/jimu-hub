@@ -1,0 +1,27 @@
+[
+ {
+  "id": 1,
+  "originalName": "receipt_sample.pdf",
+  "mimeType": "application/pdf",
+  "fileSize": 70,
+  "removed": true,
+  "state": "ok"
+ },
+ {
+  "id": 2,
+  "originalName": "receipt_sample.png",
+  "mimeType": "image/png",
+  "fileSize": 70,
+  "removed": false,
+  "state": "ok"
+ },
+ {
+  "id": 3,
+  "originalName": "receipt_sample.jpg",
+  "mimeType": "image/jpeg",
+  "fileSize": 776,
+  "removed": false,
+  "state": "ok"
+ }
+]
+再度外す: 外す領収書の指定が正しくありません

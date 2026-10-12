@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Message } from '../components/Message'
+import { ProjectLinkPanel } from '../components/ProjectLinkPanel'
 import { KindBadge, RecordStatusBadge } from '../components/RecordBadges'
 import {
   OPERATION_LABELS,
@@ -23,6 +24,8 @@ interface CashRecordDetailPageProps {
   onEdit: (id: number) => void
   onDeleted: () => void
   onOpenInvoice: (invoiceId: number) => void
+  /** 紐づく案件の名称押下時に、案件詳細画面へ遷移する */
+  onOpenProject?: (id: number) => void
 }
 
 /**
@@ -36,7 +39,8 @@ export function CashRecordDetailPage({
   onBackToList,
   onEdit,
   onDeleted,
-  onOpenInvoice
+  onOpenInvoice,
+  onOpenProject
 }: CashRecordDetailPageProps): ReactElement {
   const [record, setRecord] = useState<CashRecordDetail | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -44,6 +48,8 @@ export function CashRecordDetailPage({
   const [deleting, setDeleting] = useState(false)
   const [reason, setReason] = useState('')
   const [previewing, setPreviewing] = useState<ReceiptView | null>(null)
+
+  const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -58,7 +64,7 @@ export function CashRecordDetailPage({
     return () => {
       cancelled = true
     }
-  }, [recordId])
+  }, [recordId, reloadCount])
 
   const editable = record !== null && record.status === 'active' && !record.isDeleted
 
@@ -268,6 +274,15 @@ export function CashRecordDetailPage({
               </tbody>
             </table>
           </div>
+          <ProjectLinkPanel
+            targetType="cash_record"
+            targetId={recordId}
+            targetLabel={`${record.recordDate} ${record.kind === 'income' ? '入金' : '経費'} ${record.description}`}
+            project={record.project ?? null}
+            canChange={!record.isDeleted}
+            onOpenProject={onOpenProject}
+            onChanged={() => setReloadCount((count) => count + 1)}
+          />
           <div className="back-link">
             <TextLink onClick={onBackToList}>&larr; 一覧へ戻る</TextLink>
           </div>

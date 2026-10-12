@@ -1,0 +1,4 @@
+全テーブル(案件・付け替え履歴を含む)のダンプ一致(50行)
+進捗の段階: import:extract, import:verify
+一時フォルダ(tmp)の残存: 0件
+案件別収支: {"sales":110000,"withholding":10210,"expense":8800,"balance":101200,"counts":{"quotes":1,"invoicesIssued":1,"invoicesDraft":0,"incomes":0,"expenses":1}}

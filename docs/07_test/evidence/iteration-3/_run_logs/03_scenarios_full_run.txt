@@ -1,0 +1,164 @@
+
+Running 95 tests using 1 worker
+
+  ✓   1 e2e/scenarios/acceptance-journey.spec.ts:13:1 › TC-74: 初回設定から見積書・請求書・入金・バックアップ復元までの通しシナリオ (4.0s)
+  ✓   2 e2e/scenarios/backup-integrity.spec.ts:63:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート内容が詳細設計書4.2章の構造と一致し、復元が全置換(既存データの上書きではなく完全な置き換え)になる(TC-05・TC-07) (1.4s)
+  ✓   3 e2e/scenarios/backup-integrity.spec.ts:120:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート失敗(異常系): 保存先が存在しない場合にエラーメッセージが表示される(TC-06) (762ms)
+  ✓   4 e2e/scenarios/backup-integrity.spec.ts:134:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): 壊れたJSONファイルを選択するとエラーメッセージが表示される(TC-09) (789ms)
+  ✓   5 e2e/scenarios/backup-integrity.spec.ts:152:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): schemaVersionが新しすぎる場合にエラーメッセージが表示される(TC-10) (778ms)
+  ✓   6 e2e/scenarios/backup-integrity.spec.ts:170:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(データ整合性): DB制約違反でトランザクションが失敗した場合、元データへロールバックされる(TC-12) (1.2s)
+  ✓   7 e2e/scenarios/backup-integrity.spec.ts:236:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元前の自動退避は直近3世代のみ保持する(TC-11) (1.3s)
+  ✓   8 e2e/scenarios/backup-zip.spec.ts:164:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-62: ZIPの構造(manifest.json+JSON Lines+PDF実体・相対パス)と、別の保存先への復元による往復の整合性 (1.9s)
+  ✓   9 e2e/scenarios/backup-zip.spec.ts:291:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-63: PDFの改ざん・欠落は復元を中断せず、該当書類のみ pdf_hash_mismatch=1 となり警告バッジが出る (1.4s)
+  ✓  10 e2e/scenarios/backup-zip.spec.ts:333:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-64: 旧形式(JSON単体 schemaVersion 1・2)の復元。documentsには手を加えず、PDFなしの書類は案内が出る (2.1s)
+  ✓  11 e2e/scenarios/backup-zip.spec.ts:423:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-65: 不正なZIP・データ加工(壊れたZIP・manifest.json欠落・ZIPスリップ・絶対/親ディレクトリのpdfPath)は安全に扱われる (4.2s)
+  ✓  12 e2e/scenarios/backup-zip.spec.ts:550:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-66: 全置換(孤立PDFの削除)・退避コピー3世代(DB+documents)・失敗時のロールバックでDBとPDFが復元前に戻る (5.6s)
+  ✓  13 e2e/scenarios/client-error-handling.spec.ts:22:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 郵便番号・電話番号・メールアドレスの形式不正でエラーが表示される(TC-16) (790ms)
+  ✓  14 e2e/scenarios/client-error-handling.spec.ts:43:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 登録画面で「キャンセル」を押すと入力内容を破棄して一覧へ戻る(TC-17) (728ms)
+  ✓  15 e2e/scenarios/client-error-handling.spec.ts:58:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 存在しない取引先IDを取得しようとするとエラーになる(TC-24・IPC直接確認) (628ms)
+  ✓  16 e2e/scenarios/client-furigana.spec.ts:21:3 › 取引先のフリガナ › TC-67: 登録時、ひらがなは全角カタカナへ自動変換されて保存され、カタカナ以外はエラーになる (1.3s)
+  ✓  17 e2e/scenarios/client-furigana.spec.ts:78:3 › 取引先のフリガナ › TC-68: 一覧の既定並びはフリガナ昇順(未入力は末尾)。濁点・長音符も五十音順、他の並べ替えも機能する (845ms)
+  ✓  18 e2e/scenarios/client-furigana.spec.ts:126:3 › 取引先のフリガナ › TC-69: 編集でフリガナを更新・クリアできる(ひらがな自動変換・エラー検証は登録と共通) (1.1s)
+  ✓  19 e2e/scenarios/client-lifecycle.spec.ts:34:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する (2.0s)
+  ✓  20 e2e/scenarios/company-profile.spec.ts:20:3 › F-10: 自社情報・振込先の設定 › TC-42: 入力・保存後は同じ画面に留まり完了メッセージを表示し、再表示で保持される (1.1s)
+  ✓  21 e2e/scenarios/company-profile.spec.ts:65:3 › F-10: 自社情報・振込先の設定 › TC-43: 必須未入力・文字数超過はエラー表示となり保存されない (863ms)
+  ✓  22 e2e/scenarios/company-profile.spec.ts:84:3 › F-10: 自社情報・振込先の設定 › TC-44: 自社情報未設定で見積書をPDF保存するとエラーと導線が出て、設定後は遷移元(見積書作成)へ戻る (996ms)
+  ✓  23 e2e/scenarios/design-conformance.spec.ts:28:3 › デザインガイド適合confirmation(TC-34) › 主要部品の色・角丸が6色ルールどおりに描画される (1.0s)
+  ✓  24 e2e/scenarios/design-conformance.spec.ts:83:3 › デザインガイド適合confirmation(TC-34) › サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移せず、「見積書・請求書」は遷移する(TC-03) (862ms)
+  ✓  25 e2e/scenarios/document-integrity.spec.ts:42:3 › 見積書・請求書: データ整合性・異常系 › TC-49: 金額計算(行金額・税率区分ごとの消費税・合計)が画面・DB・再取得で一致し、浮動小数点誤差が出ない (874ms)
+  ✓  26 e2e/scenarios/document-integrity.spec.ts:162:3 › 見積書・請求書: データ整合性・異常系 › TC-50: 採番(暦年ごと・種別ごとの連番、下書きは未採番、年またぎで001から) (2.6s)
+  ✓  27 e2e/scenarios/document-integrity.spec.ts:219:3 › 見積書・請求書: データ整合性・異常系 › TC-51: PDF保存に失敗した場合は下書きへ戻り(補償処理)、書類番号は欠番となり、復旧後の再確定は次の番号になる (4.5s)
+  ✓  28 e2e/scenarios/document-integrity.spec.ts:295:3 › 見積書・請求書: データ整合性・異常系 › TC-52: 画面外(IPC)からの不正入力・不正な状態遷移はService層で拒否される(日付形式・存在しないID等) (625ms)
+  ✓  29 e2e/scenarios/document-integrity.spec.ts:404:3 › 見積書・請求書: データ整合性・異常系 › TC-60: 源泉徴収税額の境界値(100万円の前後・端数・対象なし)がDB保存値まで正しい (700ms)
+  ✓  30 e2e/scenarios/document-integrity.spec.ts:476:3 › 見積書・請求書: データ整合性・異常系 › TC-61: 見積書・請求書一覧の検索条件(取引先・発行日・金額・入金ステータス)と空表示 (2.8s)
+  ✓  31 e2e/scenarios/i2-accounts-records.spec.ts:42:1 › TC-78: 初期科目14件(経費12・収入2)が表示順どおりに用意され、「売上高」はシステム既定として利用停止できない (839ms)
+  ✓  32 e2e/scenarios/i2-accounts-records.spec.ts:106:1 › TC-79: 勘定科目の追加・名称変更・利用停止/再開・削除と異常系(重複・空欄・文字数) (2.8s)
+  ✓  33 e2e/scenarios/i2-accounts-records.spec.ts:221:1 › TC-80: 経費・入金の登録(画面)。消費税額の自動計算・詳細表示・DB・履歴・記録ハッシュ (1.3s)
+  ✓  34 e2e/scenarios/i2-accounts-records.spec.ts:321:1 › TC-81: 入力値検証(画面・IPC境界): 日付・金額・勘定科目・摘要・取引先・領収書 (946ms)
+  ✓  35 e2e/scenarios/i2-accounts-records.spec.ts:449:1 › TC-82: 記録の編集(変更理由・変更なし・領収書の追加と外す)と論理削除・削除済みの読み取り専用 (1.6s)
+  ✓  36 e2e/scenarios/i2-accounts-records.spec.ts:606:1 › TC-83: 一覧の検索(日付・金額・取引先・科目・種別のAND)・並び順・ページ送り・0件・範囲エラー (1.2s)
+  ✓  37 e2e/scenarios/i2-accounts-records.spec.ts:720:1 › TC-84: 履歴(タブ・種別/操作日の絞り込み・変更前後の展開・「記録を表示」)と履歴の追記専用トリガー (925ms)
+  ✓  38 e2e/scenarios/i2-backup.spec.ts:252:1 › TC-92: エクスポート→復元の往復(領収書・勘定科目・記録・履歴・取消済/削除済・外した領収書・履歴の追記専用トリガー) (1.2s)
+  ✓  39 e2e/scenarios/i2-backup.spec.ts:392:1 › TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落・記録の改ざん・ハッシュ列の書き換え・不正なエントリ名) (5.1s)
+  ✓  40 e2e/scenarios/i2-backup.spec.ts:545:1 › TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き戻し(スキーマv1〜v3のZIP、JSON単体、v5、壊れたファイル、1GiB超、DB整合性違反) (948ms)
+  ✓  41 e2e/scenarios/i2-backup.spec.ts:745:1 › TC-95: スキーマv3(イテレーション1)のデータからの起動(移行): データ保持・初期科目14件・バージョン更新・再起動で冪等・新機能の利用 (2.8s)
+  ✓  42 e2e/scenarios/i2-capacity.spec.ts:57:1 › TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(時間・進捗・メモリ) (9.9s)
+  ✓  43 e2e/scenarios/i2-capacity.spec.ts:228:1 › TC-99b: 見込みサイズが復元上限の80%を超える場合の警告(文言・続行/中止) (2.3s)
+  -  44 e2e/scenarios/i2-capacity.spec.ts:310:1 › TC-99c: [任意・I2_CAP_HUGE=1] 1GiB超のZIPを実際に書き出した場合の挙動(書き出し後に復元できるか)
+  ✓  45 e2e/scenarios/i2-flows.spec.ts:96:1 › TC-85: 請求書の入金済み→入金記録の自動作成/未収に戻す→取消/再入金→新規作成/イテレーション1の入金済みの扱い/失敗時の巻き戻し (2.1s)
+  ✓  46 e2e/scenarios/i2-flows.spec.ts:236:1 › TC-98: [R-14] すでに入金済みの請求書へ再度「入金済み」を指定した場合(IPC)の挙動の実機確認 (994ms)
+  ✓  47 e2e/scenarios/i2-flows.spec.ts:286:1 › TC-86: 領収書の添付(選択時・保存直前の検証、保存先・ハッシュ、5件上限、サムネイル・プレビュー) (995ms)
+  ✓  48 e2e/scenarios/i2-flows.spec.ts:500:1 › TC-87: 改変検知(電帳法)。誤検知なし・領収書ファイルの改ざん/欠落・記録の改ざん・外した領収書・開く前の警告 (1.5s)
+  ✓  49 e2e/scenarios/i2-flows.spec.ts:676:1 › TC-88: 集計(月別・年別・勘定科目別。取消済・削除済の除外、境界日、年の選択肢、0件、入力検証) (1.3s)
+  ✓  50 e2e/scenarios/i2-flows.spec.ts:783:1 › TC-89: CSV出力(列・書式・BOM・CRLF・引用符・数式対策・期間境界・取消済/削除済・0件・入力検証・画面) (1.5s)
+  ✓  51 e2e/scenarios/i2-flows.spec.ts:968:1 › TC-90: [F-25] 取引先を「利用中に戻す」(一覧・詳細・確認ダイアログ・選択肢への復帰・IPCガード) (3.2s)
+  ✓  52 e2e/scenarios/i2-flows.spec.ts:1048:1 › TC-91: [F-26] 下書きの見積書・請求書の削除(一覧・詳細・確認・PDF保存済みは不可・番号採番への影響なし・ガード) (3.6s)
+  ✓  53 e2e/scenarios/i2-integration.spec.ts:45:1 › TC-96: [通しシナリオ] 見積書→請求書→入金済み→入金記録→経費(領収書)→集計→CSV→エクスポート→削除→復元→取消・再入金 (2.9s)
+  ✓  54 e2e/scenarios/i2-integration.spec.ts:189:1 › TC-97: [画面遷移] 新画面でのサイドバー遷移・離脱確認・準備中メニュー・画面タイトル・レイアウトの一貫性 (2.9s)
+  ✓  55 e2e/scenarios/i3-backup.spec.ts:183:1 › TC-114: [F-32] ストリーム方式のエクスポート→復元の往復。案件・紐づけ・付け替え履歴・領収書が完全に一致し、manifest・JSON Lines形式、作業用ファイル・一時フォルダが残らない (2.5s)
+  ✓  56 e2e/scenarios/i3-backup.spec.ts:248:1 › TC-115: [F-32] 復元時の上限・異常系。宣言値の偽装・エントリ数超過・展開中の破損・案件の制約違反で、現在のデータが変わらず、一時フォルダが残らない。起動時に残骸を削除する (8.2s)
+  ✓  57 e2e/scenarios/i3-backup.spec.ts:413:1 › TC-116: [F-33] 復元前の確認の判定。領収書・案件を含まないバックアップ(旧形式のJSON・ZIP、案件のない版5)を、現在の領収書・案件の有無との組み合わせごとに確認画面の要否が決まる (2.3s)
+  ✓  58 e2e/scenarios/i3-backup.spec.ts:546:1 › TC-117: [F-33] 復元前の確認画面の操作。領収書・案件が消える旨の表示、「キャンセル」が初期フォーカス、キャンセルで何も変更せずトークン破棄、「復元する」で復元、確認不要の場合は直接復元、ファイル変更の検知 (1.9s)
+  ✓  59 e2e/scenarios/i3-backup.spec.ts:724:1 › TC-118: [移行] スキーマ版4(イテレーション2の旧版が作ったデータ)から版5への移行。移行前の自動退避、データ・PDF・領収書の保持、案件のテーブル・列の追加、再起動で冪等、移行後の新機能と改変検知 (2.0s)
+  ✓  60 e2e/scenarios/i3-backup.spec.ts:893:1 › TC-119: [移行] 移行に失敗した場合のロールバック。スキーマ版は4のまま・既存データは無傷・移行前の退避が残り、原因を取り除くと次の起動で移行できる (1.7s)
+  ✓  61 e2e/scenarios/i3-backup.spec.ts:942:1 › TC-120: [F-32・★F8] 復元時の案件の整合の補正。存在しない案件を指す紐づけ・存在しない取引先の案件は「案件なし」「取引先なし」に補正され、件数が完了メッセージに出る(復元は中断しない)。版4以前の復元は案件を空にする (1.2s)
+  ✓  62 e2e/scenarios/i3-capacity.spec.ts:153:1 › TC-121: [F-32・★F2] 1GiBに近いバックアップのエクスポート・復元で、Mainプロセスのヒープ使用量の増加が約100MB以内。所要時間・RSS・ハッシュ一致・一時ファイルの残存なし (28.3s)
+
+  ✓  63 e2e/scenarios/i3-capacity.spec.ts:299:1 › TC-122: [F-32] 1GiBを超える場合。エクスポートは見込みサイズの時点で中止して何も書き出さず、復元は上限超過の専用文言で中止して現在のデータは変わらない (4.3s)
+  ✓  64 e2e/scenarios/i3-integration.spec.ts:30:1 › TC-123: [通しシナリオ] 案件登録→見積書(案件指定)→請求書変換→PDF保存→入金済み→入金記録の紐づけ→経費(案件指定)→案件別収支→エクスポート→別データへ復元→案件・紐づけ・収支・履歴の一致 (35.2s)
+  ✓  65 e2e/scenarios/i3-integration.spec.ts:181:1 › TC-124: [画面遷移] 案件の画面のタイトルバー・サイドバー・離脱確認・準備中メニュー・一覧と詳細の行き来・レイアウトの一貫性 (3.4s)
+  ✓  66 e2e/scenarios/i3-links.spec.ts:43:1 › TC-110: [F-30] 見積書・請求書・入出金の紐づけ・付け替え・解除と履歴。PDF保存済・取消済でも変更でき、書類・記録のハッシュ・更新日時・履歴は変わらない (2.5s)
+  ✓  67 e2e/scenarios/i3-links.spec.ts:207:1 › TC-111: [F-30] 紐づけ・付け替えの異常系。完了の案件への新規紐づけは拒否、現在の案件が完了でも別案件・解除は可、削除済み記録・存在しない対象・履歴の記録失敗でのロールバック (680ms)
+  ✓  68 e2e/scenarios/i3-links.spec.ts:289:1 › TC-112: [F-30] 紐づけの引き継ぎと解除。見積書→請求書の変換で進行中の案件のみ引き継ぎ、入金記録の自動作成は案件なし、削除に伴い自動解除(履歴に残る)、取消済は維持 (3.6s)
+  ✓  69 e2e/scenarios/i3-links.spec.ts:430:1 › TC-113: [F-31] 案件別収支。売上=発行済み請求書の合計金額(税込・源泉徴収前)、下書き・見積書・入金記録は含めず、経費は取消済・削除済を除く。差引・件数内訳・源泉徴収注記・付け替え後の再計算・一覧との一致 (2.1s)
+
+  ✓  70 e2e/scenarios/i3-packaged.spec.ts:48:3 › 配布版: 案件管理・バックアップ・復元・移行 › TC-127: 配布版で、案件の登録・紐づけ・案件別収支、エクスポート・復元(ストリーム)、復元前の確認、旧版(スキーマ版4)データの移行が動作する (3.5s)
+  ✓  71 e2e/scenarios/i3-projects.spec.ts:28:1 › TC-105: [F-27] 案件の登録・編集(画面)。案件名・取引先・期間・メモがDBまで一致し、状態は進行中で始まる。同名の案件も登録できる (1.2s)
+  ✓  72 e2e/scenarios/i3-projects.spec.ts:91:1 › TC-106: [F-27] 案件の入力値検証・異常系(画面とIPC)。案件名・メモ・期間・取引先・存在しないID (842ms)
+  ✓  73 e2e/scenarios/i3-projects.spec.ts:222:1 › TC-107: [F-27] 案件の削除。紐づけ0件のみ(画面は削除ボタンを出さない・IPCは拒否)。確認で「いいえ」なら削除しない。付け替え履歴は削除後も残る (2.2s)
+  ✓  74 e2e/scenarios/i3-projects.spec.ts:279:1 › TC-108: [F-28] 案件の一覧・検索。案件名・取引先・状態・期間のAND条件、LIKEのエスケープ、新しい順、件数、0件、期間エラー (894ms)
+  ✓  75 e2e/scenarios/i3-projects.spec.ts:424:1 › TC-109: [F-29] 案件の完了・再開。確認ダイアログ(はい・いいえ)、データは残る、完了案件は新規紐づけの候補から外れ、再開で戻る (3.3s)
+  ✓  76 e2e/scenarios/invoice-flow.spec.ts:58:3 › F-13〜F-16: 請求書 › TC-53: 確定済み見積書を請求書(下書き)へ変換し、明細・取引先・備考を引き継ぐ。複数回変換も可能 (1.5s)
+  ✓  77 e2e/scenarios/invoice-flow.spec.ts:110:3 › F-13〜F-16: 請求書 › TC-54: 下書きの見積書は変換不可。利用停止の取引先でも既存見積書の変換は可能で、新規作成の選択肢には出ない (1.4s)
+  ✓  78 e2e/scenarios/invoice-flow.spec.ts:152:3 › F-13〜F-16: 請求書 › TC-55/TC-56: 請求書を新規作成し、下書き保存→編集→PDF保存(採番・PDF内容・編集不可)。登録番号なしは区分記載形式 (2.1s)
+  ✓  79 e2e/scenarios/invoice-flow.spec.ts:270:3 › F-13〜F-16: 請求書 › TC-57/TC-58: 入金管理(入金日必須・入金済み/未収へ戻す・一覧フィルタ・トップ件数・下書きは操作不可) (2.4s)
+  ✓  80 e2e/scenarios/invoice-flow.spec.ts:435:3 › F-13〜F-16: 請求書 › TC-59: 源泉徴収税額の計算と請求金額(UI・PDF・DB)。対象行の合計に対して段階計算を1回適用する (2.0s)
+  ✓  81 e2e/scenarios/layout-consistency.spec.ts:27:3 › トップ画面・画面横断の整合性 › TC-39: トップ画面の4つの件数(取引先・見積書・請求書・未収)が各操作と連動する (1.8s)
+  ✓  82 e2e/scenarios/layout-consistency.spec.ts:100:3 › トップ画面・画面横断の整合性 › TC-73: 新規画面のタイトルバー・サイドバー表示・デザインガイド適合(色・角丸・危険色の範囲) (1.9s)
+  ✓  83 e2e/scenarios/layout-consistency.spec.ts:202:3 › トップ画面・画面横断の整合性 › TC-73b: 作成・詳細画面でもサイドバーが使え、入力画面では離脱確認が出る(O2) (5.2s)
+  ✓  84 e2e/scenarios/list-search-sort-filter.spec.ts:38:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 検索(部分一致)・並べ替え・状態フィルタが仕様どおりに動作する(TC-18〜TC-21) (1.2s)
+[性能計測] 50件登録: 57ms, 一覧描画: 25ms, 検索: 11ms
+  ✓  85 e2e/scenarios/list-search-sort-filter.spec.ts:95:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 取引先50件投入時の一覧表示・検索が実用的な時間で完了する(TC-22) (748ms)
+  ✘  86 e2e/scenarios/packaged-app.spec.ts:30:3 › 配布物(パッケージ済み.app) › TC-70: 配布物から不要な同梱物が除外され、必要なファイルは含まれる(SEC-07) (63ms)
+
+  ✓  87 e2e/scenarios/packaged-app.spec.ts:90:3 › 配布物(パッケージ済み.app) › TC-71: アプリアイコン(案C)が設定され、icnsに必要なサイズが含まれる (63ms)
+  ✓  88 e2e/scenarios/packaged-app.spec.ts:136:3 › 配布物(パッケージ済み.app) › TC-72: 配布版が起動し、データは--user-data-dirに作成され(JIMUHUB_DATA_DIRは無視)、DB・PDF生成が動作する (1.2s)
+  ✓  89 e2e/scenarios/quote-flow.spec.ts:28:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-45: 取引先の簡易登録(モーダル)で登録した取引先が選択状態になり、取引先管理にも反映される (1.2s)
+  ✓  90 e2e/scenarios/quote-flow.spec.ts:62:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-46: 下書き保存→詳細(未採番・下書き)→編集→再保存、キャンセルでの破棄 (1.2s)
+  ✓  91 e2e/scenarios/quote-flow.spec.ts:111:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-47: 見積書作成の入力値検証(取引先・品名・数量・単価・日付・明細行) (1.3s)
+  ✓  92 e2e/scenarios/quote-flow.spec.ts:176:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-48: PDFとして保存(確定): 採番・PDF生成・保存先・ハッシュ・PDF内容・編集不可 (1.9s)
+  ✓  93 e2e/scenarios/startup-error.spec.ts:24:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される (626ms)
+  ✓  94 e2e/scenarios/startup-recovery.spec.ts:59:3 › F-09: 起動エラー画面からの復元 › TC-40: 破損DBの起動エラー画面から復元でき、破損DBは退避され、再起動後は復元データで正常に起動する (1.6s)
+  ✓  95 e2e/scenarios/startup-recovery.spec.ts:142:3 › F-09: 起動エラー画面からの復元 › TC-41: 起動エラー画面での復元失敗(不正ファイル)はエラー表示となり、破損DBは元の位置に戻り、再度選び直せる (1.4s)
+
+
+  1) e2e/scenarios/packaged-app.spec.ts:30:3 › 配布物(パッケージ済み.app) › TC-70: 配布物から不要な同梱物が除外され、必要なファイルは含まれる(SEC-07) 
+
+    Error: 他OS用ネイティブバイナリ(win32/linux)が含まれていない
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 26
+
+    - Array []
+    + Array [
+    +   "/node_modules/bare-fs/prebuilds/linux-arm64",
+    +   "/node_modules/bare-fs/prebuilds/linux-arm64/bare-fs.bare",
+    +   "/node_modules/bare-fs/prebuilds/linux-x64",
+    +   "/node_modules/bare-fs/prebuilds/linux-x64/bare-fs.bare",
+    +   "/node_modules/bare-fs/prebuilds/win32-arm64",
+    +   "/node_modules/bare-fs/prebuilds/win32-arm64/bare-fs.bare",
+    +   "/node_modules/bare-fs/prebuilds/win32-x64",
+    +   "/node_modules/bare-fs/prebuilds/win32-x64/bare-fs.bare",
+    +   "/node_modules/bare-path/prebuilds/linux-arm64",
+    +   "/node_modules/bare-path/prebuilds/linux-arm64/bare-path.bare",
+    +   "/node_modules/bare-path/prebuilds/linux-x64",
+    +   "/node_modules/bare-path/prebuilds/linux-x64/bare-path.bare",
+    +   "/node_modules/bare-path/prebuilds/win32-arm64",
+    +   "/node_modules/bare-path/prebuilds/win32-arm64/bare-path.bare",
+    +   "/node_modules/bare-path/prebuilds/win32-x64",
+    +   "/node_modules/bare-path/prebuilds/win32-x64/bare-path.bare",
+    +   "/node_modules/bare-url/prebuilds/linux-arm64",
+    +   "/node_modules/bare-url/prebuilds/linux-arm64/bare-url.bare",
+    +   "/node_modules/bare-url/prebuilds/linux-x64",
+    +   "/node_modules/bare-url/prebuilds/linux-x64/bare-url.bare",
+    +   "/node_modules/bare-url/prebuilds/win32-arm64",
+    +   "/node_modules/bare-url/prebuilds/win32-arm64/bare-url.bare",
+    +   "/node_modules/bare-url/prebuilds/win32-x64",
+    +   "/node_modules/bare-url/prebuilds/win32-x64/bare-url.bare",
+    + ]
+
+      64 |         `除外確認 ${label}: ${found.length === 0 ? '含まれない(OK)' : '含まれる: ' + found.slice(0, 3).join(', ')}`
+      65 |       )
+    > 66 |       expect(found, `${label}が含まれていない`).toEqual([])
+         |                                         ^
+      67 |     }
+      68 |     // 必要なものは含まれる
+      69 |     const required: Array<[string, RegExp]> = [
+        at <project-root>/app/e2e/scenarios/packaged-app.spec.ts:66:41
+
+    Error Context: e2e/.output/scenarios/packaged-app-配布物-パッケージ済み-a-82bc3-物が除外され、必要なファイルは含まれる-SEC-07-/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/packaged-app-配布物-パッケージ済み-a-82bc3-物が除外され、必要なファイルは含まれる-SEC-07-/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/packaged-app-配布物-パッケージ済み-a-82bc3-物が除外され、必要なファイルは含まれる-SEC-07-/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/scenarios/packaged-app.spec.ts:30:3 › 配布物(パッケージ済み.app) › TC-70: 配布物から不要な同梱物が除外され、必要なファイルは含まれる(SEC-07) 
+  1 skipped
+  93 passed (4.2m)

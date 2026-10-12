@@ -1,6 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 import AdmZip from 'adm-zip'
 import {
+  buildZip,
+  exportToLegacyJson,
+  mapExportTable,
+  readExport,
+  readZipEntries,
+  renameEntryInZip
+} from '../../src/main/services/backup/test-helpers'
+import {
   existsSync,
   mkdtempSync,
   openSync,
@@ -9,6 +17,7 @@ import {
   ftruncateSync,
   rmSync,
   writeFileSync,
+  copyFileSync,
   readdirSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -175,30 +184,94 @@ async function importViaUi(window: Page): Promise<string> {
   return message.innerText()
 }
 
-function modifiedZip(
-  name: string,
-  mutate: (zip: AdmZip, data: Record<string, unknown>) => void
-): string {
-  const zip = new AdmZip(sourceZip)
-  const data = JSON.parse(zip.readAsText('data.json')) as Record<string, unknown>
-  mutate(zip, data)
-  zip.updateFile('data.json', Buffer.from(JSON.stringify(data), 'utf8'))
+interface ZipEdit {
+  /** 出力先のZIPのパス */
+  path: string
+  /** テーブル(JSON Lines)のレコードを加工する(新形式。test-helpersの`mapExportTable`) */
+  mapTable: (
+    table: string,
+    mapRow: (row: Record<string, unknown>, index: number) => Record<string, unknown>
+  ) => void
+  /** ZIPのエントリを直接加工する(エントリの削除・追加・差し替え) */
+  editZip: (edit: (zip: AdmZip) => void) => void
+  /** `manifest.json`を加工する */
+  editManifest: (edit: (manifest: Record<string, unknown>) => void) => void
+}
+
+/** 元のZIP(新形式、スキーマ版5)を複製して加工する */
+function modifiedZip(name: string, mutate: (ctx: ZipEdit) => void): string {
   const out = join(workDir, name)
-  zip.writeZip(out)
+  copyFileSync(sourceZip, out)
+  const ctx: ZipEdit = {
+    path: out,
+    mapTable: (table, mapRow) => mapExportTable(out, table, mapRow),
+    editZip: (edit) => {
+      const zip = new AdmZip(out)
+      edit(zip)
+      zip.writeZip(out)
+    },
+    editManifest: (edit) =>
+      ctx.editZip((zip) => {
+        const m = JSON.parse(zip.readAsText('manifest.json')) as Record<string, unknown>
+        edit(m)
+        zip.updateFile('manifest.json', Buffer.from(JSON.stringify(m), 'utf8'))
+      })
+  }
+  mutate(ctx)
+  return out
+}
+
+/**
+ * 従来形式(`data.json`1本のZIP。スキーマ版1〜4)を、元のZIPの内容から組み立てる。
+ * `documents/`配下のエントリは、`keepDocuments`が真の場合に引き継ぐ。
+ */
+function legacyZip(
+  name: string,
+  schemaVersion: number,
+  mutate: (data: Record<string, unknown>) => Record<string, unknown>,
+  keepDocuments: (entryName: string) => boolean = () => true
+): string {
+  const legacy = exportToLegacyJson(sourceZip, schemaVersion) as {
+    schemaVersion: number
+    data: Record<string, unknown>
+  }
+  // 版4以前には、案件のテーブル・案件ID列がない
+  delete legacy.data.projects
+  delete legacy.data.projectLinkHistory
+  for (const t of ['quotes', 'invoices', 'cashRecords'])
+    for (const row of (legacy.data[t] ?? []) as Array<Record<string, unknown>>) delete row.projectId
+  legacy.data = mutate(legacy.data)
+  const entries: Record<string, Buffer | string> = { 'data.json': JSON.stringify(legacy) }
+  for (const [entryName, content] of readZipEntries(sourceZip))
+    if (entryName.startsWith('documents/') && keepDocuments(entryName)) entries[entryName] = content
+  const out = join(workDir, name)
+  buildZip(out, entries)
   return out
 }
 
 test('TC-92: エクスポート→復元の往復(領収書・勘定科目・記録・履歴・取消済/削除済・外した領収書・履歴の追記専用トリガー)', async () => {
-  // ZIPの構造
-  const zip = new AdmZip(sourceZip)
-  const names = zip.getEntries().map((e) => e.entryName)
-  const data = JSON.parse(zip.readAsText('data.json')) as {
-    schemaVersion: number
-    data: Record<string, Array<Record<string, unknown>>>
+  // ZIPの構造(イテレーション3: manifest.json + data/<テーブル>.jsonl)
+  const exported = readExport(sourceZip)
+  const names = [...exported.entries.keys()]
+  const data = {
+    schemaVersion: exported.manifest.schemaVersion,
+    data: {
+      accounts: exported.records('accounts'),
+      cashRecords: exported.records('cashRecords'),
+      receipts: exported.records('receipts'),
+      cashRecordHistory: exported.records('cashRecordHistory')
+    } as Record<string, Array<Record<string, unknown>>>
   }
-  expect(data.schemaVersion).toBe(4)
-  expect(Object.keys(data.data)).toEqual(
-    expect.arrayContaining(['accounts', 'cashRecords', 'receipts', 'cashRecordHistory'])
+  expect(data.schemaVersion).toBe(5)
+  expect(Object.keys(exported.manifest.tables)).toEqual(
+    expect.arrayContaining([
+      'accounts',
+      'cashRecords',
+      'receipts',
+      'cashRecordHistory',
+      'projects',
+      'projectLinkHistory'
+    ])
   )
   expect(data.data.accounts).toHaveLength(15)
   expect(data.data.receipts).toHaveLength(3) // 外した1件を含む
@@ -214,7 +287,7 @@ test('TC-92: エクスポート→復元の往復(領収書・勘定科目・記
   expect(data.data.receipts.filter((r) => r.removedAt !== null)).toHaveLength(1)
   noteEvidence(
     'TC-92',
-    'ZIPのエントリ一覧とdata.jsonの件数',
+    'ZIPのエントリ一覧とmanifest・各テーブルの件数',
     `${names.join('\n')}\naccounts=${data.data.accounts.length} cashRecords=${data.data.cashRecords.length} receipts=${data.data.receipts.length} cashRecordHistory=${data.data.cashRecordHistory.length}\nschemaVersion=${data.schemaVersion}`
   )
 
@@ -317,17 +390,18 @@ test('TC-92: エクスポート→復元の往復(領収書・勘定科目・記
 })
 
 test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落・記録の改ざん・ハッシュ列の書き換え・不正なエントリ名)', async () => {
-  const receiptPaths = new AdmZip(sourceZip)
-    .getEntries()
-    .map((e) => e.entryName)
-    .filter((n) => n.startsWith('documents/receipts/'))
+  const receiptPaths = [...readZipEntries(sourceZip).keys()].filter((n) =>
+    n.startsWith('documents/receipts/')
+  )
   // (a) 領収書ファイルのバイト列を変更
-  const a = modifiedZip('tamper-a.zip', (zip) => {
-    const e = zip.getEntry(receiptPaths[1])!
-    const b = Buffer.from(e.getData())
-    b[b.length - 3] ^= 0xff
-    zip.updateFile(e, b)
-  })
+  const a = modifiedZip('tamper-a.zip', ({ editZip }) =>
+    editZip((zip) => {
+      const e = zip.getEntry(receiptPaths[1])!
+      const b = Buffer.from(e.getData())
+      b[b.length - 3] ^= 0xff
+      zip.updateFile(e, b)
+    })
+  )
   {
     const { window } = await startTarget(a)
     const msg = await importViaUi(window)
@@ -345,9 +419,9 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     state.launched = undefined
   }
   // (b) 領収書エントリの欠落
-  const b = modifiedZip('tamper-b.zip', (zip) => {
-    zip.deleteFile(receiptPaths[0])
-  })
+  const b = modifiedZip('tamper-b.zip', ({ editZip }) =>
+    editZip((zip) => zip.deleteFile(receiptPaths[0]))
+  )
   {
     const { window, dataDir } = await startTarget(b)
     const r = await mustApi<ImportRes>(window, 'importData')
@@ -362,14 +436,12 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     await closeApp(state.launched!)
     state.launched = undefined
   }
-  // (c) data.json の記録の金額を書き換え(記録ハッシュ不一致)
-  const c = modifiedZip('tamper-c.zip', (_z, d) => {
-    ;(
-      (d.data as Record<string, Array<Record<string, unknown>>>).cashRecords.find(
-        (r) => r.description === '雑収入の入金'
-      ) as Record<string, unknown>
-    ).amount = 999999
-  })
+  // (c) cashRecords.jsonl の記録の金額を書き換え(記録ハッシュ不一致)
+  const c = modifiedZip('tamper-c.zip', ({ mapTable }) =>
+    mapTable('cashRecords', (r) =>
+      r.description === '雑収入の入金' ? { ...r, amount: 999999 } : r
+    )
+  )
   {
     const { window, dataDir } = await startTarget(c)
     const msg = await importViaUi(window)
@@ -390,9 +462,9 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     state.launched = undefined
   }
   // (d) 領収書のsha256列を書き換え
-  const dZip = modifiedZip('tamper-d.zip', (_z, d) => {
-    ;(d.data as Record<string, Array<Record<string, unknown>>>).receipts[1].sha256 = '0'.repeat(64)
-  })
+  const dZip = modifiedZip('tamper-d.zip', ({ mapTable }) =>
+    mapTable('receipts', (r, i) => (i === 1 ? { ...r, sha256: '0'.repeat(64) } : r))
+  )
   {
     const { window } = await startTarget(dZip)
     const r = await mustApi<ImportRes>(window, 'importData')
@@ -402,10 +474,12 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     state.launched = undefined
   }
   // (e) 履歴の記録ハッシュ(recordHashAfter)を書き換え
-  const e = modifiedZip('tamper-e.zip', (_z, d) => {
-    const h = (d.data as Record<string, Array<Record<string, unknown>>>).cashRecordHistory
-    h[h.length - 1].recordHashAfter = '1'.repeat(64)
-  })
+  const lastHistory = readExport(sourceZip).records('cashRecordHistory').length - 1
+  const e = modifiedZip('tamper-e.zip', ({ mapTable }) =>
+    mapTable('cashRecordHistory', (r, i) =>
+      i === lastHistory ? { ...r, recordHashAfter: '1'.repeat(64) } : r
+    )
+  )
   {
     const { window } = await startTarget(e)
     const r = await mustApi<ImportRes>(window, 'importData')
@@ -415,13 +489,15 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     await closeApp(state.launched!)
     state.launched = undefined
   }
-  // (f) 不正なエントリ名(領収書の命名規則外・パス走査)は書き出されない
-  const f = modifiedZip('tamper-f.zip', (zip) => {
-    zip.addFile('documents/receipts/2026/evil.exe', Buffer.from('MZ evil'))
-    zip.addFile('documents/receipts/2026/../../../escape.pdf', Buffer.from('%PDF- escape'))
-    zip.addFile('../outside.txt', Buffer.from('outside'))
-    zip.addFile('documents/notes.txt', Buffer.from('not a pdf'))
-  })
+  // (f) 許可リスト(領収書の命名規則等)に一致しないエントリ名は、展開の対象から外れ、書き出されない
+  const f = modifiedZip('tamper-f.zip', ({ editZip }) =>
+    editZip((zip) => {
+      zip.addFile('documents/receipts/2026/evil.exe', Buffer.from('MZ evil'))
+      zip.addFile('documents/receipts/2026/escape.pdf', Buffer.from('%PDF- escape'))
+      zip.addFile('outside.txt', Buffer.from('outside'))
+      zip.addFile('documents/notes.txt', Buffer.from('not a pdf'))
+    })
+  )
   {
     const { window, dataDir } = await startTarget(f)
     const r = await mustApi<ImportRes>(window, 'importData')
@@ -436,9 +512,33 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
     expect(existsSync(join(dataDir, 'escape.pdf'))).toBe(false)
     noteEvidence(
       'TC-93',
-      '(f)不正なエントリ名の無視',
+      '(f)許可リスト外のエントリ名の無視',
       `復元結果: ${JSON.stringify(r)}\n書き出されたファイル(documents配下): ${files.filter((x) => x.startsWith('documents/')).join(', ')}`
     )
+  }
+  // (g) パス走査(エントリ名に`..`)は、細工されたファイルとして解析エラーで中断し、現在のデータは変わらない(詳細設計書4.3章手順3-1)
+  const g = modifiedZip('tamper-g.zip', ({ editZip }) =>
+    editZip((zip) =>
+      zip.addFile('documents/receipts/2026/aa/bb/cc/escape.pdf', Buffer.from('%PDF-'))
+    )
+  )
+  renameEntryInZip(
+    g,
+    'documents/receipts/2026/aa/bb/cc/escape.pdf',
+    'documents/receipts/2026/../../../escape.pdf'
+  )
+  {
+    const { window, dataDir } = await startTarget(g)
+    const before = dumpAll(dataDir, dbQuery)
+    const msg = await importViaUi(window)
+    expect(msg).toContain('読み込めませんでした')
+    expect(dumpAll(dataDir, dbQuery)).toBe(before)
+    expect(existsSync(join(dataDir, 'escape.pdf'))).toBe(false)
+    expect(existsSync(join(dataDir, '..', 'escape.pdf'))).toBe(false)
+    noteEvidence('TC-93', '(g)パス走査(..)のエントリ名は解析エラーで中断', msg)
+    await shot(window, 'TC-93', 'パス走査を含むZIPの復元: 解析エラーで中断(データは変わらない)')
+    await closeApp(state.launched!)
+    state.launched = undefined
   }
 })
 
@@ -451,20 +551,19 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   const setImport = async (p: string): Promise<void> =>
     setEnv(state.launched!.app, 'JIMUHUB_E2E_IMPORT_PATH', p)
 
-  // 失敗系: 解析エラー(JSONでないdata.json)・v5・巨大ファイル・DB整合性違反はデータを変えない
-  const broken = modifiedZip('broken.zip', () => undefined)
-  {
-    const z = new AdmZip(sourceZip)
-    z.updateFile('data.json', Buffer.from('{ not json'))
-    z.writeZip(broken)
-  }
+  // 失敗系: 解析エラー(JSONでないmanifest.json)・未来の版・巨大ファイル・DB整合性違反はデータを変えない
+  const broken = modifiedZip('broken.zip', ({ editZip }) =>
+    editZip((zip) => zip.updateFile('manifest.json', Buffer.from('{ not json')))
+  )
   await setImport(broken)
   const r1 = await mustApi<ImportRes>(window, 'importData')
   expect(r1.success).toBe(false)
   expect(r1.error).toContain('読み込めませんでした')
-  const v5 = modifiedZip('v5.zip', (_z, d) => {
-    d.schemaVersion = 5
-  })
+  const v5 = modifiedZip('v6.zip', ({ editManifest }) =>
+    editManifest((m) => {
+      m.schemaVersion = 6 // 現在のアプリが対応する版(5)より新しい
+    })
+  )
   await setImport(v5)
   const r2 = await mustApi<ImportRes>(window, 'importData')
   expect(r2.success).toBe(false)
@@ -485,9 +584,9 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   const r4 = await mustApi<ImportRes>(window, 'importData')
   expect(r4.success).toBe(false)
   // DB整合性違反(存在しない勘定科目を参照する記録) → トランザクションのロールバックと退避からの復旧
-  const fk = modifiedZip('fk.zip', (_z, d) => {
-    ;(d.data as Record<string, Array<Record<string, unknown>>>).cashRecords[2].accountId = 9999
-  })
+  const fk = modifiedZip('fk.zip', ({ mapTable }) =>
+    mapTable('cashRecords', (r, i) => (i === 2 ? { ...r, accountId: 9999 } : r))
+  )
   await setImport(fk)
   const r5 = await mustApi<ImportRes>(window, 'importData')
   expect(r5.success).toBe(false)
@@ -520,16 +619,19 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   noteEvidence('TC-94', '復元前の自動退避', backups.join('\n'))
 
   // 旧形式: スキーマv3のZIP(accounts等なし)→ 初期科目14件・記録空・領収書フォルダは全置換で消える(退避にのみ残る)
-  const v3 = modifiedZip('v3.zip', (z, d) => {
-    for (const e of z.getEntries())
-      if (e.entryName.startsWith('documents/receipts/')) z.deleteFile(e) // v3のZIPには領収書の実体はない
-    d.schemaVersion = 3
-    const dd = d.data as Record<string, unknown>
-    delete dd.accounts
-    delete dd.cashRecords
-    delete dd.receipts
-    delete dd.cashRecordHistory
-  })
+  const v3 = legacyZip(
+    'v3.zip',
+    3,
+    (dd) => {
+      const rest = { ...dd }
+      delete rest.accounts
+      delete rest.cashRecords
+      delete rest.receipts
+      delete rest.cashRecordHistory
+      return rest
+    },
+    (n) => !n.startsWith('documents/receipts/') // v3のZIPには領収書の実体はない
+  )
   await setImport(v3)
   const r6 = await mustApi<ImportRes>(window, 'importData')
   expect(r6.success).toBe(true)
@@ -557,33 +659,36 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   const docBackups = readdirSync(join(dataDir, 'backups'))
   noteEvidence('TC-94', 'v3復元後の退避一覧', docBackups.join('\n'))
   // スキーマv2・v1のZIP
-  const v2 = modifiedZip('v2.zip', (z, d) => {
-    for (const e of z.getEntries())
-      if (e.entryName.startsWith('documents/receipts/')) z.deleteFile(e)
-    d.schemaVersion = 2
-    const dd = d.data as Record<string, unknown>
-    delete dd.accounts
-    delete dd.cashRecords
-    delete dd.receipts
-    delete dd.cashRecordHistory
-    for (const k of ['quotes', 'invoices'])
-      for (const row of dd[k] as Array<Record<string, unknown>>) delete row.pdfHashMismatch
-  })
+  const v2 = legacyZip(
+    'v2.zip',
+    2,
+    (dd) => {
+      const rest = { ...dd }
+      delete rest.accounts
+      delete rest.cashRecords
+      delete rest.receipts
+      delete rest.cashRecordHistory
+      for (const k of ['quotes', 'invoices'])
+        for (const row of rest[k] as Array<Record<string, unknown>>) delete row.pdfHashMismatch
+      return rest
+    },
+    (n) => !n.startsWith('documents/receipts/')
+  )
   await setImport(v2)
   expect((await mustApi<ImportRes>(window, 'importData')).success).toBe(true)
   expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
-  const v1 = modifiedZip('v1.zip', (z, d) => {
-    for (const e of z.getEntries()) if (e.entryName.startsWith('documents/')) z.deleteFile(e)
-    d.schemaVersion = 1
-    const dd = d.data as Record<string, unknown>
-    d.data = {
+  const v1 = legacyZip(
+    'v1.zip',
+    1,
+    (dd) => ({
       clients: (dd.clients as Array<Record<string, unknown>>).map((c) => {
         const { furigana: _f, ...rest } = c
         void _f
         return rest
       })
-    }
-  })
+    }),
+    () => false
+  )
   await setImport(v1)
   const r7 = await mustApi<ImportRes>(window, 'importData')
   expect(r7.success).toBe(true)
@@ -682,7 +787,8 @@ test('TC-95: スキーマv3(イテレーション1)のデータからの起動(�
   // v4アプリで起動
   const re = await relaunchOnDir(dataDir)
   await expect(re.window.getByText('事務HUB').first()).toBeVisible()
-  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('4')
+  // イテレーション3以降は、v3からの起動でも最新(スキーマ版5)まで移行する
+  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
   expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
   expect(dbQuery(dataDir, "select count(*) from accounts where kind='expense'")).toBe('12')
   expect(dbQuery(dataDir, "select name from accounts where default_key='sales_revenue'")).toBe(
@@ -731,7 +837,7 @@ test('TC-95: スキーマv3(イテレーション1)のデータからの起動(�
   noteEvidence(
     'TC-95',
     '移行の確認結果',
-    `schema_version=4、accounts=14(経費12・収入2)、既存7テーブルの内容とPDFのSHA-256は移行前後で一致、再起動後もaccounts=14`
+    `schema_version=5(v3から最新まで移行)、accounts=14(経費12・収入2)、既存7テーブルの内容とPDFのSHA-256は移行前後で一致、再起動後もaccounts=14`
   )
   await re2.app.close()
   rmSync(dataDir, { recursive: true, force: true })

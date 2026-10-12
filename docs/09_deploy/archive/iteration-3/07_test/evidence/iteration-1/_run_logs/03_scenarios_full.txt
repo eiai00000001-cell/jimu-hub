@@ -1,0 +1,164 @@
+
+Running 49 tests using 1 worker
+
+  ✓   1 e2e/scenarios/acceptance-journey.spec.ts:13:1 › TC-74: 初回設定から見積書・請求書・入金・バックアップ復元までの通しシナリオ (3.9s)
+  ✓   2 e2e/scenarios/backup-integrity.spec.ts:63:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート内容が詳細設計書4.2章の構造と一致し、復元が全置換(既存データの上書きではなく完全な置き換え)になる(TC-05・TC-07) (1.3s)
+  ✓   3 e2e/scenarios/backup-integrity.spec.ts:120:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート失敗(異常系): 保存先が存在しない場合にエラーメッセージが表示される(TC-06) (728ms)
+  ✓   4 e2e/scenarios/backup-integrity.spec.ts:134:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): 壊れたJSONファイルを選択するとエラーメッセージが表示される(TC-09) (795ms)
+  ✓   5 e2e/scenarios/backup-integrity.spec.ts:152:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): schemaVersionが新しすぎる場合にエラーメッセージが表示される(TC-10) (762ms)
+  ✓   6 e2e/scenarios/backup-integrity.spec.ts:170:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(データ整合性): DB制約違反でトランザクションが失敗した場合、元データへロールバックされる(TC-12) (1.2s)
+  ✓   7 e2e/scenarios/backup-integrity.spec.ts:236:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元前の自動退避は直近3世代のみ保持する(TC-11) (1.3s)
+  ✓   8 e2e/scenarios/backup-zip.spec.ts:158:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-62: ZIPの構造(data.json+PDF実体・相対パス)と、別の保存先への復元による往復の整合性 (2.0s)
+  ✓   9 e2e/scenarios/backup-zip.spec.ts:270:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-63: PDFの改ざん・欠落は復元を中断せず、該当書類のみ pdf_hash_mismatch=1 となり警告バッジが出る (1.4s)
+  ✓  10 e2e/scenarios/backup-zip.spec.ts:312:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-64: 旧形式(JSON単体 schemaVersion 1・2)の復元。documentsには手を加えず、PDFなしの書類は案内が出る (2.1s)
+  ✓  11 e2e/scenarios/backup-zip.spec.ts:401:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-65: 不正なZIP・データ加工(壊れたZIP・data.json欠落・ZIPスリップ・絶対/親ディレクトリのpdfPath)は安全に扱われる (3.2s)
+  ✓  12 e2e/scenarios/backup-zip.spec.ts:516:3 › F-02/F-03: ZIP形式のエクスポート・復元 › TC-66: 全置換(孤立PDFの削除)・退避コピー3世代(DB+documents)・失敗時のロールバックでDBとPDFが復元前に戻る (5.6s)
+  ✓  13 e2e/scenarios/client-error-handling.spec.ts:22:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 郵便番号・電話番号・メールアドレスの形式不正でエラーが表示される(TC-16) (819ms)
+  ✓  14 e2e/scenarios/client-error-handling.spec.ts:43:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 登録画面で「キャンセル」を押すと入力内容を破棄して一覧へ戻る(TC-17) (705ms)
+  ✓  15 e2e/scenarios/client-error-handling.spec.ts:58:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 存在しない取引先IDを取得しようとするとエラーになる(TC-24・IPC直接確認) (598ms)
+  ✓  16 e2e/scenarios/client-furigana.spec.ts:21:3 › 取引先のフリガナ › TC-67: 登録時、ひらがなは全角カタカナへ自動変換されて保存され、カタカナ以外はエラーになる (1.3s)
+  ✓  17 e2e/scenarios/client-furigana.spec.ts:78:3 › 取引先のフリガナ › TC-68: 一覧の既定並びはフリガナ昇順(未入力は末尾)。濁点・長音符も五十音順、他の並べ替えも機能する (811ms)
+  ✓  18 e2e/scenarios/client-furigana.spec.ts:126:3 › 取引先のフリガナ › TC-69: 編集でフリガナを更新・クリアできる(ひらがな自動変換・エラー検証は登録と共通) (1.1s)
+  ✓  19 e2e/scenarios/client-lifecycle.spec.ts:34:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する (2.0s)
+  ✓  20 e2e/scenarios/company-profile.spec.ts:20:3 › F-10: 自社情報・振込先の設定 › TC-42: 入力・保存後は同じ画面に留まり完了メッセージを表示し、再表示で保持される (1.1s)
+  ✓  21 e2e/scenarios/company-profile.spec.ts:65:3 › F-10: 自社情報・振込先の設定 › TC-43: 必須未入力・文字数超過はエラー表示となり保存されない (830ms)
+  ✓  22 e2e/scenarios/company-profile.spec.ts:84:3 › F-10: 自社情報・振込先の設定 › TC-44: 自社情報未設定で見積書をPDF保存するとエラーと導線が出て、設定後は遷移元(見積書作成)へ戻る (986ms)
+  ✓  23 e2e/scenarios/design-conformance.spec.ts:28:3 › デザインガイド適合confirmation(TC-34) › 主要部品の色・角丸が6色ルールどおりに描画される (1.0s)
+  ✓  24 e2e/scenarios/design-conformance.spec.ts:83:3 › デザインガイド適合confirmation(TC-34) › サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移せず、「見積書・請求書」は遷移する(TC-03) (823ms)
+  ✓  25 e2e/scenarios/document-integrity.spec.ts:42:3 › 見積書・請求書: データ整合性・異常系 › TC-49: 金額計算(行金額・税率区分ごとの消費税・合計)が画面・DB・再取得で一致し、浮動小数点誤差が出ない (870ms)
+  ✓  26 e2e/scenarios/document-integrity.spec.ts:162:3 › 見積書・請求書: データ整合性・異常系 › TC-50: 採番(暦年ごと・種別ごとの連番、下書きは未採番、年またぎで001から) (2.6s)
+  ✘  27 e2e/scenarios/document-integrity.spec.ts:219:3 › 見積書・請求書: データ整合性・異常系 › TC-51: PDF保存に失敗した場合は下書きへ戻り(補償処理)、書類番号は欠番となり、復旧後の再確定は次の番号になる (2.6s)
+  ✓  28 e2e/scenarios/document-integrity.spec.ts:272:3 › 見積書・請求書: データ整合性・異常系 › TC-52: 画面外(IPC)からの不正入力・不正な状態遷移はService層で拒否される(日付形式・存在しないID等) (630ms)
+  ✓  29 e2e/scenarios/document-integrity.spec.ts:381:3 › 見積書・請求書: データ整合性・異常系 › TC-60: 源泉徴収税額の境界値(100万円の前後・端数・対象なし)がDB保存値まで正しい (677ms)
+  ✘  30 e2e/scenarios/document-integrity.spec.ts:453:3 › 見積書・請求書: データ整合性・異常系 › TC-61: 見積書・請求書一覧の検索条件(取引先・発行日・金額・入金ステータス)と空表示 (2.7s)
+  ✓  31 e2e/scenarios/invoice-flow.spec.ts:58:3 › F-13〜F-16: 請求書 › TC-53: 確定済み見積書を請求書(下書き)へ変換し、明細・取引先・備考を引き継ぐ。複数回変換も可能 (1.5s)
+  ✓  32 e2e/scenarios/invoice-flow.spec.ts:110:3 › F-13〜F-16: 請求書 › TC-54: 下書きの見積書は変換不可。利用停止の取引先でも既存見積書の変換は可能で、新規作成の選択肢には出ない (1.4s)
+  ✓  33 e2e/scenarios/invoice-flow.spec.ts:152:3 › F-13〜F-16: 請求書 › TC-55/TC-56: 請求書を新規作成し、下書き保存→編集→PDF保存(採番・PDF内容・編集不可)。登録番号なしは区分記載形式 (2.1s)
+  ✓  34 e2e/scenarios/invoice-flow.spec.ts:270:3 › F-13〜F-16: 請求書 › TC-57/TC-58: 入金管理(入金日必須・入金済み/未収へ戻す・一覧フィルタ・トップ件数・下書きは操作不可) (2.3s)
+  ✓  35 e2e/scenarios/invoice-flow.spec.ts:435:3 › F-13〜F-16: 請求書 › TC-59: 源泉徴収税額の計算と請求金額(UI・PDF・DB)。対象行の合計に対して段階計算を1回適用する (2.1s)
+  ✓  36 e2e/scenarios/layout-consistency.spec.ts:27:3 › トップ画面・画面横断の整合性 › TC-39: トップ画面の4つの件数(取引先・見積書・請求書・未収)が各操作と連動する (1.8s)
+  ✘  37 e2e/scenarios/layout-consistency.spec.ts:100:3 › トップ画面・画面横断の整合性 › TC-73: 新規画面のタイトルバー・サイドバー表示・デザインガイド適合(色・角丸・危険色の範囲) (4.5s)
+  ✓  38 e2e/scenarios/list-search-sort-filter.spec.ts:38:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 検索(部分一致)・並べ替え・状態フィルタが仕様どおりに動作する(TC-18〜TC-21) (1.2s)
+[性能計測] 50件登録: 59ms, 一覧描画: 26ms, 検索: 12ms
+  ✓  39 e2e/scenarios/list-search-sort-filter.spec.ts:95:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 取引先50件投入時の一覧表示・検索が実用的な時間で完了する(TC-22) (726ms)
+  ✓  40 e2e/scenarios/packaged-app.spec.ts:30:3 › 配布物(パッケージ済み.app) › TC-70: 配布物から不要な同梱物が除外され、必要なファイルは含まれる(SEC-07) (64ms)
+
+  ✓  41 e2e/scenarios/packaged-app.spec.ts:90:3 › 配布物(パッケージ済み.app) › TC-71: アプリアイコン(案C)が設定され、icnsに必要なサイズが含まれる (64ms)
+  ✓  42 e2e/scenarios/packaged-app.spec.ts:136:3 › 配布物(パッケージ済み.app) › TC-72: 配布版が起動し、データは--user-data-dirに作成され(JIMUHUB_DATA_DIRは無視)、DB・PDF生成が動作する (1.2s)
+  ✓  43 e2e/scenarios/quote-flow.spec.ts:28:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-45: 取引先の簡易登録(モーダル)で登録した取引先が選択状態になり、取引先管理にも反映される (1.2s)
+  ✓  44 e2e/scenarios/quote-flow.spec.ts:62:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-46: 下書き保存→詳細(未採番・下書き)→編集→再保存、キャンセルでの破棄 (1.2s)
+  ✓  45 e2e/scenarios/quote-flow.spec.ts:111:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-47: 見積書作成の入力値検証(取引先・品名・数量・単価・日付・明細行) (1.3s)
+  ✓  46 e2e/scenarios/quote-flow.spec.ts:176:3 › F-11/F-12: 見積書の作成・PDF保存 › TC-48: PDFとして保存(確定): 採番・PDF生成・保存先・ハッシュ・PDF内容・編集不可 (1.9s)
+  ✓  47 e2e/scenarios/startup-error.spec.ts:24:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される (629ms)
+  ✓  48 e2e/scenarios/startup-recovery.spec.ts:59:3 › F-09: 起動エラー画面からの復元 › TC-40: 破損DBの起動エラー画面から復元でき、破損DBは退避され、再起動後は復元データで正常に起動する (1.6s)
+  ✓  49 e2e/scenarios/startup-recovery.spec.ts:142:3 › F-09: 起動エラー画面からの復元 › TC-41: 起動エラー画面での復元失敗(不正ファイル)はエラー表示となり、破損DBは元の位置に戻り、再度選び直せる (1.4s)
+
+
+  1) e2e/scenarios/document-integrity.spec.ts:219:3 › 見積書・請求書: データ整合性・異常系 › TC-51: PDF保存に失敗した場合は下書きへ戻り(補償処理)、書類番号は欠番となり、復旧後の再確定は次の番号になる 
+
+    Error: BUG-01: 失敗後の再確定で未採番の下書きが重複して残る
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "1"
+    Received: "2"
+
+      265 |     await window.getByText('一覧へ戻る').click()
+      266 |     await shot(window, 'TC-51', '再確定後の見積書一覧(未採番の下書きが重複して残る: BUG-01)')
+    > 267 |     expect.soft(countAfterRetry, 'BUG-01: 失敗後の再確定で未採番の下書きが重複して残る').toBe('1')
+          |                                                                    ^
+      268 |     await shot(window, 'TC-51', '復旧後の再確定(書類番号は欠番の次の番号)')
+      269 |     expect(clientId).toBeGreaterThan(0)
+      270 |   })
+        at <project-root>/app/e2e/scenarios/document-integrity.spec.ts:267:68
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/scenarios/document-integrity-見積書・請求書-20155-、書類番号は欠番となり、復旧後の再確定は次の番号になる/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/scenarios/document-integrity-見積書・請求書-20155-、書類番号は欠番となり、復旧後の再確定は次の番号になる/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/document-integrity-見積書・請求書-20155-、書類番号は欠番となり、復旧後の再確定は次の番号になる/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/document-integrity-見積書・請求書-20155-、書類番号は欠番となり、復旧後の再確定は次の番号になる/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) e2e/scenarios/document-integrity.spec.ts:453:3 › 見積書・請求書: データ整合性・異常系 › TC-61: 見積書・請求書一覧の検索条件(取引先・発行日・金額・入金ステータス)と空表示 
+
+    Error: BUG-02: 範囲逆転時にエラー表示が出る(詳細設計書3.10章)
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      508 |     expect
+      509 |       .soft(inverted, 'BUG-02: 範囲逆転時にエラー表示が出る(詳細設計書3.10章)')
+    > 510 |       .toBeGreaterThan(0)
+          |        ^
+      511 |   })
+      512 | })
+      513 |
+        at <project-root>/app/e2e/scenarios/document-integrity.spec.ts:510:8
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/scenarios/document-integrity-見積書・請求書-d06da-索条件-取引先・発行日・金額・入金ステータス-と空表示/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/scenarios/document-integrity-見積書・請求書-d06da-索条件-取引先・発行日・金額・入金ステータス-と空表示/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/document-integrity-見積書・請求書-d06da-索条件-取引先・発行日・金額・入金ステータス-と空表示/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/document-integrity-見積書・請求書-d06da-索条件-取引先・発行日・金額・入金ステータス-と空表示/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) e2e/scenarios/layout-consistency.spec.ts:100:3 › トップ画面・画面横断の整合性 › TC-73: 新規画面のタイトルバー・サイドバー表示・デザインガイド適合(色・角丸・危険色の範囲) 
+
+    Error: BUG-03: 見積書・請求書一覧で「準備中」メニューを押しても案内が表示されない(取引先一覧・トップ・自社情報画面では表示される)
+
+    expect(locator).toBeVisible() failed
+
+    Locator: getByText('「案件管理」は以降のイテレーションで実装予定です。')
+    Expected: visible
+    Timeout: 2000ms
+    Error: element(s) not found
+
+    Call log:
+      - BUG-03: 見積書・請求書一覧で「準備中」メニューを押しても案内が表示されない(取引先一覧・トップ・自社情報画面では表示される) getByText('「案件管理」は以降のイテレーションで実装予定です。') with timeout 2000ms
+      - waiting for getByText('「案件管理」は以降のイテレーションで実装予定です。')
+
+
+      200 |         'BUG-03: 見積書・請求書一覧で「準備中」メニューを押しても案内が表示されない(取引先一覧・トップ・自社情報画面では表示される)'
+      201 |       )
+    > 202 |       .toBeVisible({ timeout: 2000 })
+          |        ^
+      203 |   })
+      204 | })
+      205 |
+        at <project-root>/app/e2e/scenarios/layout-consistency.spec.ts:202:8
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/scenarios/layout-consistency-トップ画面・画-9097f-バー表示・デザインガイド適合-色・角丸・危険色の範囲-/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/scenarios/layout-consistency-トップ画面・画-9097f-バー表示・デザインガイド適合-色・角丸・危険色の範囲-/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    e2e/.output/scenarios/layout-consistency-トップ画面・画-9097f-バー表示・デザインガイド適合-色・角丸・危険色の範囲-/trace.zip
+    Usage:
+
+        npx playwright show-trace e2e/.output/scenarios/layout-consistency-トップ画面・画-9097f-バー表示・デザインガイド適合-色・角丸・危険色の範囲-/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    e2e/scenarios/document-integrity.spec.ts:219:3 › 見積書・請求書: データ整合性・異常系 › TC-51: PDF保存に失敗した場合は下書きへ戻り(補償処理)、書類番号は欠番となり、復旧後の再確定は次の番号になる 
+    e2e/scenarios/document-integrity.spec.ts:453:3 › 見積書・請求書: データ整合性・異常系 › TC-61: 見積書・請求書一覧の検索条件(取引先・発行日・金額・入金ステータス)と空表示 
+    e2e/scenarios/layout-consistency.spec.ts:100:3 › トップ画面・画面横断の整合性 › TC-73: 新規画面のタイトルバー・サイドバー表示・デザインガイド適合(色・角丸・危険色の範囲) 
+  46 passed (1.3m)

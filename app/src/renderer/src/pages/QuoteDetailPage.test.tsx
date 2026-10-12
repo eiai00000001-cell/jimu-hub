@@ -59,6 +59,7 @@ function setupApi(overrides: Partial<Window['jimuhubApi']> = {}): {
   const openQuotePdf = vi.fn().mockResolvedValue({ success: true })
   const showQuotePdfInFolder = vi.fn().mockResolvedValue({ success: true })
   window.jimuhubApi = {
+    listProjectLinkHistory: vi.fn().mockResolvedValue([]),
     getStartupStatus: vi.fn(),
     listClients: vi.fn(),
     getClient: vi.fn(),
@@ -335,5 +336,28 @@ describe('QuoteDetailPage', () => {
     )
     await screen.findByText('PDFを開く')
     expect(screen.queryByText('削除')).not.toBeInTheDocument()
+  })
+
+  it('紐づく案件を表示し、案件名のリンクで案件詳細への遷移を要求する。案件がなければ「案件なし」', async () => {
+    const { getQuote } = setupApi()
+    getQuote.mockResolvedValue({
+      ...draftQuote,
+      project: { id: 7, name: 'アルファ保守', status: 'active' }
+    })
+    const onOpenProject = vi.fn()
+    render(
+      <QuoteDetailPage
+        quoteId={5}
+        onNavigateHome={vi.fn()}
+        onNavigateClients={vi.fn()}
+        onBackToList={vi.fn()}
+        onEdit={vi.fn()}
+        onConvertedToInvoice={vi.fn()}
+        onOpenProject={onOpenProject}
+      />
+    )
+    await userEvent.click(await screen.findByText('アルファ保守'))
+    expect(onOpenProject).toHaveBeenCalledWith(7)
+    expect(screen.getByRole('button', { name: '案件を変更' })).toBeInTheDocument()
   })
 })

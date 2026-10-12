@@ -1,3 +1,5 @@
+import { ProjectRepository } from '../repositories/project.repository'
+import { ProjectLinkService } from './project-link.service'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
@@ -77,6 +79,7 @@ describe('InvoiceService', () => {
   function create(generate = vi.fn().mockResolvedValue({ pdfPath: '/tmp/i.pdf', pdfHash: 'h' })) {
     const service = new InvoiceService({
       database: db,
+      projectLinkService: new ProjectLinkService(db, new ProjectRepository(db)),
       repository: new InvoiceRepository(db),
       quoteRepository: new QuoteRepository(db),
       companyProfileRepository: companyRepo,
@@ -289,6 +292,7 @@ describe('InvoiceService', () => {
       const records = createRecordServices(db, '/tmp/jimuhub-unused').cashRecordService
       const service = new InvoiceService({
         database: db,
+        projectLinkService: new ProjectLinkService(db, new ProjectRepository(db)),
         repository: new InvoiceRepository(db),
         quoteRepository: new QuoteRepository(db),
         companyProfileRepository: companyRepo,

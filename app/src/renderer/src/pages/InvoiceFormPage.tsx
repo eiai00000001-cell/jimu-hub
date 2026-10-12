@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { AppShell } from '../layout/AppShell'
 import { Button, TextLink } from '../components/Button'
 import { Message } from '../components/Message'
+import { ProjectSelectField } from '../components/ProjectSelectField'
+import type { ProjectRef } from '@shared/types/project'
 import { TextAreaField } from '../components/FormField'
 import { QuickClientRegisterModal } from '../components/QuickClientRegisterModal'
 import {
@@ -109,6 +111,10 @@ export function InvoiceFormPage({
   const [clients, setClients] = useState<ClientOption[]>([])
   const [issueDate, setIssueDate] = useState(todayIsoDate())
   const [dueDate, setDueDate] = useState('')
+  /** 案件。利用者が変更した場合のみ、保存時に送る(未変更の場合は案件を変えない) */
+  const [projectId, setProjectId] = useState<number | null>(null)
+  const [currentProject, setCurrentProject] = useState<ProjectRef | null>(null)
+  const [projectChanged, setProjectChanged] = useState(false)
   const [source, setSource] = useState<{ id: number; number: string | null } | null>(null)
   const [remarks, setRemarks] = useState('')
   const [rows, setRows] = useState<LineItemFormRow[]>([{ ...EMPTY_ROW }])
@@ -144,6 +150,8 @@ export function InvoiceFormPage({
             : { id: invoice.sourceQuoteId, number: invoice.sourceQuoteNumber }
         )
         setClientId(invoice.clientId)
+        setProjectId(invoice.project?.id ?? null)
+        setCurrentProject(invoice.project ?? null)
         setIssueDate(invoice.issueDate)
         setDueDate(invoice.dueDate ?? '')
         setRemarks(invoice.remarks ?? '')
@@ -185,7 +193,8 @@ export function InvoiceFormPage({
       issueDate,
       dueDate,
       remarks,
-      lineItems: toLineItemInputs(rows)
+      lineItems: toLineItemInputs(rows),
+      ...(projectChanged ? { projectId } : {})
     }
   }
 
@@ -364,6 +373,17 @@ export function InvoiceFormPage({
             <label>請求書番号</label>
             <div className="readonly-value">PDF保存時に採番されます</div>
           </div>
+        </div>
+        <div>
+          <ProjectSelectField
+            id="invoice-project"
+            value={projectId}
+            current={currentProject}
+            onChange={(next) => {
+              setProjectId(next)
+              setProjectChanged(true)
+            }}
+          />
         </div>
       </div>
 

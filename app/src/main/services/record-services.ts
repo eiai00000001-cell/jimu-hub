@@ -3,11 +3,13 @@ import { AccountRepository } from '../repositories/account.repository'
 import { CashRecordHistoryRepository } from '../repositories/cash-record-history.repository'
 import { CashRecordRepository } from '../repositories/cash-record.repository'
 import { ClientRepository } from '../repositories/client.repository'
+import { ProjectRepository } from '../repositories/project.repository'
 import { ReceiptRepository } from '../repositories/receipt.repository'
 import { CashRecordService } from './cash-record.service'
 import { IntegrityService } from './integrity/integrity.service'
 import { ReceiptService } from './receipts/receipt.service'
 import { ReceiptStagingStore } from './receipts/receipt-staging-store'
+import { ProjectLinkService } from './project-link.service'
 import { RecordHistoryService } from './record-history.service'
 
 /** 入出金・経費まわりのService群を組み立てる(index.tsの依存組み立て用) */
@@ -19,12 +21,16 @@ export function createRecordServices(
   historyService: RecordHistoryService
   receiptService: ReceiptService
   receiptRepository: ReceiptRepository
+  projectRepository: ProjectRepository
+  projectLinkService: ProjectLinkService
 } {
   const repository = new CashRecordRepository(database)
   const receiptRepository = new ReceiptRepository(database)
   const historyRepository = new CashRecordHistoryRepository(database)
   const historyService = new RecordHistoryService(historyRepository)
   const receiptService = new ReceiptService(documentsDir, new ReceiptStagingStore())
+  const projectRepository = new ProjectRepository(database)
+  const projectLinkService = new ProjectLinkService(database, projectRepository)
   const cashRecordService = new CashRecordService({
     database,
     repository,
@@ -38,7 +44,15 @@ export function createRecordServices(
       historyRepository,
       documentsDir
     ),
-    receiptService
+    receiptService,
+    projectLinkService
   })
-  return { cashRecordService, historyService, receiptService, receiptRepository }
+  return {
+    cashRecordService,
+    historyService,
+    receiptService,
+    receiptRepository,
+    projectRepository,
+    projectLinkService
+  }
 }

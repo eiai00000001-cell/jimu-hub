@@ -1,3 +1,5 @@
+import { ProjectRepository } from '../repositories/project.repository'
+import { ProjectLinkService } from '../services/project-link.service'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -97,6 +99,7 @@ describe('InvoicesIpcHandler', () => {
     })
     const service = new InvoiceService({
       database: db,
+      projectLinkService: new ProjectLinkService(db, new ProjectRepository(db)),
       repository: new InvoiceRepository(db),
       quoteRepository: new QuoteRepository(db),
       companyProfileRepository,

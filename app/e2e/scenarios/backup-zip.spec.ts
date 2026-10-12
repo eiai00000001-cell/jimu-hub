@@ -1,6 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
 import AdmZip from 'adm-zip'
 import {
+  buildZip,
+  exportToLegacyJson,
+  mapExportTable,
+  readExport
+} from '../../src/main/services/backup/test-helpers'
+import {
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -155,16 +161,26 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     return launched
   }
 
-  test('TC-62: ZIPの構造(data.json+PDF実体・相対パス)と、別の保存先への復元による往復の整合性', async () => {
+  test('TC-62: ZIPの構造(manifest.json+JSON Lines+PDF実体・相対パス)と、別の保存先への復元による往復の整合性', async () => {
     // --- エクスポートファイルの構造 ---
     const zip = new AdmZip(sourceZip)
     const names = zip
       .getEntries()
       .map((e) => e.entryName)
       .sort()
-    const dataJson = JSON.parse(zip.getEntry('data.json')!.getData().toString('utf-8'))
-    expect(dataJson.schemaVersion).toBe(4)
-    expect(names).toContain('data.json')
+    // イテレーション3以降: manifest.json + data/<テーブル>.jsonl(スキーマ版5)
+    const exportedZip = readExport(sourceZip)
+    const dataJson = {
+      schemaVersion: exportedZip.manifest.schemaVersion,
+      data: {
+        quotes: exportedZip.records('quotes'),
+        invoices: exportedZip.records('invoices'),
+        clients: exportedZip.records('clients')
+      }
+    }
+    expect(dataJson.schemaVersion).toBe(5)
+    expect(names).toContain('manifest.json')
+    expect(names).toContain('data/quotes.jsonl')
     expect(names.filter((n) => n.startsWith('documents/') && n.endsWith('.pdf'))).toHaveLength(3)
     expect(
       names.some((n) => n.startsWith('documents/quotes/2026/2026-001_ZIP往復商事株式会社'))
@@ -177,7 +193,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     }
     noteEvidence(
       'TC-62',
-      'エクスポートZIPのエントリ一覧とdata.jsonの要点',
+      'エクスポートZIPのエントリ一覧とmanifest・各テーブルの要点',
       `entries:\n${names.join('\n')}\nschemaVersion=${dataJson.schemaVersion}\nquotes=${dataJson.data.quotes.length} invoices=${dataJson.data.invoices.length} clients=${dataJson.data.clients.length}\npdfPath例=${(dataJson.data.quotes[0] as { pdfPath: string }).pdfPath}`
     )
 
@@ -315,9 +331,10 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
   })
 
   test('TC-64: 旧形式(JSON単体 schemaVersion 1・2)の復元。documentsには手を加えず、PDFなしの書類は案内が出る', async () => {
-    const data = JSON.parse(
-      new AdmZip(sourceZip).getEntry('data.json')!.getData().toString('utf-8')
-    )
+    // 従来形式(data.json 1本)の内容を、新形式のZIPから組み立てる(test-helpers)。版4相当の内容
+    const data = exportToLegacyJson(sourceZip, 4) as {
+      data: Record<string, Array<Record<string, unknown>>>
+    }
     // schemaVersion 2相当: pdfHashMismatchなし・pdfPathは絶対パス(復元先には存在しない)
     const v2 = structuredClone(data)
     v2.schemaVersion = 2
@@ -403,23 +420,21 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     await expect(t.window.locator('tbody tr')).toHaveCount(2)
   })
 
-  test('TC-65: 不正なZIP・データ加工(壊れたZIP・data.json欠落・ZIPスリップ・絶対/親ディレクトリのpdfPath)は安全に扱われる', async () => {
+  test('TC-65: 不正なZIP・データ加工(壊れたZIP・manifest.json欠落・ZIPスリップ・絶対/親ディレクトリのpdfPath)は安全に扱われる', async () => {
     // (a) 壊れたZIP(先頭がPKだが中身が不正)
     const broken = join(workDir, 'broken.zip')
     writeFileSync(
       broken,
       Buffer.concat([Buffer.from('PK\x03\x04'), Buffer.from('not a real zip body')])
     )
-    // (b) data.jsonを含まないZIP
+    // (b) manifest.json・data.jsonのいずれも含まないZIP
     const noData = join(workDir, 'no-data.zip')
     const z1 = new AdmZip()
     z1.addFile('readme.txt', Buffer.from('x'))
     z1.writeZip(noData)
-    // (c) data.jsonがJSONではない
+    // (c) manifest.jsonがJSONではない
     const badJson = join(workDir, 'bad-json.zip')
-    const z2 = new AdmZip()
-    z2.addFile('data.json', Buffer.from('{ not json'))
-    z2.writeZip(badJson)
+    buildZip(badJson, { 'manifest.json': '{ not json' })
 
     const expectedParseError =
       '選択されたファイルを読み込めませんでした。正しいエクスポートファイルかご確認ください'
@@ -434,8 +449,8 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     launched = undefined
 
     for (const [label, path] of [
-      ['data.json欠落', noData],
-      ['JSON不正', badJson]
+      ['manifest.json欠落', noData],
+      ['manifest.jsonのJSON不正', badJson]
     ] as const) {
       const t = await launchTarget(path)
       await createClientApi(t.window, '不正ZIP前の取引先')
@@ -447,21 +462,46 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
 
     // (d) ZIPスリップ・pdfPath改ざん: 実際のZIPを加工する
     const evil = join(workDir, 'evil.zip')
-    const z3 = new AdmZip(sourceZip)
-    const entry = z3
-      .getEntries()
-      .find((e) => e.entryName.startsWith('documents/quotes/2026/2026-001_'))!
-    const data = JSON.parse(z3.getEntry('data.json')!.getData().toString('utf-8'))
-    data.data.quotes[0].pdfPath = '/etc/hosts' // 絶対パス
-    data.data.quotes[1].pdfPath = 'documents/../../escape.pdf' // 親ディレクトリ参照
-    data.data.invoices[0].pdfPath = '../outside.pdf'
-    z3.updateFile('data.json', Buffer.from(JSON.stringify(data)))
+    writeFileSync(evil, readFileSync(sourceZip))
+    // 不正なpdfPath(絶対パス・親ディレクトリ参照)をテーブルのレコードへ書き込む
+    mapExportTable(evil, 'quotes', (r, i) =>
+      i === 0
+        ? { ...r, pdfPath: '/etc/hosts' }
+        : i === 1
+          ? { ...r, pdfPath: 'documents/../../escape.pdf' }
+          : r
+    )
+    mapExportTable(evil, 'invoices', (r, i) => (i === 0 ? { ...r, pdfPath: '../outside.pdf' } : r))
+    // (d1) pdfPathだけを改ざんしたZIP(エントリ名は正常)は、復元は完了し、不正なpdfPathは採用されない
+    const t2 = await launchTarget(evil)
+    const message = await importViaUi(t2.window)
+    expect(message).toContain('復元が完了しました')
+    const parent = join(t2.dataDir, '..')
+    expect(existsSync(join(parent, 'escape.pdf'))).toBe(false)
+    // 不正なpdfPathはNULLとなり採用されない(任意パスのファイルを開かせない)
+    expect(
+      dbQuery(
+        t2.dataDir,
+        "SELECT id,IFNULL(pdf_path,'NULL') FROM quotes WHERE id IN (1,2) ORDER BY id"
+      )
+    ).toBe('1|NULL\n2|NULL')
+    expect(dbQuery(t2.dataDir, "SELECT IFNULL(pdf_path,'NULL') FROM invoices")).toBe('NULL')
+    noteEvidence(
+      'TC-65',
+      'pdfPath改ざんZIPの復元結果',
+      `完了メッセージ: ${message}\n絶対パス/親ディレクトリのpdfPath→DBではNULL、親ディレクトリへのファイル書き出しなし(確認済み)`
+    )
+    await shot(t2.window, 'TC-65', 'pdfPath改ざんZIPの復元結果(不正なpdfPathは採用されない)')
+    await closeApp(launched!)
+    launched = undefined
+
+    // (d2) ZIPスリップ(エントリ名に..・絶対パス): 詳細設計書4.3章手順3-1のとおり、細工されたファイルとして中断する
+    const z3 = new AdmZip(evil)
     // adm-zipはaddFile時にエントリ名の「../」を除去してしまうため、同じ長さのダミー名で作成し、
     // ZIPのバイト列(ローカルヘッダ・セントラルディレクトリ)のエントリ名を書き換えて、不正な名前のエントリを作る
     z3.addFile('documents/aa/bb/zipslip.txt', Buffer.from('evil'))
     z3.addFile('documents/quotes/2026/cc/dd/ee/zipslip2.txt', Buffer.from('evil'))
     z3.addFile('documents/Xtmp/jimuhub-abs-zipslip.txt', Buffer.from('evil'))
-    void entry
     let raw = z3.toBuffer()
     const patch = (from: string, to: string): void => {
       expect(from.length).toBe(to.length)
@@ -488,34 +528,23 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
       '不正なエントリ名(../)がZIP内に存在する'
     ).toBe(true)
 
-    const t2 = await launchTarget(evil)
-    const message = await importViaUi(t2.window)
-    expect(message).toContain('復元が完了しました')
-    // 書き出しは保存先のdocuments配下に限られ、親ディレクトリ等には何も作られない
-    const parent = join(t2.dataDir, '..')
-    expect(existsSync(join(parent, 'zipslip.txt'))).toBe(false)
-    expect(existsSync(join(t2.dataDir, 'zipslip.txt'))).toBe(false)
-    expect(existsSync(join(t2.dataDir, 'zipslip2.txt'))).toBe(false)
+    const t3 = await launchTarget(evil)
+    await createClientApi(t3.window, 'ZIPスリップ前の取引先')
+    const beforeSlip = dump(t3.dataDir)
+    const slipMessage = await importViaUi(t3.window)
+    expect(slipMessage).toContain(expectedParseError)
+    // 現在のデータは変わらず、親ディレクトリ・/tmpへは何も書き出されない
+    expect(dump(t3.dataDir)).toBe(beforeSlip)
+    expect(existsSync(join(t3.dataDir, '..', 'zipslip.txt'))).toBe(false)
+    expect(existsSync(join(t3.dataDir, 'zipslip.txt'))).toBe(false)
+    expect(existsSync(join(t3.dataDir, 'zipslip2.txt'))).toBe(false)
     expect(existsSync('/tmp/jimuhub-abs-zipslip.txt')).toBe(false)
-    expect(existsSync(join(parent, 'escape.pdf'))).toBe(false)
-    // 不正なpdfPathはNULLとなり採用されない(任意パスのファイルを開かせない)
-    expect(
-      dbQuery(
-        t2.dataDir,
-        "SELECT id,IFNULL(pdf_path,'NULL') FROM quotes WHERE id IN (1,2) ORDER BY id"
-      )
-    ).toBe('1|NULL\n2|NULL')
-    expect(dbQuery(t2.dataDir, "SELECT IFNULL(pdf_path,'NULL') FROM invoices")).toBe('NULL')
     noteEvidence(
       'TC-65',
-      'ZIPスリップ・pdfPath改ざんZIPの復元結果',
-      `完了メッセージ: ${message}\n絶対パス/親ディレクトリのpdfPath→DBではNULL、親ディレクトリ・/tmpへのファイル書き出しなし(確認済み)\ndocuments配下: ${listFilesRecursive(
-        join(t2.dataDir, 'documents')
-      )
-        .map((f) => f.slice(t2.dataDir.length + 1))
-        .join(', ')}`
+      'ZIPスリップZIPの復元結果',
+      `メッセージ: ${slipMessage}\n解析エラーとして中断し、現在のデータは未変更。親ディレクトリ・/tmpへのファイル書き出しなし(確認済み)`
     )
-    await shot(t2.window, 'TC-65', 'ZIPスリップ・pdfPath改ざんZIPの復元結果')
+    await shot(t3.window, 'TC-65', 'ZIPスリップZIPの復元: 解析エラーで中断')
   })
 
   test('TC-66: 全置換(孤立PDFの削除)・退避コピー3世代(DB+documents)・失敗時のロールバックでDBとPDFが復元前に戻る', async () => {
@@ -559,13 +588,10 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     expect(dbCopies).toHaveLength(3)
     expect(docCopies).toHaveLength(3)
 
-    // 失敗時のロールバック: data.jsonのtaxRateがCHECK制約違反(5)になる細工ZIP
+    // 失敗時のロールバック: quoteLineItemsのtaxRateがCHECK制約違反(5)になる細工ZIP
     const bad = join(workDir, 'rollback.zip')
-    const z = new AdmZip(sourceZip)
-    const data = JSON.parse(z.getEntry('data.json')!.getData().toString('utf-8'))
-    data.data.quoteLineItems[0].taxRate = 5
-    z.updateFile('data.json', Buffer.from(JSON.stringify(data)))
-    z.writeZip(bad)
+    writeFileSync(bad, readFileSync(sourceZip))
+    mapExportTable(bad, 'quoteLineItems', (r, i) => (i === 0 ? { ...r, taxRate: 5 } : r))
     await closeApp(launched!)
     launched = undefined
     const t = await launchTarget(bad)

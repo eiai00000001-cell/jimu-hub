@@ -62,7 +62,9 @@ const receiptTokens = z
 
 /** records:createの入力(領収書の識別子の配列を含む。`receipts:pick`が返したもの) */
 export const CashRecordCreateSchema = CashRecordInputSchema.extend({
-  receiptTokens: receiptTokens.default([])
+  receiptTokens: receiptTokens.default([]),
+  /** 紐づける案件(任意。登録時のみ。更新では扱わない。詳細設計書3.26章・4.30章) */
+  projectId: z.number().int().positive().nullable().optional()
 })
 export type CashRecordCreateInput = z.input<typeof CashRecordCreateSchema>
 

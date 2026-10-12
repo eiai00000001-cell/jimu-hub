@@ -1,0 +1,5 @@
+vitest: 85 files / 745 tests passed. Lines 90.06% (2819/3130), Branches 86.90% (1732/1993), Funcs 83.49%, Stmts 89.88%
+developer E2E: 3 passed; client-management x10: 10 passed
+packaged-app (rebuilt .app): 3 passed
+i2 scenarios (accounts-records 7, flows 8, backup 4, integration 2, capacity a/b 2, c 1): all passed
+typecheck/lint/format:check: OK

@@ -17,6 +17,7 @@ const clients = [
 
 function setup(overrides = {}) {
   const api = {
+    listSelectableProjects: vi.fn().mockResolvedValue([]),
     listAccounts: vi.fn().mockResolvedValue(accounts),
     listClients: vi.fn().mockResolvedValue(clients),
     createRecord: vi.fn().mockResolvedValue({ id: 9 }),
@@ -292,5 +293,59 @@ describe('CashRecordFormPage(F-18)', () => {
         )
       )
     })
+  })
+})
+
+describe('CashRecordFormPage: 案件(F-30。詳細設計書3.26章)', () => {
+  async function fillAndSubmit(api: ReturnType<typeof setup>, projectId?: string): Promise<void> {
+    render(<CashRecordFormPage mode="new" kind="expense" onSaved={vi.fn()} onCancel={vi.fn()} />)
+    await screen.findByRole('option', { name: 'アルファ保守' })
+    await userEvent.type(screen.getByLabelText(/金額/), '1000')
+    await userEvent.selectOptions(screen.getByLabelText(/勘定科目/), '1')
+    await userEvent.type(screen.getByLabelText(/摘要/), 'テスト')
+    if (projectId) await userEvent.selectOptions(screen.getByLabelText('案件'), projectId)
+    await userEvent.click(screen.getByRole('button', { name: '登録' }))
+    await waitFor(() => expect(api.createRecord).toHaveBeenCalledTimes(1))
+  }
+  const withProjects = () =>
+    setup({
+      listSelectableProjects: vi
+        .fn()
+        .mockResolvedValue([{ id: 3, name: 'アルファ保守', status: 'active' }])
+    })
+
+  it('登録画面には「案件」を表示し、選んだ案件をprojectIdとして送る', async () => {
+    const api = withProjects()
+    await fillAndSubmit(api, '3')
+    expect(api.createRecord).toHaveBeenCalledWith(expect.objectContaining({ projectId: 3 }))
+  })
+
+  it('案件を選ばない場合は、projectIdを送らない', async () => {
+    const api = withProjects()
+    await fillAndSubmit(api)
+    expect(api.createRecord.mock.calls[0]![0]).not.toHaveProperty('projectId')
+  })
+
+  it('編集画面には「案件」を表示しない(詳細画面の「案件を変更」で変更する)', async () => {
+    setup({
+      getRecord: vi.fn().mockResolvedValue({
+        id: 5,
+        kind: 'expense',
+        recordDate: '2026-09-28',
+        amount: 1000,
+        accountId: 1,
+        description: 'x',
+        clientId: null,
+        paymentMethod: null,
+        taxCategory: null,
+        receipts: [],
+        isDeleted: false,
+        status: 'active',
+        invoiceId: null
+      })
+    })
+    render(<CashRecordFormPage mode="edit" recordId={5} onSaved={vi.fn()} onCancel={vi.fn()} />)
+    await screen.findByDisplayValue('x')
+    expect(screen.queryByLabelText('案件')).not.toBeInTheDocument()
   })
 })

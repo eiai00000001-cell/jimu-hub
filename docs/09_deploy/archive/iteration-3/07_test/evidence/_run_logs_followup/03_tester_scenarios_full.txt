@@ -1,0 +1,63 @@
+=== 実行日時: 2026-09-27 15:26:56 +0900 ===
+=== コマンド: npm run test:e2e:scenarios (tester作成 結合シナリオ、フォローアップ再実行) ===
+
+> jimu-hub@0.1.0 pretest:e2e:scenarios
+> electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+out/main/index.js  24.27 kB
+✓ built in 64ms
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.js  1.13 kB
+✓ built in 5ms
+vite v7.3.6 building client environment for production...
+transforming...
+node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 138 modules transformed.
+rendering chunks...
+../../out/renderer/index.html                   0.47 kB
+../../out/renderer/assets/index-BV8J4LGW.css   11.00 kB
+../../out/renderer/assets/index-DwidgiPh.js   839.91 kB
+✓ built in 574ms
+
+> jimu-hub@0.1.0 test:e2e:scenarios
+> playwright test --config=e2e/scenarios/playwright.config.ts
+
+
+Running 15 tests using 1 worker
+
+  ✓   1 e2e/scenarios/backup-integrity.spec.ts:68:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート内容が詳細設計書4.2章の構造と一致し、復元が全置換(既存データの上書きではなく完全な置き換え)になる(TC-05・TC-07) (1.3s)
+  ✓   2 e2e/scenarios/backup-integrity.spec.ts:122:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › エクスポート失敗(異常系): 保存先が存在しない場合にエラーメッセージが表示される(TC-06) (730ms)
+  ✓   3 e2e/scenarios/backup-integrity.spec.ts:136:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): 壊れたJSONファイルを選択するとエラーメッセージが表示される(TC-09) (757ms)
+  ✓   4 e2e/scenarios/backup-integrity.spec.ts:154:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(異常系): schemaVersionが新しすぎる場合にエラーメッセージが表示される(TC-10) (778ms)
+  ✓   5 e2e/scenarios/backup-integrity.spec.ts:172:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元失敗(データ整合性): DB制約違反でトランザクションが失敗した場合、元データへロールバックされる(TC-12) (1.1s)
+  ✓   6 e2e/scenarios/backup-integrity.spec.ts:238:3 › F-02/F-03: エクスポート・復元の異常系とデータ整合性(TC-09〜TC-12) › 復元前の自動退避は直近3世代のみ保持する(TC-11) (1.3s)
+  ✓   7 e2e/scenarios/client-error-handling.spec.ts:29:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 郵便番号・電話番号・メールアドレスの形式不正でエラーが表示される(TC-16) (787ms)
+  ✓   8 e2e/scenarios/client-error-handling.spec.ts:50:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 登録画面で「キャンセル」を押すと入力内容を破棄して一覧へ戻る(TC-17) (694ms)
+  ✓   9 e2e/scenarios/client-error-handling.spec.ts:65:3 › F-04/F-06: 形式バリデーション・存在しないIDの異常系(TC-16・TC-24) › 存在しない取引先IDを取得しようとするとエラーになる(TC-24・IPC直接確認) (597ms)
+  ✓  10 e2e/scenarios/client-lifecycle.spec.ts:33:3 › 結合シナリオ: 取引先のライフサイクル一連確認(TC-31・TC-32・TC-33) › 登録→一覧反映→詳細→編集→利用停止→ホーム件数連動までが一貫して整合する (2.0s)
+  ✓  11 e2e/scenarios/design-conformance.spec.ts:35:3 › デザインガイド適合confirmation(TC-34) › 主要部品の色・角丸が6色ルールどおりに描画される (1.0s)
+  ✓  12 e2e/scenarios/design-conformance.spec.ts:90:3 › デザインガイド適合confirmation(TC-34) › サイドバーの「準備中」メニューは、どの画面からでも案内表示のみで遷移しない(TC-03) (714ms)
+  ✓  13 e2e/scenarios/list-search-sort-filter.spec.ts:45:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 検索(部分一致)・並べ替え・状態フィルタが仕様どおりに動作する(TC-18〜TC-21) (1.2s)
+[性能計測] 50件登録: 42ms, 一覧描画: 25ms, 検索: 10ms
+  ✓  14 e2e/scenarios/list-search-sort-filter.spec.ts:102:3 › F-05: 取引先一覧の検索・並べ替え・状態フィルタ・性能(TC-18〜TC-22) › 取引先50件投入時の一覧表示・検索が実用的な時間で完了する(TC-22) (695ms)
+  ✓  15 e2e/scenarios/startup-error.spec.ts:26:3 › F-01: データベース破損時の起動エラー画面(TC-02) › データベースファイルが破損している場合、起動エラー画面が表示される (596ms)
+
+  15 passed (14.7s)

@@ -5,16 +5,77 @@ import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
 
 /**
  * データベース・エクスポートファイルのスキーマバージョン(app_meta.schema_version)。
- * 現在の最新値(スキーマv4。イテレーション2で新テーブルを追加)。参照元: 詳細設計書6章冒頭、4.1章手順2。
+ * 現在の最新値(スキーマv5。イテレーション3で案件のテーブルと`project_id`列を追加)。参照元: 詳細設計書6章冒頭、6.17章、4.1章手順2。
  *
  * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)があり、
- * 両者は同じ値(4)に揃えておく。スキーマを変更するときは両方を更新する。
+ * 両者は同じ値(5)に揃えておく。スキーマを変更するときは両方を更新する。
  */
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5
 
 export const CASH_RECORD_HISTORY_TRIGGER_NAMES = [
   'trg_cash_record_history_no_update',
   'trg_cash_record_history_no_delete'
+] as const
+
+export const PROJECT_LINK_HISTORY_TRIGGER_NAMES = [
+  'trg_project_link_history_no_update',
+  'trg_project_link_history_no_delete'
+] as const
+
+/** 付け替え履歴の更新・削除を拒否するトリガー(復元時は一時的に削除して再作成する。詳細設計書6.15章) */
+export const PROJECT_LINK_HISTORY_TRIGGERS_SQL = `
+CREATE TRIGGER IF NOT EXISTS trg_project_link_history_no_update
+BEFORE UPDATE ON project_link_history
+BEGIN
+  SELECT RAISE(ABORT, '付け替え履歴は変更できません');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_project_link_history_no_delete
+BEFORE DELETE ON project_link_history
+BEGIN
+  SELECT RAISE(ABORT, '付け替え履歴は削除できません');
+END;
+`
+
+const CREATE_PROJECTS_TABLES = `
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  client_id INTEGER REFERENCES clients (id),
+  start_date TEXT,
+  end_date TEXT,
+  memo TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  CHECK (start_date IS NULL OR end_date IS NULL OR start_date <= end_date)
+);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status);
+CREATE INDEX IF NOT EXISTS idx_projects_client ON projects (client_id);
+CREATE INDEX IF NOT EXISTS idx_projects_name ON projects (name);
+
+CREATE TABLE IF NOT EXISTS project_link_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  operated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  target_type TEXT NOT NULL CHECK (target_type IN ('quote', 'invoice', 'cash_record')),
+  target_id INTEGER NOT NULL,
+  target_label TEXT NOT NULL,
+  from_project_id INTEGER,
+  from_project_name TEXT,
+  to_project_id INTEGER,
+  to_project_name TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('assign', 'change', 'unassign', 'auto_release'))
+);
+CREATE INDEX IF NOT EXISTS idx_plh_target ON project_link_history (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_plh_from ON project_link_history (from_project_id);
+CREATE INDEX IF NOT EXISTS idx_plh_to ON project_link_history (to_project_id);
+${PROJECT_LINK_HISTORY_TRIGGERS_SQL}
+`
+
+/** 案件の紐づけ列を持つテーブル(詳細設計書6.16章) */
+const PROJECT_LINKED_TABLES = [
+  { table: 'quotes', index: 'idx_quotes_project' },
+  { table: 'invoices', index: 'idx_invoices_project' },
+  { table: 'cash_records', index: 'idx_cash_records_project' }
 ] as const
 
 const CREATE_CLIENTS_TABLE = `
@@ -82,6 +143,7 @@ CREATE TABLE IF NOT EXISTS document_number_sequences (
 const CREATE_QUOTES_TABLE = `
 CREATE TABLE IF NOT EXISTS quotes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects (id),
   quote_number TEXT UNIQUE,
   client_id INTEGER NOT NULL REFERENCES clients (id),
   issue_date TEXT NOT NULL,
@@ -135,6 +197,7 @@ CREATE INDEX IF NOT EXISTS idx_quote_line_items_quote ON quote_line_items (quote
 const CREATE_INVOICES_TABLE = `
 CREATE TABLE IF NOT EXISTS invoices (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects (id),
   invoice_number TEXT UNIQUE,
   client_id INTEGER NOT NULL REFERENCES clients (id),
   source_quote_id INTEGER REFERENCES quotes (id),
@@ -214,6 +277,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 const CREATE_CASH_RECORDS_TABLE = `
 CREATE TABLE IF NOT EXISTS cash_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects (id),
   record_date TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
   amount INTEGER NOT NULL CHECK (amount >= 0),
@@ -355,6 +419,7 @@ export class Database {
     this.sqlite.exec(CREATE_CASH_RECORDS_TABLE)
     this.sqlite.exec(CREATE_RECEIPTS_TABLE)
     this.sqlite.exec(CREATE_CASH_RECORD_HISTORY_TABLE)
+    this.addProjectTables()
 
     const existing = this.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
@@ -369,6 +434,25 @@ export class Database {
           .run(String(CURRENT_SCHEMA_VERSION))
       })
     }
+  }
+
+  /**
+   * スキーマv5の追加分(案件のテーブル・トリガー、3テーブルの`project_id`列・インデックス)を、
+   * 1つのトランザクションで作成する。何度実行しても同じ結果になる冪等な処理(詳細設計書6.17章)。
+   * 失敗した場合はロールバックされ、`schema_version`は更新されない。
+   */
+  private addProjectTables(): void {
+    this.transaction(() => {
+      this.sqlite.exec(CREATE_PROJECTS_TABLES)
+      for (const { table, index } of PROJECT_LINKED_TABLES) {
+        if (!this.hasColumn(table, 'project_id')) {
+          this.sqlite.exec(
+            `ALTER TABLE ${table} ADD COLUMN project_id INTEGER REFERENCES projects (id)`
+          )
+        }
+        this.sqlite.exec(`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (project_id)`)
+      }
+    })
   }
 
   /** 初期勘定科目14件を投入する(同じ区分・名称が既にある場合は追加しない冪等な処理。詳細設計書4.17章手順1) */
