@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - コンポーネント見本(v0.8)</title>
+<style>
+    :root {
+      --color-white: #FFFFFF;
+      --color-bg: #F2F2F4;
+      --color-border: #D1D1D6;
+      --color-text-secondary: #6E6E73;
+      --color-text: #3A3A3C;
+      --color-red: #B3453A;
+      --radius-window: 10px;
+      --radius-button: 6px;
+      --radius-badge: 999px;
+      --control-height: 32px;
+      --header-height: 56px;
+      --shadow-window: 0 20px 60px rgba(0,0,0,0.28);
+      --shadow-modal: 0 12px 40px rgba(0,0,0,0.35);
+      --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #DCDCE0; /* 例外: 見本を框で囲むための外側の背景(実アプリには存在しない) */
+      font-family: var(--font-family);
+      color: var(--color-text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .sheet {
+      width: 1280px;
+      margin: 24px auto;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      padding: 32px 40px 56px;
+    }
+    .sheet-title { font-size: 22px; font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
+    .sheet-subtitle { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 8px; }
+    .sheet-note { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 32px; line-height: 1.7; max-width: 900px; }
+
+    .demo-section { margin-bottom: 40px; padding-top: 28px; border-top: 1px solid var(--color-border); }
+    .demo-section:first-of-type { border-top: none; padding-top: 0; }
+    .demo-heading { font-size: 15px; font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
+    .demo-desc { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 18px; line-height: 1.6; }
+    .demo-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    .demo-item { display: flex; flex-direction: column; gap: 8px; }
+    .demo-caption { font-size: 11px; color: var(--color-text-secondary); }
+
+    /* 色見本 */
+    .swatch { width: 200px; height: 90px; border: 1px solid var(--color-border); }
+    .swatch-label { font-size: 12px; font-weight: 600; color: var(--color-text); }
+    .swatch-hex { font-size: 11px; color: var(--color-text-secondary); }
+    .swatch-usage { font-size: 11px; color: var(--color-text-secondary); max-width: 200px; line-height: 1.5; }
+
+    /* ボタン(押せる物): 角丸6px */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: var(--control-height); padding: 0 16px;
+      border-radius: var(--radius-button);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
+    .btn-primary.demo-hover { opacity: 0.85; }
+    .btn-secondary { background: var(--color-white); border-color: var(--color-border); color: var(--color-text); }
+    .btn-secondary.demo-hover { background: rgba(58,58,60,0.06); }
+    .btn-danger { background: var(--color-red); border-color: var(--color-red); color: var(--color-white); }
+
+    /* テキストリンク(押せる物): 枠なし */
+    .link { background: none; border: none; padding: 0; font-family: inherit; font-size: 12px; color: var(--color-text); text-decoration: underline; }
+
+    /* 入力欄(書き込む物): 角丸なし(直角) */
+    .input-demo { width: 220px; }
+    .input-demo input[type=text],
+    .input-demo select,
+    .input-demo textarea {
+      width: 100%; font-family: inherit; font-size: 13px;
+      height: var(--control-height); padding: 0 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 0;
+      background: var(--color-white);
+      color: var(--color-text);
+    }
+    .input-demo textarea { height: auto; padding: 8px 10px; resize: vertical; }
+    .input-demo .is-focus { border: 2px solid var(--color-text); }
+    .input-demo .is-error { border: 1px solid var(--color-red); }
+    .field-label { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+    .field-required { color: var(--color-text-secondary); font-size: 11px; margin-left: 4px; }
+    .field-error-message { font-size: 11px; color: var(--color-red); margin-top: 4px; }
+
+    /* メッセージ(読むだけの物): 角丸なし、枠なし(外周)、左4pxの帯のみ */
+    .message-stage { background: var(--color-bg); padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; }
+    .message { display: flex; align-items: flex-start; gap: 10px; background: var(--color-white); border-left: 4px solid; padding: 10px 14px; font-size: 12px; color: var(--color-text); width: 360px; }
+    .message-success { border-left-color: var(--color-text); }
+    .message-success .message-icon { color: var(--color-text); }
+    .message-error, .message-warning { border-left-color: var(--color-red); }
+    .message-error .message-icon, .message-warning .message-icon { color: var(--color-red); }
+    .message-icon { font-weight: 700; flex-shrink: 0; line-height: 1.5; }
+    .message-text { line-height: 1.6; }
+
+    /* 状態バッジ(表示だけの物): 丸型(例外) */
+    .badge { display: inline-block; border-radius: var(--radius-badge); padding: 3px 12px; font-size: 11px; white-space: nowrap; }
+    .badge-active { background: var(--color-bg); color: var(--color-text); }
+    .badge-inactive { background: var(--color-text); color: var(--color-white); }
+    .badge-soon { background: var(--color-bg); color: var(--color-text-secondary); }
+    /* サイドバーのように地が背景グレーの場所では、白地+補助グレー文字にして視認性を確保する */
+    .sidebar-demo-item .badge-soon { background: var(--color-white); color: var(--color-text-secondary); }
+
+    /* パネル・カード・ダイアログ(入れ物): 角丸なし、影はダイアログのみ */
+    .panel-demo { width: 260px; height: 120px; background: var(--color-white); border: 1px solid var(--color-border); padding: 16px; font-size: 12px; color: var(--color-text-secondary); }
+    .modal-demo { width: 260px; height: 120px; background: var(--color-white); border: 1px solid var(--color-border); box-shadow: var(--shadow-modal); padding: 16px; font-size: 12px; color: var(--color-text-secondary); }
+
+    /* サイドバー項目(ミニ再現) */
+    .sidebar-demo { width: 220px; background: var(--color-bg); border: 1px solid var(--color-border); }
+    .sidebar-demo-item { padding: 7px 18px; font-size: 13px; color: var(--color-text); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-demo-item:last-child { border-bottom: none; }
+    .sidebar-demo-item.active { background: var(--color-text); color: var(--color-white); font-weight: 600; }
+    .sidebar-demo-item.disabled { color: var(--color-text-secondary); }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <h1 class="sheet-title">コンポーネント見本</h1>
+    <p class="sheet-subtitle">デザインガイド v0.8 - 部品カテゴリーと6色のルール</p>
+    <p class="sheet-note">
+      部品を「押せる物・書き込む物・読むだけの物・表示だけの物・入れ物」のカテゴリーに分け、角丸は「押せる物」(ボタン)だけに付ける。
+      色は下記6色のみを使用する(信号ボタン・この見本の外側の背景・影/暗幕は例外)。実装時の参照用ページであり、実際の画面ではない。
+    </p>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">色見本(6色)</h2>
+      <p class="demo-desc">この6色のみを使用する。旧来の色(#1D1D1F、#4A4A4A、#333333、#ECECEE、#D9D9DE、#C7C7CC、#AEAEB2、#E2E2E5、#B4B4B7、#7F7F81、#FBECEB、#E3B6AE 等)は使用しない。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="swatch" style="background:#FFFFFF;"></div>
+          <div class="swatch-label">白</div>
+          <div class="swatch-hex">#FFFFFF</div>
+          <div class="swatch-usage">パネル・入力欄・ヘッダーの帯・メッセージの地</div>
+        </div>
+        <div class="demo-item">
+          <div class="swatch" style="background:#F2F2F4;"></div>
+          <div class="swatch-label">背景グレー</div>
+          <div class="swatch-hex">#F2F2F4</div>
+          <div class="swatch-usage">ウィンドウ・サイドバーの背景、表の見出し行、利用中/準備中バッジの地</div>
+        </div>
+        <div class="demo-item">
+          <div class="swatch" style="background:#D1D1D6;"></div>
+          <div class="swatch-label">罫線グレー</div>
+          <div class="swatch-hex">#D1D1D6</div>
+          <div class="swatch-usage">すべての枠線・区切り線</div>
+        </div>
+        <div class="demo-item">
+          <div class="swatch" style="background:#6E6E73;"></div>
+          <div class="swatch-label">補助グレー</div>
+          <div class="swatch-hex">#6E6E73</div>
+          <div class="swatch-usage">ラベル・補足・プレースホルダー、準備中の文字</div>
+        </div>
+        <div class="demo-item">
+          <div class="swatch" style="background:#3A3A3C;"></div>
+          <div class="swatch-label">濃グレー</div>
+          <div class="swatch-hex">#3A3A3C</div>
+          <div class="swatch-usage">本文文字、主ボタンの塗り、選択中サイドバー、成功メッセージ、利用停止バッジ</div>
+        </div>
+        <div class="demo-item">
+          <div class="swatch" style="background:#B3453A;"></div>
+          <div class="swatch-label">赤</div>
+          <div class="swatch-hex">#B3453A</div>
+          <div class="swatch-usage">エラー・警告、データ復元(全置換)の警告とボタン、入力エラーの枠</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">ボタン(押せる物) - 角丸6px・高さ32px</h2>
+      <p class="demo-desc">主=濃グレー塗り+白文字 / 副=白地+罫線グレー枠+濃グレー文字 / 危険=赤塗り+白文字(データ復元のダイアログのみに使用)</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <button class="btn btn-primary">登録</button>
+          <span class="demo-caption">主ボタン(通常)</span>
+        </div>
+        <div class="demo-item">
+          <button class="btn btn-primary demo-hover">登録</button>
+          <span class="demo-caption">主ボタン(ホバー例: 不透明度0.85)</span>
+        </div>
+        <div class="demo-item">
+          <button class="btn btn-secondary">キャンセル</button>
+          <span class="demo-caption">副ボタン(通常)</span>
+        </div>
+        <div class="demo-item">
+          <button class="btn btn-secondary demo-hover">キャンセル</button>
+          <span class="demo-caption">副ボタン(ホバー例: 濃グレー6%重ね)</span>
+        </div>
+        <div class="demo-item">
+          <button class="btn btn-danger">ファイルを選択して復元</button>
+          <span class="demo-caption">危険ボタン(データ復元のみ)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">テキストリンク(押せる物) - 枠なし</h2>
+      <p class="demo-desc">下線付きの文字で「押せる」ことを示す。色は本文と同じ濃グレー。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <button class="link">&larr; 一覧へ戻る</button>
+          <span class="demo-caption">テキストリンク</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">入力欄(書き込む物) - 角丸なし(直角)・高さ32px</h2>
+      <p class="demo-desc">白地+罫線グレー枠。フォーカス時は濃グレー2px枠、エラー時は赤枠。テキスト入力・検索欄・選択欄(select)・複数行入力(textarea)すべて共通。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">取引先名称<span class="field-required">必須</span></label>
+            <input type="text" placeholder="例: サンプル商事株式会社">
+          </div>
+          <span class="demo-caption">通常</span>
+        </div>
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">取引先名称<span class="field-required">必須</span></label>
+            <input type="text" class="is-focus" value="サンプル商事株式会社">
+          </div>
+          <span class="demo-caption">フォーカス時(濃グレー2px枠)</span>
+        </div>
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">取引先名称<span class="field-required">必須</span></label>
+            <input type="text" class="is-error" value="">
+            <div class="field-error-message">取引先名称を入力してください</div>
+          </div>
+          <span class="demo-caption">エラー時(赤枠)</span>
+        </div>
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">検索</label>
+            <input type="text" placeholder="取引先名で検索">
+          </div>
+          <span class="demo-caption">検索欄</span>
+        </div>
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">敬称</label>
+            <select>
+              <option>(なし)</option>
+              <option>御中</option>
+              <option>様</option>
+            </select>
+          </div>
+          <span class="demo-caption">選択欄(select)</span>
+        </div>
+        <div class="demo-item">
+          <div class="input-demo">
+            <label class="field-label">メモ</label>
+            <textarea rows="3">補足事項があれば入力してください</textarea>
+          </div>
+          <span class="demo-caption">複数行入力(textarea)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">メッセージ(読むだけの物) - 角丸なし・枠(外周)なし・左4pxの帯</h2>
+      <p class="demo-desc">白地に外周の枠は付けず、左4pxの帯とアイコンだけで種別を示す。成功=濃グレーの帯とアイコン(&#10003;) / エラー・警告=赤の帯とアイコン(!)。本文の文字は種別に関わらず常に濃グレー。実際の画面ではメッセージは背景グレーの上に白地で置かれるため、この見本も背景グレーの台の上に配置している。</p>
+      <div class="message-stage">
+        <div class="demo-item">
+          <div class="message message-success">
+            <span class="message-icon">&#10003;</span>
+            <span class="message-text">取引先を登録しました。</span>
+          </div>
+          <span class="demo-caption">成功メッセージ</span>
+        </div>
+        <div class="demo-item">
+          <div class="message message-error">
+            <span class="message-icon">!</span>
+            <span class="message-text">保存に失敗しました。保存先の空き容量・書き込み権限をご確認ください。</span>
+          </div>
+          <span class="demo-caption">エラーメッセージ</span>
+        </div>
+        <div class="demo-item">
+          <div class="message message-warning">
+            <span class="message-icon">!</span>
+            <span class="message-text">現在のデータがエクスポートファイルの内容で置き換わります。この操作は元に戻せません。</span>
+          </div>
+          <span class="demo-caption">警告メッセージ</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">状態バッジ(表示だけの物) - 丸型(例外)</h2>
+      <p class="demo-desc">利用中=背景グレー地+濃グレー文字 / 利用停止=濃グレー塗り+白文字 / 準備中=背景グレー地+補助グレー文字。ただし「準備中」バッジは、サイドバーのように地自体が背景グレーの場所に置くと同化して見えなくなるため、その場合のみ白地+補助グレー文字にする(下記「サイドバー項目」参照)。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <span class="badge badge-active">利用中</span>
+          <span class="demo-caption">利用中</span>
+        </div>
+        <div class="demo-item">
+          <span class="badge badge-inactive">利用停止</span>
+          <span class="demo-caption">利用停止</span>
+        </div>
+        <div class="demo-item">
+          <span class="badge badge-soon">準備中</span>
+          <span class="demo-caption">準備中</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">パネル・カード・ダイアログ(入れ物) - 角丸なし</h2>
+      <p class="demo-desc">白地+罫線グレー枠。影(box-shadow)はダイアログのみに付け、パネル・カードには付けない。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="panel-demo">パネル・カード(影なし)</div>
+          <span class="demo-caption">パネル・カード</span>
+        </div>
+        <div class="demo-item">
+          <div class="modal-demo">ダイアログ(影あり)</div>
+          <span class="demo-caption">ダイアログ</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="demo-heading">サイドバー項目 - 角丸なし・全幅</h2>
+      <p class="demo-desc">左右の余白・マージンなしでサイドバー全幅に広げる。選択中は濃グレー塗り+白文字。v0.6の構成を維持。</p>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="sidebar-demo">
+            <div class="sidebar-demo-item">ホーム</div>
+            <div class="sidebar-demo-item active">取引先管理</div>
+            <div class="sidebar-demo-item disabled">案件管理<span class="badge badge-soon">準備中</span></div>
+          </div>
+          <span class="demo-caption">通常/選択中/準備中</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

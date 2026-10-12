@@ -1,0 +1,8 @@
+data.json
+documents/invoices/2026/2026-001_往復確認商事.pdf
+documents/quotes/2026/2026-001_往復確認商事.pdf
+documents/receipts/2026/aeb5de45-f7ee-46b5-ba41-4f59c9265097.pdf
+documents/receipts/2026/e68d9f36-4a64-4d60-b052-2bba751a1ae0.jpg
+documents/receipts/2026/f8112f5c-02e5-4437-b105-64175a0949ea.png
+accounts=15 cashRecords=5 receipts=3 cashRecordHistory=8
+schemaVersion=4

@@ -1,0 +1,2 @@
+結果: {"success":true,"importedCount":1}
+DBの記録・領収書=0件、documents/receipts配下のファイル3件は残る(設計4.3章手順7-4のとおり)

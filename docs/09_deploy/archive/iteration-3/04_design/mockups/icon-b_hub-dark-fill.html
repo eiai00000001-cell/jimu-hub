@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>事務HUB - アプリアイコン案B(濃グレー塗り・Dock映え)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- 案B: 濃グレー塗り地+白の線・丸。既存デザインガイドの濃グレー(#3A3A3C)を背景に反転させ、
+       Dock上で他アプリと並んだ時に視認性が高い(濃い面を持つ)構成。深みを出すためごく僅かな
+       グラデーションのみ用いる(6色の範囲内での濃淡表現)。 -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#48484A"/>
+      <stop offset="100%" stop-color="#2E2E30"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="180" fill="url(#bg)"/>
+  <g stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="0.92">
+    <line x1="512" y1="512" x2="512" y2="252"/>
+    <line x1="512" y1="512" x2="737" y2="382"/>
+    <line x1="512" y1="512" x2="737" y2="642"/>
+    <line x1="512" y1="512" x2="512" y2="772"/>
+    <line x1="512" y1="512" x2="287" y2="642"/>
+    <line x1="512" y1="512" x2="287" y2="382"/>
+  </g>
+  <circle cx="512" cy="512" r="82" fill="#FFFFFF"/>
+  <g fill="#FFFFFF">
+    <circle cx="512" cy="252" r="38"/>
+    <circle cx="737" cy="382" r="38"/>
+    <circle cx="737" cy="642" r="38"/>
+    <circle cx="512" cy="772" r="38"/>
+    <circle cx="287" cy="642" r="38"/>
+    <circle cx="287" cy="382" r="38"/>
+  </g>
+</svg>
+</body>
+</html>

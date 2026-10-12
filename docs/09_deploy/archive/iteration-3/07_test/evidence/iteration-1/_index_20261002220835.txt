@@ -1,0 +1,136 @@
+TC-74_01.png	見積書をPDF保存(2026-001)
+TC-74_02.png	請求書をPDF保存(源泉徴収税額142,940円)
+TC-74_03.png	エクスポートZIPから復元(不一致なし)
+TC-74_04.txt	通しシナリオの結果
+TC-74_05.png	復元後の見積書詳細(PDFも元どおり)
+TC-07_01.png	full_replace_confirmed
+TC-06_01.png	export_failure
+TC-09_01.png	import_parse_failure
+TC-10_01.png	import_version_too_new
+TC-12_01.png	import_rollback
+TC-12_02.png	after_rollback_continue_working
+TC-11_01.png	after_4_imports
+TC-62_01.txt	エクスポートZIPのエントリ一覧とdata.jsonの要点
+TC-62_02.png	別の保存先へZIPを復元した結果(完了メッセージ)
+TC-62_03.png	復元後の見積書詳細(警告なし・PDF操作が有効)
+TC-62_04.png	復元後の請求書詳細(入金済み・元の見積書リンク・源泉徴収)
+TC-62_05.txt	復元後の採番継続
+TC-63_01.png	改ざん・欠落を含むZIPの復元結果メッセージ(不一致2件)
+TC-63_02.png	改ざんされた見積書の詳細(警告バッジ)
+TC-63_03.png	欠落PDFの請求書: 警告バッジと「PDFファイルが見つかりません」の案内
+TC-64_01.png	旧形式(v2 JSON)復元後に「PDFを開く」: PDFファイルが見つかりませんの案内
+TC-64_02.png	旧形式(v1 JSON)の復元結果(取引先のみ)
+TC-65_01.png	壊れたZIPの復元: 読み込めませんでした
+TC-65_02.txt	ZIPスリップ・pdfPath改ざんZIPの復元結果
+TC-65_03.png	ZIPスリップ・pdfPath改ざんZIPの復元結果
+TC-66_01.txt	4回復元後のbackups/の内訳
+TC-66_02.png	DB制約違反で復元に失敗: 復元前の状態に戻した旨のメッセージ
+TC-16_01.png	format_validation_errors
+TC-67_01.png	ひらがな入力が入力中に全角カタカナへ自動変換される
+TC-67_02.png	漢字のフリガナはエラー(全角カタカナ指定の案内)
+TC-67_03.txt	フリガナ入力検証の結果
+TC-67_04.png	一覧のフリガナ列(未入力は「(未入力)」)
+TC-67_05.png	詳細画面のフリガナ表示
+TC-68_01.txt	フリガナ昇順の表示順
+TC-68_02.png	フリガナ昇順(既定): フリガナ未入力は末尾
+TC-68_03.png	登録日新しい順への切り替え
+TC-69_01.png	編集画面でも同じフリガナ検証が働く
+TC-69_02.png	フリガナをクリアして更新
+TC-31_01.png	home_initial
+TC-31_02.png	form_validation_error
+TC-31_03.png	list_after_create
+TC-31_04.png	home_count_after_create
+TC-31_05.png	detail_view
+TC-31_06.png	detail_after_update
+TC-31_07.png	detail_after_deactivate
+TC-31_08.png	home_count_after_deactivate
+TC-31_09.png	list_show_inactive
+TC-31_10.png	detail_fresh_mount_after_deactivate
+TC-42_01.png	未設定の初期状態(全項目空欄)
+TC-42_02.png	保存後も同じ画面に留まり完了メッセージが表示される
+TC-42_03.png	再表示後の更新(upsert)も完了メッセージが表示される
+TC-43_01.png	氏名・屋号・住所の必須未入力エラー
+TC-43_02.png	文字数上限超過エラー
+TC-44_01.png	自社情報未設定時のエラーと設定画面への導線
+TC-44_02.png	設定後に遷移元の見積書作成画面へ戻り完了メッセージを表示
+TC-34_01.png	detail_panel_and_badge
+TC-34_02.png	import_dialog_danger_button
+TC-03_01.png	coming_soon_notice
+TC-49_01.txt	金額計算ケースの期待値とDB・API再取得値の照合結果
+TC-49_02.png	小数数量の画面再計算(4.35×100=435円・1.15×100=115円)
+TC-50_01.txt	採番結果
+TC-51_01.png	PDF保存失敗時のエラー表示(書込不可のdocumentsフォルダ)
+TC-51_02.txt	再確定後のquotes件数と内訳(BUG-01確認)
+TC-51_03.png	再確定後の見積書一覧(未採番の下書きが重複して残る: BUG-01)
+TC-51_04.png	復旧後の再確定(書類番号は欠番の次の番号)
+TC-52_01.txt	IPC経由の不正入力が拒否された結果(DBは変化なし)
+TC-60_01.txt	源泉徴収税額の境界値(対象額→税額→請求金額)とDB保存値の照合結果
+TC-61_01.png	見積書一覧(3件・既定)
+TC-61_02.png	発行日範囲+金額下限の絞り込み(1件)
+TC-61_03.png	該当なし時の案内文言
+TC-61_04.png	請求書タブ+取引先絞り込み
+TC-61_05.png	範囲逆転(終了日<開始日・上限<下限)を入力した状態
+TC-61_06.txt	範囲逆転入力時のエラー表示要素数(設計: 3.10章でエラー)
+TC-53_01.png	変換直後の請求書詳細(下書き・未採番・元の見積書リンク)
+TC-53_02.png	変換元がある請求書の編集画面(元の見積書を見るリンク)
+TC-54_01.txt	下書き見積書の変換をIPCで試みた結果
+TC-54_02.png	利用停止の取引先の見積書でも請求書へ変換できる
+TC-54_03.png	新規作成の取引先選択肢に利用停止の取引先が表示されない
+TC-56_01.png	請求書の下書き保存後(未採番・入金操作なし)
+TC-55_01.png	PDF保存後の請求書詳細(請求書番号2026-001・未収・入金済みにする)
+TC-55_02.txt	請求書PDFから抽出したテキスト(PDFKit)
+TC-55_03.png	PDF1ページ目の画像(sipsで変換)
+TC-57_01.png	トップ画面: 請求書3件・未収2件(下書きは含めない)
+TC-58_01.png	入金日未入力で確定するとエラー
+TC-57_02.png	入金済みにした直後(入金日表示・未収に戻す)
+TC-57_03.png	一覧の入金ステータスフィルタ(未収)
+TC-57_04.png	未収に戻した直後
+TC-58_02.txt	IPC経由の不正な入金ステータス更新がすべて拒否されたこと
+TC-59_01.png	源泉徴収対象2行(合計160万円)の再計算表示: 224,620円・請求金額1,546,380円
+TC-59_02.png	詳細画面の源泉徴収税額・請求金額
+TC-59_03.txt	源泉徴収ありの請求書PDFテキスト
+TC-59_04.png	PDF1ページ目の画像(sipsで変換)
+TC-39_01.png	初期状態の4カード(すべて0件)
+TC-39_02.png	取引先2・見積書2(下書き含む)・請求書3・未収2(下書きを含めない)
+TC-39_03.png	入金済み・利用停止の反映後(未収1・取引先1)
+TC-73_01.png	自社情報・振込先の設定
+TC-73_02.png	見積書一覧
+TC-73_03.png	請求書一覧(状態・入金ステータスのバッジ)
+TC-73_04.png	請求書作成
+TC-73_05.png	見積書作成
+TC-73_06.png	見積書詳細
+TC-73_07.png	請求書詳細
+TC-73_08.txt	新規画面ごとのタイトルバー・サイドバー・危険色の確認結果
+TC-73_09.png	見積書・請求書一覧で「案件管理」(準備中)を押した直後(案内なし: BUG-03)
+TC-18_01.png	search_partial_match
+TC-21_01.png	search_no_match
+TC-19_01.png	sort_name_desc
+TC-20_01.png	status_filter_default_hides_inactive
+TC-20_02.png	status_filter_show_all
+TC-22_01.png	list_50_records
+TC-70_01.txt	配布物(arm64の.app、--dirビルド)の除外確認結果
+TC-71_01.txt	icon.icnsに含まれるサイズ一覧(iconutilで展開)
+TC-71_02.png	icon.icnsの最大サイズ(1024px)
+TC-72_01.png	配布版のホーム画面
+TC-72_02.png	配布版で見積書をPDF保存した後のホーム(見積書1件)
+TC-72_03.txt	配布版の確認結果
+TC-45_01.png	簡易登録モーダルの必須未入力エラー
+TC-45_02.png	登録した取引先が選択済みで反映される
+TC-45_03.png	取引先管理に通常の取引先として表示される
+TC-46_01.png	作成画面の入力(行金額・合計がリアルタイム再計算)
+TC-46_02.png	下書き保存後の詳細画面(未採番・編集可・PDF操作なし)
+TC-47_01.png	取引先未選択・品名空のエラー(下書き保存)
+TC-47_02.png	数量0・単価負数のエラー
+TC-47_03.png	発行日未入力のエラー
+TC-47_04.png	有効期限が発行日より前の警告表示
+TC-48_01.png	PDF保存後の詳細画面(書類番号2026-001・PDF操作・請求書変換)
+TC-48_02.txt	見積書PDFから抽出したテキスト(PDFKit)と検証結果
+TC-48_03.png	PDF1ページ目の画像(sipsで変換)
+TC-02_01.png	startup_error
+TC-40_01.png	起動エラー画面(復元導線あり)
+TC-40_02.png	復元前の警告確認(続行は危険ボタン)
+TC-40_03.png	復元完了と「アプリを再起動」ボタン
+TC-40_04.txt	復元後のbackups/の内容(破損DBの退避)
+TC-40_05.png	復元後に通常起動したホーム(取引先1件・見積書1件)
+TC-41_01.png	不正ファイルの復元失敗: エラー表示と再選択可能な状態
+TC-41_02.txt	失敗後のデータ保存先の状態

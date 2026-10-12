@@ -1,0 +1,4 @@
+完了メッセージ: ✓
+復元が完了しました(6件)
+絶対パス/親ディレクトリのpdfPath→DBではNULL、親ディレクトリ・/tmpへのファイル書き出しなし(確認済み)
+documents配下: documents/invoices/2026/2026-001_ZIP往復商事株式会社.pdf, documents/quotes/2026/2026-001_ZIP往復商事株式会社.pdf, documents/quotes/2026/2026-002_ZIP往復第二商会.pdf, documents/tmp/jimuhub-abs-zipslip.txt

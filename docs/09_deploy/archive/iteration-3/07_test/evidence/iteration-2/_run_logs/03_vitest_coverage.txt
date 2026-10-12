@@ -1,0 +1,6 @@
+ Test Files  85 passed (85)
+      Tests  743 passed (743)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+All files          |   89.86 |    86.83 |   83.46 |   90.03 |                   
+Branches     : 86.83% ( 1722/1983 )
+Lines        : 90.03% ( 2811/3122 )

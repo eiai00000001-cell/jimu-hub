@@ -1,0 +1,44 @@
+=== 実行日時: 2026-09-27 10:15:31 +0900 ===
+=== 実行環境: Darwin 25.6.0, Node v25.2.1, npm 11.6.2 ===
+=== コマンド: npm run test -- --coverage (docs/07_test/evidence/_run_logs 配下に保存) ===
+
+ RUN  v5.0.2 <project-root>/app
+      Coverage enabled with v8
+
+
+ Test Files  20 passed (20)
+      Tests  139 passed (139)
+   Start at  10:15:31
+   Duration  2.62s (environment 29%, tests 28%, import 19%, setup 16%, transform 6%, worker 3%)
+
+    Isolate  20 workers spawned · ~310ms startup each (spawn + environment, per file)
+             at least ~576ms faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |      93 |    90.65 |   81.81 |   93.09 |                   
+ main/ipc          |     100 |    88.88 |     100 |     100 |                   
+  ...pc-handler.ts |     100 |     87.5 |     100 |     100 | 40,63             
+ main/repositories |   96.87 |    94.11 |     100 |   96.87 |                   
+  ...repository.ts |   96.42 |    93.33 |     100 |   96.42 | 98                
+ main/services     |   94.04 |    79.31 |     100 |   94.04 |                   
+  ...up.service.ts |    93.1 |       75 |     100 |    93.1 | 78,90,150,167     
+  ...nt.service.ts |     100 |     90.9 |     100 |     100 | 16                
+  ...on.service.ts |   66.66 |       50 |     100 |   66.66 | 16                
+ renderer/src      |    64.1 |    85.71 |    42.3 |   65.78 |                   
+  App.tsx          |    64.1 |    85.71 |    42.3 |   65.78 | ...00,103,120-128 
+ ...erer/src/pages |   92.07 |    89.53 |   71.69 |   91.75 |                   
+  ...etailPage.tsx |     100 |     87.5 |   85.71 |     100 | 50-54             
+  ...tFormPage.tsx |   84.09 |    91.17 |      50 |   83.72 | 140-172,187-195   
+  ...tListPage.tsx |   95.45 |     90.9 |   84.61 |   95.23 | 65                
+  TopPage.tsx      |     100 |    83.33 |   83.33 |     100 | 26                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 93% ( 372/400 )
+Branches     : 90.65% ( 194/214 )
+Functions    : 81.81% ( 135/165 )
+Lines        : 93.09% ( 364/391 )
+================================================================================
