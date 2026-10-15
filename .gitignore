@@ -50,3 +50,6 @@ docs/07_test/evidence/**/*.zip
 # 納品時の記録フォルダ(docs/09_deploy/archive/)へコピーされる分も含め、docs/配下のZIPは管理対象外にする(SEC-08)
 docs/**/*.zip
 app/e2e/scenarios/.output/
+
+# テスト・確認作業の作業フォルダ
+.e2e-work/
