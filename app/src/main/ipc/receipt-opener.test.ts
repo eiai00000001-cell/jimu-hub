@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 
 const { openPath, showItemInFolder } = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ describe('ReceiptOpener', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     openPath.mockResolvedValue('')
-    docs = join(mkdtempSync(join(tmpdir(), 'jimuhub-ro-')), 'documents')
+    docs = join(createWorkDir('unit', 'jimuhub-ro'), 'documents')
     mkdirSync(join(docs, 'receipts', '2026'), { recursive: true })
     mkdirSync(join(docs, 'quotes'), { recursive: true })
     writeFileSync(join(docs, 'receipts', '2026', 'a.pdf'), '%PDF-')

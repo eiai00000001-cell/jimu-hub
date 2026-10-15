@@ -1,5 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -27,7 +27,7 @@ describe('JsonlTableWriter / JsonlTableReader(F-32)', () => {
   let sqlite: Database.Database
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'jsonl-test-'))
+    dir = createWorkDir('unit', 'jsonl-test')
     sqlite = new Database(':memory:')
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, label TEXT, flag INTEGER)')
   })

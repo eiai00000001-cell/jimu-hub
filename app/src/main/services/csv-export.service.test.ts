@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { Database } from '../db/db'
 import { CashRecordRepository } from '../repositories/cash-record.repository'
@@ -29,7 +29,7 @@ describe('CsvExportService(F-24。詳細設計書4.24章)', () => {
   beforeEach(() => {
     db = new Database(':memory:')
     db.initialize()
-    work = mkdtempSync(join(tmpdir(), 'jimuhub-csv-'))
+    work = createWorkDir('unit', 'jimuhub-csv')
     service = new CsvExportService(new CashRecordRepository(db))
     expense = (
       db.sqlite.prepare("SELECT id FROM accounts WHERE name = '通信費'").get() as { id: number }

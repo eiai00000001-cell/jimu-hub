@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LegacyJsonRecordSource } from './legacy-record-source'
@@ -9,7 +9,7 @@ import { BackupFileSchema } from '@shared/backup/backup-file'
 describe('BackupStagingArea(F-32)', () => {
   let root: string
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'staging-test-'))
+    root = createWorkDir('unit', 'staging-test')
   })
   afterEach(() => rmSync(root, { recursive: true, force: true }))
 

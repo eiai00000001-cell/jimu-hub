@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import AdmZip from 'adm-zip'
 import { mapExportTable, readExport, renameEntryInZip } from './backup/test-helpers'
@@ -24,7 +24,7 @@ interface Env {
 }
 
 function createEnv(name: string, restoreLimits?: { maxFileBytes: number }): Env {
-  const dir = mkdtempSync(join(tmpdir(), `jimuhub-bk-${name}-`))
+  const dir = createWorkDir('unit', `jimuhub-bk-${name}`)
   const dbFile = join(dir, 'data.sqlite')
   const documentsDir = join(dir, 'documents')
   const db = new Database(dbFile)

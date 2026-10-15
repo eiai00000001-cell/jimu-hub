@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import * as fsModule from 'node:fs'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import AdmZip from 'adm-zip'
 import { buildZip, exportToLegacyJson, mapExportTable, readExport } from './backup/test-helpers'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { Database } from '../db/db'
 import { ClientRepository } from '../repositories/client.repository'
@@ -96,7 +96,7 @@ describe('BackupService', () => {
   let service: BackupService
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-backup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-backup-test')
     dbFilePath = join(dir, 'data.sqlite')
     backupsDir = join(dir, 'backups')
     exportPath = join(dir, 'export.zip')

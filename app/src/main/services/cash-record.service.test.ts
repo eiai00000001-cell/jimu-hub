@@ -8,8 +8,8 @@ import { CashRecordRepository } from '../repositories/cash-record.repository'
 import { ClientRepository } from '../repositories/client.repository'
 import { ReceiptRepository } from '../repositories/receipt.repository'
 import { CashRecordService, RecordError } from './cash-record.service'
-import { mkdtempSync, readdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { IntegrityService } from './integrity/integrity.service'
 import { ReceiptService } from './receipts/receipt.service'
@@ -48,7 +48,7 @@ describe('CashRecordService(F-18・F-19・F-20)', () => {
     const recordRepo = new CashRecordRepository(db)
     const historyRepo = new CashRecordHistoryRepository(db)
     const receiptRepo = new ReceiptRepository(db)
-    work = mkdtempSync(join(tmpdir(), 'jimuhub-crs-'))
+    work = createWorkDir('unit', 'jimuhub-crs')
     receiptService = new ReceiptService(join(work, 'documents'), new ReceiptStagingStore())
     service = new CashRecordService({
       database: db,

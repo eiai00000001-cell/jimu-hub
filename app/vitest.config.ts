@@ -8,12 +8,14 @@ export default defineConfig({
     alias: {
       '@shared': resolve(__dirname, 'src/shared'),
       '@main': resolve(__dirname, 'src/main'),
-      '@renderer': resolve(__dirname, 'src/renderer/src')
+      '@renderer': resolve(__dirname, 'src/renderer/src'),
+      '@test-support': resolve(__dirname, 'test-support')
     }
   },
   test: {
     environment: 'node',
     environmentMatchGlobs: [['src/renderer/**', 'jsdom']],
+    globalSetup: ['./vitest.global-setup.ts'],
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'test-support/**/*.test.mjs'],
     exclude: ['**/node_modules/**', '**/out/**', '**/dist/**', 'e2e/**'],

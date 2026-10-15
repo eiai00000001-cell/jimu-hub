@@ -99,6 +99,22 @@ describe('removeWorkDir', () => {
   })
 })
 
+describe('removeCreatedWorkDirs', () => {
+  it('作成して未削除の作業フォルダだけをすべて削除する', () => {
+    const { root, tools } = fakeRepo()
+    const a = tools.createWorkDir('unit', 'a')
+    const b = tools.createWorkDir('e2e', 'b')
+    const c = tools.createWorkDir('unit', 'c')
+    tools.removeWorkDir(c)
+    const other = join(root, 'unit', 'not-created')
+    mkdirSync(other)
+    tools.removeCreatedWorkDirs()
+    expect(existsSync(a)).toBe(false)
+    expect(existsSync(b)).toBe(false)
+    expect(existsSync(other)).toBe(true)
+  })
+})
+
 describe('sweepWorkRoot', () => {
   it('指定した種別の中身だけを削除し、他の種別は残す', () => {
     const { root, tools } = fakeRepo()

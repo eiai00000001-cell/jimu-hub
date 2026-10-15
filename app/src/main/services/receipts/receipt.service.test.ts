@@ -1,14 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  statSync,
-  truncateSync,
-  writeFileSync
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, statSync, truncateSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { ReceiptService } from './receipt.service'
 import { ReceiptStagingStore } from './receipt-staging-store'
@@ -27,7 +20,7 @@ describe('ReceiptService(F-22)', () => {
   let service: ReceiptService
 
   beforeEach(() => {
-    work = mkdtempSync(join(tmpdir(), 'jimuhub-rs-'))
+    work = createWorkDir('unit', 'jimuhub-rs')
     docs = join(work, 'documents')
     staging = new ReceiptStagingStore()
     service = new ReceiptService(docs, staging)

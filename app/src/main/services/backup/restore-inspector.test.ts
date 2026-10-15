@@ -1,5 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Database } from '../../db/db'
@@ -63,7 +63,7 @@ describe('RestoreInspector(F-33。詳細設計書4.33章)', () => {
   }
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'inspector-test-'))
+    dir = createWorkDir('unit', 'inspector-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     store = new RestoreSessionStore()

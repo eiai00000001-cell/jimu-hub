@@ -1,6 +1,6 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { PROJECT_MESSAGES } from '@shared/messages/messages'
@@ -26,7 +26,7 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
   let clients: ClientRepository
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'project-service-test-'))
+    dir = createWorkDir('unit', 'project-service-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     clients = new ClientRepository(db)

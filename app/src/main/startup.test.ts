@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest'
-import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { chmodSync, existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import SqliteDatabase from 'better-sqlite3'
 import { initializeStartup } from './startup'
@@ -28,7 +28,7 @@ describe('initializeStartup', () => {
   })
 
   it('正常なデータベースファイル(新規作成)の場合、ok:trueとDatabaseインスタンスを返す', () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-startup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-startup-test')
     const dbFilePath = join(dir, 'data.sqlite')
 
     const result = initializeStartup(dbFilePath)
@@ -39,7 +39,7 @@ describe('initializeStartup', () => {
   })
 
   it('壊れたデータベースファイル(有効なSQLiteファイルではない内容)の場合、例外を投げずok:falseを返す', () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-startup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-startup-test')
     const dbFilePath = join(dir, 'data.sqlite')
     writeFileSync(dbFilePath, 'これは正しいSQLiteファイルではありません', 'utf-8')
 
@@ -50,7 +50,7 @@ describe('initializeStartup', () => {
   })
 
   it('読み込めないデータベースファイル(権限なし)の場合、例外を投げずok:falseを返す', () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-startup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-startup-test')
     const dbFilePath = join(dir, 'data.sqlite')
     writeFileSync(dbFilePath, '', 'utf-8')
     chmodSync(dbFilePath, 0o000)
@@ -64,7 +64,7 @@ describe('initializeStartup', () => {
   })
 
   it('iteration0(schema_version=1)の既存データベースファイルを起動すると、furigana列が追加されschema_versionが最新に更新される(詳細設計書4.1章手順2)', () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-startup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-startup-test')
     const dbFilePath = join(dir, 'data.sqlite')
 
     const legacyDb = new SqliteDatabase(dbFilePath)
@@ -116,7 +116,7 @@ describe('initializeStartup', () => {
   })
 
   it('コンストラクタは成功したがinitialize()のみ失敗した場合、開いた接続をcloseする(レビュー結果報告書 v0.2 No.13)', () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-startup-test-'))
+    dir = createWorkDir('unit', 'jimuhub-startup-test')
     const dbFilePath = join(dir, 'data.sqlite')
 
     const closeSpy = vi.spyOn(Database.prototype, 'close')
@@ -141,7 +141,7 @@ describe('initializeStartup: スキーマv5への移行(T-63-1。詳細設計書
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-migrate-test-'))
+    dir = createWorkDir('unit', 'jimuhub-migrate-test')
   })
   afterEach(() => {
     chmodSync(dir, 0o700)

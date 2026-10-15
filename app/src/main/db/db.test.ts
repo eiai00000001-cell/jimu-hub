@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { Database } from './db'
 
@@ -74,7 +74,7 @@ describe('Database', () => {
   })
 
   it('reopenで接続を張り直しても、ファイル上のデータは維持される(復元処理での再接続を想定)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'jimuhub-db-test-'))
+    const dir = createWorkDir('unit', 'jimuhub-db-test')
     const filePath = join(dir, 'data.sqlite')
     try {
       db = new Database(filePath)

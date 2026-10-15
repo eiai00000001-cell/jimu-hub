@@ -1,5 +1,5 @@
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BackupFileChangedError } from './errors'
@@ -12,7 +12,7 @@ describe('RestoreSessionStore(F-33)', () => {
   let store: RestoreSessionStore
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'session-store-test-'))
+    dir = createWorkDir('unit', 'session-store-test')
     file = join(dir, 'b.zip')
     writeFileSync(file, 'abc')
     now = 1_000_000

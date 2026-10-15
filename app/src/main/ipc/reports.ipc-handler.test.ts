@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, existsSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 
@@ -27,7 +27,7 @@ describe('ReportsIpcHandler(F-23・F-24)', () => {
   beforeEach(() => {
     handlers.clear()
     vi.clearAllMocks()
-    work = mkdtempSync(join(tmpdir(), 'jimuhub-rep-'))
+    work = createWorkDir('unit', 'jimuhub-rep')
     db = new Database(':memory:')
     db.initialize()
     new ReportsIpcHandler(

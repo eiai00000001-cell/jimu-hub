@@ -1,6 +1,6 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROJECT_MESSAGES } from '@shared/messages/messages'
@@ -56,7 +56,7 @@ describe('案件の紐づけと、見積書・請求書・入出金・経費の�
   let accountId: number
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'project-integration-test-'))
+    dir = createWorkDir('unit', 'project-integration-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     records = createRecordServices(db, join(dir, 'documents'))

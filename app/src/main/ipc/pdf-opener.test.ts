@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 
 const { openPath, showItemInFolder } = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ describe('PdfOpener', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     openPath.mockResolvedValue('')
-    root = mkdtempSync(join(tmpdir(), 'jimuhub-pdf-opener-'))
+    root = createWorkDir('unit', 'jimuhub-pdf-opener')
     documentsDir = join(root, 'documents')
     mkdirSync(join(documentsDir, 'quotes', '2026'), { recursive: true })
     opener = new PdfOpener(documentsDir)

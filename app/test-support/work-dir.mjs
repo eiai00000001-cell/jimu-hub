@@ -51,6 +51,9 @@ function listEntries(dir, filter = () => true) {
  * 既定のエクスポートは、リポジトリ直下の .e2e-work/ に束縛したもの。
  */
 export function createWorkTools(root) {
+  /** createWorkDir で作成し、まだ削除していない作業フォルダ */
+  const created = new Set()
+
   function assertRoot() {
     if (basename(root) !== WORK_ROOT_NAME) {
       throw new Error('作業ルートの名前が .e2e-work ではありません')
@@ -65,7 +68,9 @@ export function createWorkTools(root) {
     assertRoot()
     const sub = join(root, kind)
     mkdirSync(sub, { recursive: true, mode: 0o700 })
-    return mkdtempSync(join(sub, `${sanitizeLabel(label)}-`))
+    const dir = mkdtempSync(join(sub, `${sanitizeLabel(label)}-`))
+    created.add(dir)
+    return dir
   }
 
   function removeWorkDir(dir) {
@@ -76,6 +81,12 @@ export function createWorkTools(root) {
       throw new Error('作業ルートの外側は削除できません')
     }
     rmSync(dir, { recursive: true, force: true })
+    created.delete(dir)
+  }
+
+  /** このプロセスで作成して未削除の作業フォルダをすべて削除する(削除し忘れの保険) */
+  function removeCreatedWorkDirs() {
+    for (const dir of [...created]) removeWorkDir(dir)
   }
 
   function sweepWorkRoot(kind) {
@@ -99,7 +110,14 @@ export function createWorkTools(root) {
     }
   }
 
-  return { root, createWorkDir, removeWorkDir, sweepWorkRoot, reportLeftovers }
+  return {
+    root,
+    createWorkDir,
+    removeWorkDir,
+    removeCreatedWorkDirs,
+    sweepWorkRoot,
+    reportLeftovers
+  }
 }
 
 /** .e2e-work/ の絶対パス。ヘルパー自身の位置から求め、上書きはできない */
@@ -111,6 +129,7 @@ export function workRoot() {
 const tools = createWorkTools(workRoot())
 export const createWorkDir = tools.createWorkDir
 export const removeWorkDir = tools.removeWorkDir
+export const removeCreatedWorkDirs = tools.removeCreatedWorkDirs
 export const sweepWorkRoot = tools.sweepWorkRoot
 export const reportLeftovers = tools.reportLeftovers
 
