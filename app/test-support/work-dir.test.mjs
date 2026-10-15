@@ -1,5 +1,14 @@
-import { existsSync, mkdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import {
+  closeSync,
+  existsSync,
+  ftruncateSync,
+  mkdirSync,
+  openSync,
+  statSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createWorkDir,
@@ -156,14 +165,39 @@ describe('reportLeftovers', () => {
     const dir = tools.createWorkDir('unit', 'left')
     writeFileSync(join(dir, 'a.txt'), '12345')
     const tmp = join(repo, 'fake-tmp')
-    for (const n of ['jimuhub-old', 'jimuhub-pdf-tmp', 'jimuhub-pdf-tools', 'other'])
+    for (const n of [
+      'jimuhub-old',
+      'jimuhub-pdf-tmp',
+      'jimuhub-pdf-tools',
+      'jimuhub-evidence-run',
+      'other'
+    ])
       mkdirSync(join(tmp, n), { recursive: true })
     const r = tools.reportLeftovers(tmp)
     expect(r.work.count).toBe(1)
-    expect(r.work.names).toEqual(['unit'])
-    expect(r.work.bytes).toBe(5)
+    expect(r.work.names).toEqual([`unit/${basename(dir)}`])
+    expect(r.work.bytes).toBeGreaterThan(0)
+    expect(r.work.bytes % 512).toBe(0)
     expect(r.tmp.names).toEqual(['jimuhub-old'])
     expect(existsSync(join(tmp, 'jimuhub-old'))).toBe(true)
+  })
+
+  it('空の種別サブフォルダは数えない', () => {
+    const { tools } = fakeRepo()
+    const dir = tools.createWorkDir('e2e', 'x')
+    tools.removeWorkDir(dir)
+    expect(tools.reportLeftovers(join(getSandbox(), 'no-tmp')).work.count).toBe(0)
+  })
+
+  it('sparseファイルは論理サイズではなく実使用量で数える', () => {
+    const { tools } = fakeRepo()
+    const dir = tools.createWorkDir('unit', 'sparse')
+    const fd = openSync(join(dir, 'big.bin'), 'w')
+    ftruncateSync(fd, 1024 * 1024 * 1024)
+    closeSync(fd)
+    expect(tools.reportLeftovers(join(getSandbox(), 'no-tmp')).work.bytes).toBeLessThan(
+      10 * 1024 * 1024
+    )
   })
 
   it('何も無ければ件数0を返す', () => {

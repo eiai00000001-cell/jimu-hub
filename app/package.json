@@ -27,6 +27,8 @@
     "test:e2e:scenarios": "playwright test --config=e2e/scenarios/playwright.config.ts",
     "pretest:e2e:scenarios:headed": "electron-vite build",
     "test:e2e:scenarios:headed": "E2E_HEADED=1 playwright test --config=e2e/scenarios/playwright.config.ts",
+    "check:work": "node test-support/check-work.mjs",
+    "clean:work": "node test-support/clean-work.mjs",
     "seed": "tsx src/main/dev/seed.ts",
     "seed:reset": "tsx src/main/dev/seed.ts --reset",
     "seed:clear": "tsx src/main/dev/seed.ts --clear",

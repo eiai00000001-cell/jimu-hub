@@ -15,7 +15,8 @@ import { fileURLToPath } from 'node:url'
 
 export const WORK_ROOT_NAME = '.e2e-work'
 export const KINDS = ['e2e', 'unit', 'tools']
-const TMP_EXCLUDES = ['jimuhub-pdf-tmp', 'jimuhub-pdf-tools']
+// 残骸の確認から除外する(R-56。インストール済みアプリ・E2Eヘルパー・証跡出力が使用)
+const TMP_EXCLUDES = ['jimuhub-pdf-tmp', 'jimuhub-pdf-tools', 'jimuhub-evidence-run']
 
 function assertKind(kind) {
   if (!KINDS.includes(kind)) throw new Error(`不正な作業フォルダの種別です: ${String(kind)}`)
@@ -31,9 +32,10 @@ function isStrictlyInside(parent, child) {
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
 }
 
+/** du相当の実使用量(ブロック数×512)。sparseファイルの論理サイズは含めない */
 function sizeOf(path) {
   const st = lstatSync(path)
-  if (!st.isDirectory()) return st.size
+  if (!st.isDirectory()) return st.blocks * 512
   let total = 0
   for (const name of readdirSync(path)) total += sizeOf(join(path, name))
   return total
@@ -103,9 +105,24 @@ export function createWorkTools(root) {
     }
   }
 
+  /** 各種別のサブフォルダの中にある作業フォルダ(<種別>/<名前>)を数える。空のサブフォルダは数えない */
+  function listWorkEntries() {
+    const names = []
+    let bytes = 0
+    for (const k of KINDS) {
+      const sub = join(root, k)
+      if (!existsSync(sub) || !lstatSync(sub).isDirectory()) continue
+      for (const name of readdirSync(sub).sort()) {
+        names.push(`${k}/${name}`)
+        bytes += sizeOf(join(sub, name))
+      }
+    }
+    return { count: names.length, bytes, names }
+  }
+
   function reportLeftovers(tmpRoot = tmpdir()) {
     return {
-      work: listEntries(root),
+      work: listWorkEntries(),
       tmp: listEntries(tmpRoot, (n) => n.startsWith('jimuhub-') && !TMP_EXCLUDES.includes(n))
     }
   }

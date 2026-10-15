@@ -7,6 +7,8 @@
  *
  * 使い方: node make-large-receipts.mjs <出力先フォルダ> <件数> <1件のバイト数> [開始番号]
  *   出力: <出力先>/large_<番号>.pdf と、各ファイルのSHA-256の一覧 <出力先>/sha256.json(ファイル名→ハッシュ。追記される)
+ * 出力先は、呼び出し側が .e2e-work/ 配下(例: .e2e-work/tools/ の作業フォルダ)を指定し、利用後に削除すること(詳細設計書4.41)。
+ *   このツール自身は作業フォルダを作らない。
  * 領収書の上限は1件10MB(10,485,760バイト)・1記録5件。
  */
 import { createHash, randomBytes } from 'node:crypto'

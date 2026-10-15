@@ -7,13 +7,15 @@
  *   (現行のコードで旧版のスキーマを推測せず、旧版の定義そのものを用いる)。
  * 使い方: node make-v4-fixture.mjs <リポジトリのルート> <出力先の空フォルダ(データ保存先)>
  *   出力: <出力先>/data.sqlite(スキーマ版4)、<出力先>/documents/(見積書・請求書のPDF、領収書)
+ * 作業用の一時フォルダは .e2e-work/tools/ に作り、終了時(失敗時も)に削除する(詳細設計書4.41)。
+ *   出力先は、呼び出し側が .e2e-work/ 配下を指定すること。
  * 全データは架空。実データには触れない。
  */
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync, readdirSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { symlinkSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { createWorkDir, removeWorkDir } from '../../../app/test-support/work-dir.mjs'
 
 const [repoRoot, outDirArg] = process.argv.slice(2)
 if (!repoRoot || !outDirArg) {
@@ -24,7 +26,8 @@ const repo = resolve(repoRoot)
 const outDir = resolve(outDirArg)
 if (readdirSync(outDir).length > 0) throw new Error('出力先は空のフォルダにしてください')
 
-const scratch = mkdtempSync(join(tmpdir(), 'jimuhub-v030-'))
+const scratch = createWorkDir('tools', 'jimuhub-v030')
+try {
 execFileSync('sh', ['-c', `git -C "${repo}" archive v0.3.0 app/src/main/db app/src/shared | tar -x -C "${scratch}"`])
 symlinkSync(join(repo, 'app', 'node_modules'), join(scratch, 'app', 'node_modules'))
 writeFileSync(
@@ -109,3 +112,6 @@ execFileSync(join(repo, 'app', 'node_modules', '.bin', 'tsx'), ['--tsconfig', jo
 })
 void sha
 void randomUUID
+} finally {
+  removeWorkDir(scratch)
+}
