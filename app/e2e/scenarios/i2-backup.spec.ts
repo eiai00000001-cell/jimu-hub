@@ -10,7 +10,6 @@ import {
 } from '../../src/main/services/backup/test-helpers'
 import {
   existsSync,
-  mkdtempSync,
   openSync,
   closeSync,
   writeSync,
@@ -20,7 +19,7 @@ import {
   copyFileSync,
   readdirSync
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -64,7 +63,7 @@ const state: Apps = {}
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async () => {
-  workDir = mkdtempSync(join(tmpdir(), 'jimuhub-i2-backup-'))
+  workDir = createWorkDir('e2e', 'jimuhub-i2-backup')
   fx = makeReceiptFixtures()
   sourceZip = join(workDir, 'source.zip')
   const src = await launchApp({

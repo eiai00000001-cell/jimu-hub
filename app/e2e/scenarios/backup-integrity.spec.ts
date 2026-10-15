@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { readExport } from '../../src/main/services/backup/test-helpers'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { shot } from './evidence-dir'
@@ -52,7 +52,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
   let workDir: string
 
   test.beforeEach(() => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-backup-'))
+    workDir = createWorkDir('e2e', 'jimuhub-scenario-backup')
   })
 
   test.afterEach(async () => {

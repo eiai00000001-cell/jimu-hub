@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ElectronApplication } from '@playwright/test'
@@ -152,7 +152,7 @@ async function seed(l: LaunchedApp, genDir: string, from: number, count: number)
 
 test('TC-121: [F-32・★F2] 1GiBに近いバックアップのエクスポート・復元で、Mainプロセスのヒープ使用量の増加が約100MB以内。所要時間・RSS・ハッシュ一致・一時ファイルの残存なし', async () => {
   test.setTimeout(1_500_000)
-  const work = mkdtempSync(join(tmpdir(), 'jimuhub-i3-cap-'))
+  const work = createWorkDir('e2e', 'jimuhub-i3-cap')
   const zipPath = join(work, 'big.zip')
   const genDir = join(work, 'gen')
   const lines: string[] = []
@@ -298,7 +298,7 @@ test('TC-121: [F-32・★F2] 1GiBに近いバックアップのエクスポー�
 
 test('TC-122: [F-32] 1GiBを超える場合。エクスポートは見込みサイズの時点で中止して何も書き出さず、復元は上限超過の専用文言で中止して現在のデータは変わらない', async () => {
   test.setTimeout(1_500_000)
-  const work = mkdtempSync(join(tmpdir(), 'jimuhub-i3-over-'))
+  const work = createWorkDir('e2e', 'jimuhub-i3-over')
   const zipPath = join(work, 'over.zip')
   const genDir = join(work, 'gen')
   const OVER = Math.ceil((1024 ** 3 * 1.02) / FILE_BYTES) // 上限1GiBを約2%超える件数

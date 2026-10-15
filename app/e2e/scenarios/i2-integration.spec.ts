@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, rmSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -24,7 +24,7 @@ let outDir: string
 
 test.beforeEach(async () => {
   fx = makeReceiptFixtures()
-  outDir = mkdtempSync(join(tmpdir(), 'jimuhub-i2-int-'))
+  outDir = createWorkDir('e2e', 'jimuhub-i2-int')
   launched = await launchApp({
     JIMUHUB_E2E_RECEIPT_PATHS: fx.pdf,
     JIMUHUB_E2E_CSV_PATH: join(outDir, 'out.csv'),

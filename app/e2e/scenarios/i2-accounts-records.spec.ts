@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { rmSync } from 'node:fs'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -803,10 +804,9 @@ test('TC-84: 履歴(タブ・種別/操作日の絞り込み・変更前後の�
   // 履歴テーブルのトリガー: DBのコピーに対してUPDATE/DELETEを試み、拒否されることを確認(実DBは変更しない)
   await app.close()
   const { execFileSync } = await import('node:child_process')
-  const { copyFileSync, mkdtempSync } = await import('node:fs')
+  const { copyFileSync } = await import('node:fs')
   const { join } = await import('node:path')
-  const { tmpdir } = await import('node:os')
-  const tmp = mkdtempSync(join(tmpdir(), 'jimuhub-i2-trg-'))
+  const tmp = createWorkDir('e2e', 'jimuhub-i2-trg')
   copyFileSync(join(dataDir, 'data.sqlite'), join(tmp, 'copy.sqlite'))
   const run = (sql: string): string => {
     try {

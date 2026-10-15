@@ -3,12 +3,11 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   writeFileSync
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -54,7 +53,7 @@ let fx: Fixtures
 let launched: LaunchedApp | undefined
 
 test.beforeAll(() => {
-  workDir = mkdtempSync(join(tmpdir(), 'jimuhub-i3-backup-'))
+  workDir = createWorkDir('e2e', 'jimuhub-i3-backup')
   fx = makeReceiptFixtures()
 })
 // 作業用の一時フォルダは、ユーザーの許可なく削除しない運用のため、削除せずに残す(場所はテスト結果報告書に記載)
@@ -671,7 +670,7 @@ test('TC-117: [F-33] 復元前の確認画面の操作。領収書・案件が�
 
 /** 旧版(スキーマ版4。タグ v0.3.0)の実際のスキーマで、データ保存先を作る(docs/07_test/tools/make-v4-fixture.mjs) */
 function makeV4DataDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'jimuhub-i3-v4-'))
+  const dir = createWorkDir('e2e', 'jimuhub-i3-v4')
   const repoRoot = join(__dirname_i3(), '..', '..', '..')
   execFileSync(
     'node',

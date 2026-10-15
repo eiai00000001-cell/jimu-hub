@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { createClientApi, finalizeInvoiceApi, setupCompany } from '../scenarios/helpers'
@@ -20,7 +20,7 @@ test.describe('入出金・経費: 通し確認', () => {
   let csvPath: string
 
   test.beforeEach(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-e2e-cash-'))
+    workDir = createWorkDir('e2e', 'jimuhub-e2e-cash')
     const receiptPath = join(workDir, 'dummy_receipt.pdf')
     writeFileSync(receiptPath, '%PDF-1.4\nダミーの領収書(テスト用)\n')
     csvPath = join(workDir, 'export.csv')

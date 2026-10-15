@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, statSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -56,7 +56,7 @@ async function seedReceipts(
 
 test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(時間・進捗・メモリ)', async () => {
   test.setTimeout(540_000)
-  const work = mkdtempSync(join(tmpdir(), 'jimuhub-i2-cap-'))
+  const work = createWorkDir('e2e', 'jimuhub-i2-cap')
   const zipPath = join(work, 'big.zip')
   const l = await launchApp({ JIMUHUB_E2E_EXPORT_PATH: zipPath, JIMUHUB_E2E_IMPORT_PATH: zipPath })
   try {
@@ -227,7 +227,7 @@ test('TC-99a: 領収書の合計が数百MB規模のエクスポート・復元(
 
 test('TC-99b: 見込みサイズが復元上限の80%を超える場合の警告(文言・続行/中止)', async () => {
   test.setTimeout(120_000)
-  const work = mkdtempSync(join(tmpdir(), 'jimuhub-i2-warn-'))
+  const work = createWorkDir('e2e', 'jimuhub-i2-warn')
   const zipPath = join(work, 'warn.zip')
   const l = await launchApp({ JIMUHUB_E2E_EXPORT_PATH: zipPath })
   try {
@@ -313,7 +313,7 @@ test('TC-99c: [任意・I2_CAP_HUGE=1] 1GiB超のZIPを実際に書き出した�
     'I2_CAP_HUGE=1 のときのみ実行(10GB級のディスクとメモリを使用)'
   )
   test.setTimeout(1_500_000)
-  const work = mkdtempSync(join(tmpdir(), 'jimuhub-i2-huge-'))
+  const work = createWorkDir('e2e', 'jimuhub-i2-huge')
   const zipPath = join(work, 'huge.zip')
   const l = await launchApp({ JIMUHUB_E2E_EXPORT_PATH: zipPath, JIMUHUB_E2E_IMPORT_PATH: zipPath })
   try {

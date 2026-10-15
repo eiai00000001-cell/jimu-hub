@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 
@@ -18,7 +18,7 @@ test.describe('データ管理: エクスポートしてから復元する', () 
   let backupFilePath: string
 
   test.beforeEach(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-e2e-backup-'))
+    workDir = createWorkDir('e2e', 'jimuhub-e2e-backup')
     backupFilePath = join(workDir, 'export.json')
     launched = await launchApp({
       JIMUHUB_E2E_EXPORT_PATH: backupFilePath,

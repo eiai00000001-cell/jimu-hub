@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readdirSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { noteEvidence, shot } from './evidence-dir'
@@ -47,7 +47,7 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
 
   test('TC-127: 配布版で、案件の登録・紐づけ・案件別収支、エクスポート・復元(ストリーム)、復元前の確認、旧版(スキーマ版4)データの移行が動作する', async () => {
     test.setTimeout(180_000)
-    const work = mkdtempSync(join(tmpdir(), 'jimuhub-i3-pkg-'))
+    const work = createWorkDir('e2e', 'jimuhub-i3-pkg')
     const zip = join(work, 'packaged.zip')
     const srcUd = join(work, 'src-ud')
     const dstUd = join(work, 'dst-ud')
@@ -131,7 +131,7 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
     }
 
     // --- 3) 旧版(スキーマ版4)のデータから、配布版で移行する
-    const v4Ud = mkdtempSync(join(tmpdir(), 'jimuhub-i3-pkg-v4-'))
+    const v4Ud = createWorkDir('e2e', 'jimuhub-i3-pkg-v4')
     const repoRoot = join(here, '..', '..', '..')
     execFileSync(
       'node',

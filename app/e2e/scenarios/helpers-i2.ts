@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import type { ElectronApplication, Page } from '@playwright/test'
 
@@ -110,7 +110,7 @@ export interface Fixtures {
 
 /** 架空の領収書ファイル一式を一時ディレクトリへ作る(個人情報を含まない) */
 export function makeReceiptFixtures(): Fixtures {
-  const dir = mkdtempSync(join(tmpdir(), 'jimuhub-i2-fixtures-'))
+  const dir = createWorkDir('e2e', 'jimuhub-i2-fixtures')
   const pdf = join(dir, 'receipt_sample.pdf')
   writeFileSync(pdf, '%PDF-1.4\n% dummy receipt for test\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n')
   const png = join(dir, 'receipt_sample.png')

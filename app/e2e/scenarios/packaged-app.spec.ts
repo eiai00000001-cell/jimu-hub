@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { evidenceFilePath, noteEvidence, shot } from './evidence-dir'
@@ -97,7 +97,7 @@ test.describe('配布物(パッケージ済み.app)', () => {
       encoding: 'utf8'
     })
     expect(plist).toContain('"CFBundleIconFile" => "icon.icns"')
-    const work = mkdtempSync(join(tmpdir(), 'jimuhub-icon-'))
+    const work = createWorkDir('e2e', 'jimuhub-icon')
     try {
       execFileSync('iconutil', ['-c', 'iconset', icns, '-o', join(work, 'icon.iconset')])
       const sizes = readdirSync(join(work, 'icon.iconset')).sort()
@@ -136,8 +136,8 @@ test.describe('配布物(パッケージ済み.app)', () => {
   })
 
   test('TC-72: 配布版が起動し、データは--user-data-dirに作成され(JIMUHUB_DATA_DIRは無視)、DB・PDF生成が動作する', async () => {
-    const userData = mkdtempSync(join(tmpdir(), 'jimuhub-packaged-ud-'))
-    const ignoredDir = mkdtempSync(join(tmpdir(), 'jimuhub-packaged-ignored-'))
+    const userData = createWorkDir('e2e', 'jimuhub-packaged-ud')
+    const ignoredDir = createWorkDir('e2e', 'jimuhub-packaged-ignored')
     const app = await electron.launch({
       executablePath: join(APP!, 'Contents', 'MacOS', '事務HUB'),
       args: [`--user-data-dir=${userData}`],
