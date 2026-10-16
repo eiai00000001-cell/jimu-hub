@@ -9,8 +9,9 @@ const isPlaceholder = (name) => /^[<$~{]/.test(name)
 /** ユーザー名の先頭1文字のみ表示し、残りを伏せる */
 const maskName = (name) => `${name.slice(0, 1)}***`
 
-// macOS・Linux: /Users/<名前>/ または /home/<名前>/(直前は英数字・ドット・ハイフン以外)
-const POSIX_HOME = /(?<![A-Za-z0-9_.-])\/(Users|home)\/([^/\s'"`<>()[\]{}$~|;,]+)(?=\/)/g
+// macOS・Linux: /Users/<名前> または /home/<名前>(直前は英数字・ドット・ハイフン以外)。
+// 名前の後ろは問わない(「/」・行末・引用符・空白・括弧・セミコロン等。I4-01)
+const POSIX_HOME = /(?<![A-Za-z0-9_.-])\/(Users|home)\/([^/\s'"`<>()[\]{}$~|;,]+)/g
 // Windows: C:\Users\<名前>(JSON内の \\ や / 区切りも含む)
 const WIN_HOME = /[A-Za-z]:[\\/]+Users[\\/]+([^\\/\s'"`<>()[\]{}$~|;,]+)/g
 
@@ -33,8 +34,8 @@ function findPersonalPath(line) {
 
 // macOSの一時フォルダ(/var/folders/、/private/var/folders/、/private/tmp/)
 const MAC_TEMP = /\/(?:private\/)?var\/folders\/|\/private\/tmp\//g
-// ルート直下の tmp(直前が行頭・空白・引用符・括弧の場合のみ)
-const ROOT_TMP = /(?<=^|[\s'"`([{])\/tmp\//g
+// ルート直下の tmp(直前が行頭・空白・引用符・括弧・「=」「:」「,」「;」の場合のみ。I4-01)
+const ROOT_TMP = /(?<=^|[\s'"`([{=:,;])\/tmp\//g
 
 function findTempPath(line) {
   const found = []

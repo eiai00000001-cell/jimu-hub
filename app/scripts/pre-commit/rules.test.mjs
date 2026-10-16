@@ -20,11 +20,41 @@ describe('personal-path', () => {
     expect(find('personal-path', 'C:' + '\\\\' + U + '\\\\carol\\\\x')).toHaveLength(1)
   })
 
+  it('ユーザー名の後ろが「/」でない形(行末・引用符・空白・括弧・セミコロン等)も検出する(I4-01)', () => {
+    for (const line of [
+      `cd /${U}/alice`,
+      `HOME="/${U}/alice"`,
+      `export HOME='/${U}/alice'`,
+      `path: /${U}/alice  # メモ`,
+      `(/${U}/alice)`,
+      `open /${H}/bob;`,
+      `x=/${H}/bob,y`,
+      `"/${U}/alice"`
+    ]) {
+      const hits = find('personal-path', line)
+      expect(hits, line).toHaveLength(1)
+      expect(hits[0].shown).toMatch(/\/(Users|home)\/[ab]\*\*\*$/)
+    }
+  })
+
+  it('ユーザー名の後ろに「/」が続く従来の形も、引き続き1件だけ検出する', () => {
+    expect(find('personal-path', `/${U}/alice/Projects/x`)).toHaveLength(1)
+  })
+
   it('プレースホルダ(<…>・$…・{…}・~)は対象外', () => {
     for (const name of ['<user>', '$USER', '{user}', '~']) {
       expect(find('personal-path', `/${U}/${name}/Projects`)).toEqual([])
     }
     expect(find('personal-path', 'C:' + '\\' + U + '\\<name>\\x')).toEqual([])
+  })
+
+  it('ホームフォルダを含まない文言・パス・ユーザー名のない形は、対象外のまま(誤検出を増やさない)', () => {
+    expect(find('personal-path', `/${U}`)).toEqual([])
+    expect(find('personal-path', `/${U}/`)).toEqual([])
+    expect(find('personal-path', `"/${U}/"`)).toEqual([])
+    expect(find('personal-path', `app/${H}/index.ts`)).toEqual([])
+    expect(find('personal-path', `./${U}/list`)).toEqual([])
+    expect(find('personal-path', `a-/${U}/alice`)).toEqual([])
   })
 
   it('ホームフォルダを含まない文言・パスは対象外', () => {
@@ -41,6 +71,17 @@ describe('temp-path', () => {
     expect(find('temp-path', '/private' + '/tmp/claude/x')).toHaveLength(1)
     expect(find('temp-path', 'cd "/tm' + 'p/work"')).toHaveLength(1)
     expect(find('temp-path', '/tm' + 'p/x')).toHaveLength(1)
+  })
+
+  it('直前が「=」「:」「,」「;」の形(環境変数の代入・PATH・引数)も検出する(I4-01)', () => {
+    for (const line of [
+      'TMPDIR=/tm' + 'p/work',
+      'PATH=/usr/bin:/tm' + 'p/bin',
+      'a,/tm' + 'p/x',
+      'a;/tm' + 'p/x'
+    ]) {
+      expect(find('temp-path', line), line).toHaveLength(1)
+    }
   })
 
   it('文言・アプリの一時フォルダ名・データフォルダ配下のtmpは対象外', () => {
