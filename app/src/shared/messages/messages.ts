@@ -73,6 +73,9 @@ export const PROJECT_MESSAGES = {
   confirmComplete: 'この案件を完了にします。完了にしても、データは残ります。よろしいですか',
   confirmReopen: 'この案件を進行中に戻します。よろしいですか',
   confirmDelete: 'この案件を削除します。削除すると元に戻せません。よろしいですか',
+  /** 紐づくタスクがある案件の削除確認。タスクは削除されず「案件なし」に戻る(R-54。モックアップ F-28) */
+  confirmDeleteWithTasks: (count: number): string =>
+    `この案件を削除します。削除すると元に戻せません。\n紐づくタスク${count}件は削除されず、「案件なし」に戻ります。よろしいですか`,
   salesNote: '売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。',
   empty: '該当する案件がありません',
   saveSuccess: '案件を保存しました',
@@ -88,7 +91,8 @@ export const TASK_MESSAGES = {
   notFound: '対象のタスクが見つかりません。一覧を更新しました',
   projectNotFound: '指定された案件が見つかりません',
   confirmDelete: 'このタスクを削除します。削除すると元に戻せません。よろしいですか',
-  emptyList: '該当するタスクはありません'
+  emptyList: '該当するタスクはありません',
+  noLinkedTasks: 'この案件に紐づくタスクはありません'
 } as const
 
 export const RECORD_MESSAGES = {

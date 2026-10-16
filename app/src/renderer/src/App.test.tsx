@@ -43,7 +43,11 @@ function setupApi(): void {
     finalizeQuote: vi.fn(),
     openQuotePdf: vi.fn(),
     showQuotePdfInFolder: vi.fn(),
-    convertQuoteToInvoice: vi.fn()
+    convertQuoteToInvoice: vi.fn(),
+    listProjects: vi.fn().mockResolvedValue([]),
+    listTasks: vi.fn().mockResolvedValue({ items: [], counts: { open: 0, overdue: 0 } }),
+    getTask: vi.fn(),
+    createTask: vi.fn().mockResolvedValue({ id: 5 })
   } as unknown as Window['jimuhubApi']
 }
 
@@ -354,5 +358,52 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.queryByText('データをエクスポート', { selector: 'h2' })).not.toBeInTheDocument()
     )
+  })
+
+  it('サイドバーの「タスク・期限」からタスク一覧を開き、登録画面→登録で詳細へ遷移する(F-34・F-35)', async () => {
+    window.jimuhubApi.getTask = vi.fn().mockResolvedValue({
+      id: 5,
+      name: '新しいタスク',
+      memo: null,
+      dueDate: null,
+      projectId: null,
+      projectName: null,
+      projectStatus: null,
+      status: 'open',
+      completedAt: null,
+      overdue: false,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-01T00:00:00.000Z'
+    })
+    render(<App />)
+
+    await userEvent.click(await screen.findByText('タスク・期限'))
+    expect(await screen.findByRole('heading', { name: 'タスク一覧' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '+ タスクを登録' }))
+    expect(await screen.findByRole('heading', { name: 'タスクを登録' })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('タスク名'), '新しいタスク')
+    await userEvent.click(screen.getByRole('button', { name: '登録' }))
+
+    expect(await screen.findByRole('heading', { name: 'タスク詳細' })).toBeInTheDocument()
+    expect(window.jimuhubApi.createTask).toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: /一覧へ戻る/ }))
+    expect(await screen.findByRole('heading', { name: 'タスク一覧' })).toBeInTheDocument()
+  })
+
+  it('タスク登録画面でサイドバーを押すと、離脱確認を表示し、キャンセルすると遷移しない(3.0章)', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<App />)
+    await userEvent.click(await screen.findByText('タスク・期限'))
+    await userEvent.click(await screen.findByRole('button', { name: '+ タスクを登録' }))
+    await screen.findByRole('heading', { name: 'タスクを登録' })
+
+    await userEvent.click(screen.getByText('取引先管理'))
+
+    expect(confirm).toHaveBeenCalledWith(
+      '入力中の内容は保存されません。この画面を離れてよろしいですか'
+    )
+    expect(screen.getByRole('heading', { name: 'タスクを登録' })).toBeInTheDocument()
+    confirm.mockRestore()
   })
 })

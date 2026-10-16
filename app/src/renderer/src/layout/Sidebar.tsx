@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
 import { Badge } from '../components/Badge'
 
-export type SidebarKey = 'home' | 'clients' | 'projects' | 'documents' | 'cash'
+export type SidebarKey = 'home' | 'clients' | 'projects' | 'documents' | 'cash' | 'tasks'
 
-const COMING_SOON_ITEMS = ['タスク・期限'] as const
+/** 「準備中」のメニュー。v4.1の時点では該当なし(以降のイテレーションでメニューが増える場合に備えて仕組みを残す) */
+const COMING_SOON_ITEMS: readonly string[] = []
 
 interface SidebarProps {
   active: SidebarKey
@@ -12,6 +13,7 @@ interface SidebarProps {
   onNavigateProjects: () => void
   onNavigateDocuments: () => void
   onNavigateCash: () => void
+  onNavigateTasks: () => void
   onComingSoon: (label: string) => void
 }
 
@@ -26,6 +28,7 @@ export function Sidebar({
   onNavigateProjects,
   onNavigateDocuments,
   onNavigateCash,
+  onNavigateTasks,
   onComingSoon
 }: SidebarProps): ReactElement {
   return (
@@ -70,6 +73,14 @@ export function Sidebar({
             onClick={onNavigateCash}
           >
             <span>入出金・経費</span>
+          </button>
+        </li>
+        <li>
+          <button
+            className={`sidebar-item${active === 'tasks' ? ' active' : ''}`}
+            onClick={onNavigateTasks}
+          >
+            <span>タスク・期限</span>
           </button>
         </li>
         {COMING_SOON_ITEMS.map((label) => (

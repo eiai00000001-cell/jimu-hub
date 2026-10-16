@@ -11,6 +11,8 @@ type Variant =
   | 'warning'
   | 'unpaid'
   | 'paid'
+  | 'taskOpen'
+  | 'taskDone'
 
 const LABELS: Record<Variant, string> = {
   active: '利用中',
@@ -22,13 +24,17 @@ const LABELS: Record<Variant, string> = {
   finalized: 'PDF保存済み',
   warning: 'PDFファイルの改変が疑われます',
   unpaid: '未収',
-  paid: '入金済み'
+  paid: '入金済み',
+  taskOpen: '未完了',
+  taskDone: '完了'
 }
 
 /** 見た目を他の状態バッジと共有するもの(進行中=利用中と同じ、完了=利用停止と同じ) */
 const BADGE_CLASS: Partial<Record<Variant, string>> = {
   projectActive: 'active',
-  projectCompleted: 'inactive'
+  projectCompleted: 'inactive',
+  taskOpen: 'active',
+  taskDone: 'inactive'
 }
 
 interface BadgeProps {

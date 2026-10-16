@@ -25,7 +25,6 @@ export function TopPage({
   const [quoteCount, setQuoteCount] = useState<number | null>(null)
   const [invoiceCount, setInvoiceCount] = useState<number | null>(null)
   const [unpaidCount, setUnpaidCount] = useState<number | null>(null)
-  const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -69,7 +68,6 @@ export function TopPage({
       onNavigateHome={() => {}}
       onNavigateClients={onNavigateClients}
       onNavigateDocuments={onNavigateDocuments}
-      onComingSoon={(label) => setComingSoonLabel(label)}
     >
       <div className="summary-row">
         <div className="summary-card">
@@ -91,12 +89,7 @@ export function TopPage({
           <div className="summary-label">未収の請求書件数</div>
         </div>
       </div>
-      <p className="section-note">
-        左のサイドメニューから機能を選択してください。「準備中」の項目は、以降のイテレーションで順次利用可能になります。
-      </p>
-      {comingSoonLabel ? (
-        <p className="section-note">「{comingSoonLabel}」は以降のイテレーションで実装予定です。</p>
-      ) : null}
+      <p className="section-note">左のサイドメニューから機能を選択してください。</p>
     </AppShell>
   )
 }

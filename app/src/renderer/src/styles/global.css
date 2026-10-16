@@ -1281,3 +1281,110 @@ button {
   color: var(--color-text-secondary);
   margin-top: 4px;
 }
+
+/* v4.1 タスク・期限(既存6色のみ。期限超過は赤+文言+アイコン+行左帯の4重表現。モックアップ F-35_task-list) */
+.alert-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-red);
+  color: var(--color-white);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.badge-overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-red);
+  color: var(--color-white);
+  font-weight: 600;
+  padding: 3px 10px 3px 6px;
+  border-radius: var(--radius-badge);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.badge-overdue .alert-icon {
+  background: var(--color-white);
+  color: var(--color-red);
+  width: 14px;
+  height: 14px;
+  font-size: 10px;
+}
+.due-overdue {
+  color: var(--color-red);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.table tr.overdue td {
+  background: var(--color-white);
+}
+.table tr.overdue td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-red);
+}
+.table tr.done td.task-name button {
+  color: var(--color-text-secondary);
+}
+.task-counts {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.task-count {
+  width: 240px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  padding: 14px 20px;
+}
+.task-count .label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.task-count .value {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.task-count .value small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.task-count.alert {
+  border: 1px solid var(--color-red);
+  border-left: 4px solid var(--color-red);
+}
+.task-count.alert .label {
+  color: var(--color-red);
+  font-weight: 600;
+}
+.task-count.alert .value,
+.task-count.alert .value small {
+  color: var(--color-red);
+}
+.result-count {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+}
+.op-group {
+  display: inline-flex;
+  gap: 6px;
+}
+.form-panel {
+  max-width: 640px;
+}
+.form-panel .field input[type='text'],
+.form-panel .field textarea,
+.form-panel .field select {
+  width: 100%;
+}

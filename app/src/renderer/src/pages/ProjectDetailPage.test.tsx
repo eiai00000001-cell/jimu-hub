@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectDetailPage } from './ProjectDetailPage'
 import type { ProjectDetail } from '@shared/types/project'
+import type { TaskListItem } from '@shared/types/task'
 
 const detail = (overrides: Partial<ProjectDetail> = {}): ProjectDetail => ({
   id: 7,
@@ -88,7 +89,8 @@ describe('ProjectDetailPage(F-27・F-29。詳細設計書3.24章)', () => {
     onDeleted: vi.fn(),
     onOpenQuote: vi.fn(),
     onOpenInvoice: vi.fn(),
-    onOpenRecord: vi.fn()
+    onOpenRecord: vi.fn(),
+    onOpenTask: vi.fn()
   })
 
   beforeEach(() => {
@@ -262,5 +264,116 @@ describe('ProjectDetailPage(F-27・F-29。詳細設計書3.24章)', () => {
     render(<ProjectDetailPage projectId={7} {...handlers()} />)
     expect(await screen.findByText('−¥12,000')).toBeInTheDocument()
     expect(screen.queryByText(/うち源泉徴収額/)).not.toBeInTheDocument()
+  })
+
+  describe('紐づくタスク(F-38。詳細設計書3.24章。モックアップ F-29_project-detail)', () => {
+    const task = (overrides: Partial<TaskListItem> = {}): TaskListItem => ({
+      id: 1,
+      name: '請求書の送付準備',
+      status: 'open',
+      dueDate: '2026-10-09',
+      projectId: 7,
+      projectName: 'サンプル商事 Webサイト制作',
+      projectStatus: 'active',
+      completedAt: null,
+      overdue: true,
+      ...overrides
+    })
+
+    it('「紐づくタスク」にタスク名・状態・期限日を表示し、期限超過は赤字・バッジ・行の帯で示す', async () => {
+      getProject.mockResolvedValue(
+        detail({
+          tasks: [
+            task(),
+            task({ id: 2, name: '打ち合わせ資料の準備', dueDate: '2026-10-14', overdue: false }),
+            task({
+              id: 3,
+              name: 'ヒアリングシートの回収',
+              status: 'done',
+              dueDate: '2026-09-20',
+              overdue: false,
+              completedAt: '2026-09-21T00:00:00.000Z'
+            }),
+            task({ id: 4, name: '期限なしのタスク', dueDate: null, overdue: false })
+          ]
+        })
+      )
+      render(<ProjectDetailPage projectId={7} {...handlers()} />)
+
+      expect(
+        await screen.findByText('紐づくタスク', { selector: '.section-title' })
+      ).toBeInTheDocument()
+      const overdueRow = screen.getByText('請求書の送付準備').closest('tr')!
+      expect(overdueRow).toHaveClass('overdue')
+      expect(within(overdueRow).getByText('2026-10-09')).toHaveClass('due-overdue')
+      expect(within(overdueRow).getByText('期限超過')).toHaveClass('badge-overdue')
+      const normal = screen.getByText('打ち合わせ資料の準備').closest('tr')!
+      expect(normal).not.toHaveClass('overdue')
+      expect(within(normal).getByText('未完了', { selector: '.badge' })).toBeInTheDocument()
+      const done = screen.getByText('ヒアリングシートの回収').closest('tr')!
+      expect(within(done).getByText('完了', { selector: '.badge' })).toBeInTheDocument()
+      expect(within(done).getByText('2026-09-20')).not.toHaveClass('due-overdue')
+      expect(
+        within(screen.getByText('期限なしのタスク').closest('tr')!).getByText('期限なし')
+      ).toBeInTheDocument()
+    })
+
+    it('タスクの行(タスク名)のクリックで、タスク詳細へ遷移を要求する', async () => {
+      getProject.mockResolvedValue(detail({ tasks: [task({ id: 5 })] }))
+      const h = handlers()
+      render(<ProjectDetailPage projectId={7} {...h} />)
+      await userEvent.click(await screen.findByRole('button', { name: '請求書の送付準備' }))
+      expect(h.onOpenTask).toHaveBeenCalledWith(5)
+    })
+
+    it('タスクが0件の場合は「この案件に紐づくタスクはありません」を表示する', async () => {
+      render(<ProjectDetailPage projectId={7} {...handlers()} />)
+      expect(await screen.findByText('この案件に紐づくタスクはありません')).toBeInTheDocument()
+    })
+
+    it('タスクは「削除」ボタンの表示に影響しない(紐づけが0件ならタスクがあっても表示する)', async () => {
+      getProject.mockResolvedValue(
+        detail({ quotes: [], invoices: [], records: [], deletable: true, tasks: [task()] })
+      )
+      render(<ProjectDetailPage projectId={7} {...handlers()} />)
+      expect(await screen.findByRole('button', { name: '削除' })).toBeInTheDocument()
+    })
+
+    it('紐づくタスクがある案件の削除確認には、タスク件数と「案件なし」に戻る旨を表示する(F-28)', async () => {
+      getProject.mockResolvedValue(
+        detail({
+          quotes: [],
+          invoices: [],
+          records: [],
+          deletable: true,
+          tasks: [task({ id: 1 }), task({ id: 2 }), task({ id: 3 })]
+        })
+      )
+      window.jimuhubApi.deleteProject = vi
+        .fn()
+        .mockResolvedValue({ success: true, releasedTaskCount: 3 })
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const h = handlers()
+      render(<ProjectDetailPage projectId={7} {...h} />)
+
+      await userEvent.click(await screen.findByRole('button', { name: '削除' }))
+
+      expect(confirm).toHaveBeenCalledWith(
+        'この案件を削除します。削除すると元に戻せません。\n紐づくタスク3件は削除されず、「案件なし」に戻ります。よろしいですか'
+      )
+      await waitFor(() => expect(h.onDeleted).toHaveBeenCalled())
+    })
+
+    it('紐づくタスクがない案件の削除確認は、従来の文言のまま', async () => {
+      getProject.mockResolvedValue(
+        detail({ quotes: [], invoices: [], records: [], deletable: true })
+      )
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      render(<ProjectDetailPage projectId={7} {...handlers()} />)
+      await userEvent.click(await screen.findByRole('button', { name: '削除' }))
+      expect(confirm).toHaveBeenCalledWith(
+        'この案件を削除します。削除すると元に戻せません。よろしいですか'
+      )
+    })
   })
 })
