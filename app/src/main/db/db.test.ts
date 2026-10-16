@@ -56,7 +56,7 @@ describe('Database', () => {
     db.initialize()
 
     const row = db.sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-    expect(row).toEqual({ value: '5' })
+    expect(row).toEqual({ value: '6' })
   })
 
   it('transactionは正常終了時にコミットする', () => {
@@ -108,7 +108,7 @@ describe('Database', () => {
   })
 
   describe('スキーマv4(イテレーション2。詳細設計書6.10〜6.13章)', () => {
-    it('新規作成時はschema_versionが4で、4テーブルと初期科目14件が作成される', () => {
+    it('新規作成時はschema_versionが最新(6)で、4テーブルと初期科目14件が作成される', () => {
       db = new Database(':memory:')
       db.initialize()
       const names = db.sqlite
@@ -121,7 +121,7 @@ describe('Database', () => {
       const version = db.sqlite
         .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
         .get() as { value: string }
-      expect(version.value).toBe('5')
+      expect(version.value).toBe('6')
 
       const rows = db.sqlite
         .prepare('SELECT name, kind, sort_order, is_default, default_key FROM accounts ORDER BY id')

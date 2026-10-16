@@ -29,3 +29,31 @@ export function createV4Database(path: string): void {
   legacy.prepare("INSERT INTO app_meta (key, value) VALUES ('schema_version', '4')").run()
   legacy.close()
 }
+
+/**
+ * テスト用: スキーマv5(タスクの追加前)のデータベースファイルを作る。
+ * 現行のテーブル定義から`tasks`テーブルとそのインデックスを除いて作成し、
+ * `schema_version`を`5`にする(既存インストールからの移行の再現)。
+ */
+export function createV5Database(path: string): void {
+  const fresh = new Database(':memory:')
+  fresh.initialize()
+  const objects = fresh.sqlite
+    .prepare(
+      `SELECT sql FROM sqlite_master
+       WHERE sql IS NOT NULL
+         AND name NOT LIKE 'sqlite_%'
+         AND tbl_name <> 'tasks'
+       ORDER BY rowid`
+    )
+    .all() as Array<{ sql: string }>
+  fresh.close()
+
+  const legacy = new SqliteDatabase(path)
+  for (const { sql } of objects) {
+    legacy.exec(sql)
+  }
+  legacy.prepare("DELETE FROM app_meta WHERE key = 'schema_version'").run()
+  legacy.prepare("INSERT INTO app_meta (key, value) VALUES ('schema_version', '5')").run()
+  legacy.close()
+}

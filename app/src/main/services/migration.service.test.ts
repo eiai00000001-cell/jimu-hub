@@ -197,7 +197,7 @@ describe('MigrationService', () => {
       const version = db.sqlite
         .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
         .get() as { value: string }
-      expect(version.value).toBe('5')
+      expect(version.value).toBe('6')
       const triggers = db.sqlite
         .prepare(
           "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trg_cash_record_history%'"

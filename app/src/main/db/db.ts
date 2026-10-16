@@ -5,12 +5,13 @@ import { INITIAL_ACCOUNTS } from '@shared/constants/accounts'
 
 /**
  * データベース・エクスポートファイルのスキーマバージョン(app_meta.schema_version)。
- * 現在の最新値(スキーマv5。イテレーション3で案件のテーブルと`project_id`列を追加)。参照元: 詳細設計書6章冒頭、6.17章、4.1章手順2。
+ * 現在の最新値(スキーマv6。イテレーション4でタスクのテーブルを追加)。参照元: 詳細設計書6章冒頭、6.17・6.20章、4.1章手順2。
  *
  * `@shared/backup/backup-file`にも同名の`CURRENT_SCHEMA_VERSION`(エクスポートファイルの対応バージョン)があり、
- * 両者は同じ値(5)に揃えておく。スキーマを変更するときは両方を更新する。
+ * 最終的には同じ値(6)に揃える。バックアップ形式へのtasksの追加(F-39)は別サブタスク(T-80-5)で行うため、
+ * それまでの間、エクスポートファイル側は5のままである。
  */
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6
 
 export const CASH_RECORD_HISTORY_TRIGGER_NAMES = [
   'trg_cash_record_history_no_update',
@@ -34,6 +35,28 @@ BEFORE DELETE ON project_link_history
 BEGIN
   SELECT RAISE(ABORT, '付け替え履歴は削除できません');
 END;
+`
+
+/** タスク(スキーマv6。詳細設計書6.19章)。履歴・ハッシュの対象ではなく、更新・削除を拒否するトリガーも持たない */
+const CREATE_TASKS_TABLE = `
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  memo TEXT,
+  due_date TEXT,
+  project_id INTEGER REFERENCES projects (id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done')),
+  completed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  CHECK (
+    (status = 'open' AND completed_at IS NULL) OR
+    (status = 'done' AND completed_at IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS idx_tasks_status_due ON tasks (status, due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks (project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks (due_date);
 `
 
 const CREATE_PROJECTS_TABLES = `
@@ -420,6 +443,7 @@ export class Database {
     this.sqlite.exec(CREATE_RECEIPTS_TABLE)
     this.sqlite.exec(CREATE_CASH_RECORD_HISTORY_TABLE)
     this.addProjectTables()
+    this.addTaskTables()
 
     const existing = this.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
@@ -452,6 +476,17 @@ export class Database {
         }
         this.sqlite.exec(`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (project_id)`)
       }
+    })
+  }
+
+  /**
+   * スキーマv6の追加分(`tasks`テーブルと3つのインデックス)を、1つのトランザクションで作成する。
+   * 何度実行しても同じ結果になる冪等な処理(詳細設計書6.20章)。失敗した場合はロールバックされる。
+   * `projects`を参照するため、`addProjectTables()`の後に呼び出す。
+   */
+  private addTaskTables(): void {
+    this.transaction(() => {
+      this.sqlite.exec(CREATE_TASKS_TABLE)
     })
   }
 

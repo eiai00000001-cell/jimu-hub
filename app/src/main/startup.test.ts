@@ -169,7 +169,7 @@ describe('initializeStartup: スキーマv5への移行(T-63-1。詳細設計書
           value: string
         }
       ).value
-    ).toBe('5')
+    ).toBe('6')
     for (const table of ['quotes', 'invoices', 'cash_records']) {
       expect(result.database!.hasColumn(table, 'project_id')).toBe(true)
     }
