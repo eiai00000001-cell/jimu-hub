@@ -1,0 +1,13 @@
+#!/bin/sh
+# pre-commit: 秘密情報の検査(gitleaks)と、独自ルールの検査(Node.js)を順に実行する。
+# いずれかが失敗した場合はコミットを止める。検査の回避(--no-verify)は行わないこと。
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaksが見つかりません。\`brew install gitleaks\`で導入してから、もう一度コミットしてください" >&2
+  exit 1
+fi
+
+# ステージ済みの差分のみを検査する(コミットメッセージ・履歴は対象外)。検出した値は表示しない
+gitleaks git --pre-commit --staged --redact --no-banner -c .gitleaks.toml || exit 1
+
+node app/scripts/pre-commit/run.mjs

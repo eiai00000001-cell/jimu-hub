@@ -1,0 +1,6 @@
+# gitleaks の設定(pre-commit で、ステージ済みの差分を検査する)。
+# 既定のルールセットを使う。許可が必要な場合は、[allowlist] に理由のコメント付きで追記する。
+title = "jimu-hub gitleaks config"
+
+[extend]
+useDefault = true
