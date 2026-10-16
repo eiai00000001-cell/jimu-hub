@@ -1,0 +1,14 @@
+[
+  {
+    "id": "A-001",
+    "rule": "email",
+    "pathGlob": "app/package-lock.json",
+    "reason": "依存パッケージの作者情報(公開情報)を含むロックファイルのため"
+  },
+  {
+    "id": "A-002",
+    "rule": "*",
+    "pathGlob": "app/scripts/pre-commit/**",
+    "reason": "検査ルール自身の定義・テストは、検出対象の例を含むため"
+  }
+]

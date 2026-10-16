@@ -17,7 +17,11 @@ export default defineConfig({
     environmentMatchGlobs: [['src/renderer/**', 'jsdom']],
     globalSetup: ['./vitest.global-setup.ts'],
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'test-support/**/*.test.mjs'],
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'test-support/**/*.test.mjs',
+      'scripts/pre-commit/**/*.test.mjs'
+    ],
     exclude: ['**/node_modules/**', '**/out/**', '**/dist/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
