@@ -79,6 +79,18 @@ export const PROJECT_MESSAGES = {
   deleteSuccess: '案件を削除しました'
 } as const
 
+/** タスク・期限管理(F-34〜F-39。詳細設計書3.27〜3.29章、8章) */
+export const TASK_MESSAGES = {
+  nameRequired: 'タスク名を入力してください',
+  nameTooLong: 'タスク名は100文字以内で入力してください',
+  memoTooLong: 'メモは1000文字以内で入力してください',
+  dueRangeInvalid: '期限の終了日は、開始日以降の日付を入力してください',
+  notFound: '対象のタスクが見つかりません。一覧を更新しました',
+  projectNotFound: '指定された案件が見つかりません',
+  confirmDelete: 'このタスクを削除します。削除すると元に戻せません。よろしいですか',
+  emptyList: '該当するタスクはありません'
+} as const
+
 export const RECORD_MESSAGES = {
   dateRequired: '日付を入力してください',
   dateOutOfRange: '日付は2000年〜2099年の範囲で入力してください',
