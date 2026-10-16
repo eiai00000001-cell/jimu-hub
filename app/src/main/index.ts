@@ -34,6 +34,8 @@ import { ProjectsIpcHandler } from './ipc/projects.ipc-handler'
 import { ProjectSummaryRepository } from './repositories/project-summary.repository'
 import { ProjectService } from './services/project.service'
 import { TaskRepository } from './repositories/task.repository'
+import { TaskService } from './services/task.service'
+import { TasksIpcHandler } from './ipc/tasks.ipc-handler'
 import { DataIpcHandler } from './ipc/data.ipc-handler'
 import { AppIpcHandler } from './ipc/app.ipc-handler'
 import { CompanyIpcHandler } from './ipc/company.ipc-handler'
@@ -180,14 +182,18 @@ app.whenReady().then(() => {
       projectRepository
     ).registerHandlers()
     new AccountsIpcHandler(new AccountService(new AccountRepository(database))).registerHandlers()
+    const taskRepository = new TaskRepository(database)
     new ProjectsIpcHandler(
       new ProjectService(
         database,
         projectRepository,
         new ProjectSummaryRepository(database),
-        new TaskRepository(database)
+        taskRepository
       ),
       projectLinkService
+    ).registerHandlers()
+    new TasksIpcHandler(
+      new TaskService(database, taskRepository, projectRepository)
     ).registerHandlers()
     const restoreStore = new RestoreSessionStore()
     new DataIpcHandler(backupService, {

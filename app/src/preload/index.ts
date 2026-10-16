@@ -17,6 +17,7 @@ import type {
   ProjectListFilter
 } from '@shared/schemas/project.schema'
 import type { ProjectLinkTargetType } from '@shared/types/project'
+import type { TaskInput, TaskListFilterInput } from '@shared/schemas/task.schema'
 import type { AccountListFilter } from '@shared/types/account'
 import type { AccountInput } from '@shared/schemas/account.schema'
 import type { CsvExportInput } from '@shared/schemas/csv-export.schema'
@@ -61,6 +62,14 @@ const jimuhubApi: JimuhubApi = {
     ipcRenderer.invoke(IPC_CHANNELS.projectLinksChange, change),
   listProjectLinkHistory: (targetType: ProjectLinkTargetType, targetId: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.projectLinksHistory, targetType, targetId),
+  listTasks: (filter?: TaskListFilterInput) => ipcRenderer.invoke(IPC_CHANNELS.tasksList, filter),
+  getTask: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.tasksGet, id),
+  createTask: (input: TaskInput) => ipcRenderer.invoke(IPC_CHANNELS.tasksCreate, input),
+  updateTask: (id: number, input: TaskInput) =>
+    ipcRenderer.invoke(IPC_CHANNELS.tasksUpdate, id, input),
+  completeTask: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.tasksComplete, id),
+  reopenTask: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.tasksReopen, id),
+  deleteTask: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.tasksDelete, id),
   listAccounts: (filter?: AccountListFilter) =>
     ipcRenderer.invoke(IPC_CHANNELS.accountsList, filter),
   createAccount: (input: AccountInput) => ipcRenderer.invoke(IPC_CHANNELS.accountsCreate, input),
