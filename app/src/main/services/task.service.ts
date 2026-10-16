@@ -1,5 +1,12 @@
 import { PROJECT_MESSAGES, TASK_MESSAGES } from '@shared/messages/messages'
-import { TaskInputSchema, type TaskInput } from '@shared/schemas/task.schema'
+import {
+  TaskInputSchema,
+  TaskListFilterSchema,
+  type TaskInput,
+  type TaskListFilterInput
+} from '@shared/schemas/task.schema'
+import type { TaskDetail, TaskListResult } from '@shared/types/task'
+import { LocalTodayProvider, type TodayProvider } from './clock/today-provider'
 import type { Database } from '../db/db'
 import type { ProjectRepository } from '../repositories/project.repository'
 import type { TaskRecordInput, TaskRepository } from '../repositories/task.repository'
@@ -22,7 +29,8 @@ export class TaskService {
     private readonly database: Database,
     private readonly repository: TaskRepository,
     private readonly projectRepository: ProjectRepository,
-    private readonly now: () => Date = () => new Date()
+    private readonly now: () => Date = () => new Date(),
+    private readonly todayProvider: TodayProvider = new LocalTodayProvider(now)
   ) {}
 
   createTask(input: TaskInput): { id: number } {
@@ -61,6 +69,26 @@ export class TaskService {
   deleteTask(id: number): { success: true } {
     if (!this.repository.delete(id)) throw new TaskError(TASK_MESSAGES.notFound)
     return { success: true }
+  }
+
+  /**
+   * 一覧(絞り込み)と件数を返す。件数は絞り込みにかかわらず全タスクが対象。
+   * 期限超過は、呼び出しごとに今日と比較して判定する(詳細設計書4.37章)。
+   */
+  listTasks(filter: TaskListFilterInput = {}): TaskListResult {
+    const parsed = TaskListFilterSchema.safeParse(filter)
+    if (!parsed.success) throw new TaskError(parsed.error.issues[0]?.message ?? 'Invalid input')
+    const today = this.todayProvider.today()
+    return {
+      items: this.repository.search(parsed.data, today),
+      counts: this.repository.countOpenAndOverdue(today)
+    }
+  }
+
+  getTask(id: number): TaskDetail {
+    const detail = this.repository.findDetail(id, this.todayProvider.today())
+    if (!detail) throw new TaskError(TASK_MESSAGES.notFound)
+    return detail
   }
 
   private requireExists(id: number): void {

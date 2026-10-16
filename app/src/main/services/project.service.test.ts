@@ -1,4 +1,5 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
+import { TaskRepository } from '../repositories/task.repository'
 import { rmSync } from 'node:fs'
 import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
@@ -30,7 +31,12 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     clients = new ClientRepository(db)
-    service = new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
+    service = new ProjectService(
+      db,
+      new ProjectRepository(db),
+      new ProjectSummaryRepository(db),
+      new TaskRepository(db)
+    )
   })
   afterEach(() => {
     db.close()
@@ -408,6 +414,57 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
         incomes: 0,
         expenses: 0
       })
+    })
+  })
+
+  describe('案件詳細のタスク(F-38。詳細設計書4.38章)', () => {
+    it('紐づくタスクを未完了・完了とも、期限順・overdue付きで返し、収支・削除可否には含めない', () => {
+      const a = service.createProject(input({ name: '案件A' })).id
+      const b = service.createProject(input({ name: '案件B' })).id
+      const tasks = new TaskRepository(db)
+      tasks.insert(
+        { name: 'A-期限なし', memo: null, dueDate: null, projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      )
+      const done = tasks.insert(
+        { name: 'A-完了', memo: null, dueDate: '2026-09-01', projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      ).id
+      tasks.markDone(done, '2026-10-02T00:00:00.000Z')
+      tasks.insert(
+        { name: 'A-超過', memo: null, dueDate: '2026-10-01', projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      )
+      tasks.insert(
+        { name: 'B', memo: null, dueDate: null, projectId: b },
+        '2026-10-01T00:00:00.000Z'
+      )
+
+      const detail = service.getProject(a)
+      expect(detail.tasks.map((t) => t.name)).toEqual(['A-完了', 'A-超過', 'A-期限なし'])
+      expect(detail.tasks.map((t) => t.status)).toEqual(['done', 'open', 'open'])
+      expect(detail.tasks.map((t) => t.overdue)).toEqual([false, true, false])
+      expect(detail.deletable).toBe(true)
+      expect(detail.summary.counts).toEqual(service.getProject(b).summary.counts)
+      expect(service.getProject(a).tasks.length).toBe(3)
+    })
+
+    it('タスクがない案件は空の配列。案件を完了にしても、タスクは変更されない', () => {
+      const id = service.createProject(input()).id
+      expect(service.getProject(id).tasks).toEqual([])
+      new TaskRepository(db).insert(
+        { name: 't', memo: null, dueDate: null, projectId: id },
+        '2026-10-01T00:00:00.000Z'
+      )
+      service.completeProject(id)
+      expect(service.getProject(id).tasks).toMatchObject([
+        {
+          name: 't',
+          status: 'open',
+          projectName: 'アルファ商事 保守契約',
+          projectStatus: 'completed'
+        }
+      ])
     })
   })
 })

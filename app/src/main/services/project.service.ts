@@ -15,6 +15,8 @@ import type {
 import type { Database } from '../db/db'
 import type { ProjectRecordInput, ProjectRepository } from '../repositories/project.repository'
 import type { ProjectSummaryRepository } from '../repositories/project-summary.repository'
+import type { TaskRepository } from '../repositories/task.repository'
+import { LocalTodayProvider, type TodayProvider } from './clock/today-provider'
 
 /** 案件の業務エラー(未存在・紐づけあり・状態不整合等)。メッセージは画面にそのまま表示する */
 export class ProjectError extends Error {
@@ -32,7 +34,9 @@ export class ProjectService {
   constructor(
     private readonly database: Database,
     private readonly repository: ProjectRepository,
-    private readonly summaryRepository: ProjectSummaryRepository
+    private readonly summaryRepository: ProjectSummaryRepository,
+    private readonly taskRepository: TaskRepository,
+    private readonly todayProvider: TodayProvider = new LocalTodayProvider()
   ) {}
 
   listProjects(filter: ProjectListFilter = {}): ProjectListItem[] {
@@ -61,6 +65,8 @@ export class ProjectService {
       records: this.repository.listLinkedRecords(id),
       history: this.repository.listHistoryOfProject(id),
       summary: this.summaryRepository.summary(id),
+      // タスクは、収支・件数の内訳・削除可否には含めない(詳細設計書4.38章)
+      tasks: this.taskRepository.findByProject(id, this.todayProvider.today()),
       deletable: linkCount === 0
     }
   }

@@ -5,6 +5,7 @@ import { Database } from '../db/db'
 import { ProjectRepository } from '../repositories/project.repository'
 import { TaskRepository } from '../repositories/task.repository'
 import { TaskError, TaskService } from './task.service'
+import type { TodayProvider } from './clock/today-provider'
 
 const input = (over: Partial<TaskInput> = {}): TaskInput => ({
   name: '見積書を送る',
@@ -20,6 +21,8 @@ describe('TaskService(F-34〜F-36。詳細設計書4.34〜4.36章)', () => {
   let projects: ProjectRepository
   let service: TaskService
   let clock: string
+  let today: string
+  const todayProvider: TodayProvider = { today: () => today }
 
   beforeEach(() => {
     db = new Database(':memory:')
@@ -27,13 +30,14 @@ describe('TaskService(F-34〜F-36。詳細設計書4.34〜4.36章)', () => {
     tasks = new TaskRepository(db)
     projects = new ProjectRepository(db)
     clock = '2026-10-01T09:00:00.000Z'
-    service = new TaskService(db, tasks, projects, () => new Date(clock))
+    today = '2026-10-14'
+    service = new TaskService(db, tasks, projects, () => new Date(clock), todayProvider)
   })
   afterEach(() => db.close())
 
-  const project = (status: 'active' | 'completed' = 'active'): number => {
+  const project = (status: 'active' | 'completed' = 'active', name = '案件'): number => {
     const { id } = projects.insert({
-      name: '案件',
+      name,
       clientId: null,
       startDate: null,
       endDate: null,
@@ -216,5 +220,80 @@ describe('TaskService(F-34〜F-36。詳細設計書4.34〜4.36章)', () => {
     service.reopenTask(id)
     service.deleteTask(id)
     expect(snapshot()).toEqual(before)
+  })
+
+  describe('listTasks / getTask(F-37。詳細設計書4.37章)', () => {
+    const add = (name: string, dueDate: string, extra: Partial<TaskInput> = {}): number =>
+      service.createTask(input({ name, dueDate, ...extra })).id
+
+    it('既定は未完了のみで、件数は絞り込みに連動せず全タスクを対象にする', () => {
+      add('超過', '2026-10-13')
+      add('今日', '2026-10-14')
+      const done = add('完了', '2026-10-01')
+      service.completeTask(done)
+      const result = service.listTasks({})
+      expect(result.items.map((i) => i.name)).toEqual(['超過', '今日'])
+      expect(result.counts).toEqual({ open: 2, overdue: 1 })
+      // 完了だけに絞り込んでも、件数は全タスクの未完了・期限超過
+      const doneOnly = service.listTasks({ status: 'done' })
+      expect(doneOnly.items.map((i) => i.name)).toEqual(['完了'])
+      expect(doneOnly.counts).toEqual({ open: 2, overdue: 1 })
+      // キーワードで0件でも件数は変わらない
+      expect(service.listTasks({ keyword: '存在しない' })).toEqual({
+        items: [],
+        counts: { open: 2, overdue: 1 }
+      })
+    })
+
+    it('「今日」を固定して判定し、日付が変わった後の再取得で期限超過が更新される', () => {
+      add('期限10/14', '2026-10-14')
+      expect(service.listTasks({}).items[0]?.overdue).toBe(false)
+      expect(service.listTasks({}).counts.overdue).toBe(0)
+      today = '2026-10-15'
+      expect(service.listTasks({}).items[0]?.overdue).toBe(true)
+      expect(service.listTasks({}).counts.overdue).toBe(1)
+    })
+
+    it('期限超過のみ・期限なしのみ・期間・案件なしで絞り込める', () => {
+      const pid = project()
+      add('超過', '2026-10-01', { projectId: pid })
+      add('期限なし', '')
+      add('未来', '2026-12-01')
+      expect(service.listTasks({ dueMode: 'overdue' }).items.map((i) => i.name)).toEqual(['超過'])
+      expect(service.listTasks({ dueMode: 'none' }).items.map((i) => i.name)).toEqual(['期限なし'])
+      expect(
+        service
+          .listTasks({ dueMode: 'range', dueFrom: '2026-11-01', dueTo: '2026-12-31' })
+          .items.map((i) => i.name)
+      ).toEqual(['未来'])
+      expect(service.listTasks({ projectId: null }).items.map((i) => i.name)).toEqual([
+        '未来',
+        '期限なし'
+      ])
+    })
+
+    it('検索条件の違反(期間の前後・不正な日付)はエラーにする', () => {
+      expect(() =>
+        service.listTasks({ dueMode: 'range', dueFrom: '2026-10-10', dueTo: '2026-10-09' })
+      ).toThrow(TASK_MESSAGES.dueRangeInvalid)
+      expect(() => service.listTasks({ dueFrom: '2026-02-30' })).toThrow(TaskError)
+    })
+
+    it('getTaskは、メモ・登録/更新日時・案件名・overdueを含む詳細を返し、なければ「見つかりません」', () => {
+      const pid = project('active', '完了予定案件')
+      const id = add('詳細', '2026-10-01', { memo: 'めも', projectId: pid })
+      expect(service.getTask(id)).toMatchObject({
+        id,
+        name: '詳細',
+        memo: 'めも',
+        projectId: pid,
+        projectName: '完了予定案件',
+        projectStatus: 'active',
+        overdue: true,
+        createdAt: clock,
+        updatedAt: clock
+      })
+      expect(() => service.getTask(999)).toThrow(TASK_MESSAGES.notFound)
+    })
   })
 })

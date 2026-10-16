@@ -76,6 +76,7 @@ const detail = (overrides: Partial<ProjectDetail> = {}): ProjectDetail => ({
     counts: { quotes: 1, invoicesIssued: 1, invoicesDraft: 1, incomes: 2, expenses: 1 }
   },
   deletable: false,
+  tasks: [],
   ...overrides
 })
 

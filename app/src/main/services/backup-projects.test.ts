@@ -1,4 +1,5 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
+import { TaskRepository } from '../repositories/task.repository'
 import { rmSync } from 'node:fs'
 import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
@@ -44,7 +45,12 @@ function createEnv(name: string): Env {
       appVersion: '0.4.0'
     }),
     records: createRecordServices(db, documentsDir),
-    projects: new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
+    projects: new ProjectService(
+      db,
+      new ProjectRepository(db),
+      new ProjectSummaryRepository(db),
+      new TaskRepository(db)
+    )
   }
 }
 

@@ -1,4 +1,5 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
+import { TaskRepository } from '../repositories/task.repository'
 import { rmSync } from 'node:fs'
 import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
@@ -60,7 +61,12 @@ describe('案件の紐づけと、見積書・請求書・入出金・経費の�
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     records = createRecordServices(db, join(dir, 'documents'))
-    projects = new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
+    projects = new ProjectService(
+      db,
+      new ProjectRepository(db),
+      new ProjectSummaryRepository(db),
+      new TaskRepository(db)
+    )
     const companyProfileRepository = new CompanyProfileRepository(db)
     companyProfileRepository.upsert({
       name: '自社',
