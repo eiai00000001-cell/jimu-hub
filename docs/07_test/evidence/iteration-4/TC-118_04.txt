@@ -1,0 +1,5 @@
+schema_version=6(版4から最新まで移行)、退避: pre-migration_v4_2026-10-16T15-56-02-410Z.sqlite(退避内のschema_version=4、cash_records=3)
+案件のテーブル・案件ID列3・索引6・トリガー2を追加
+版4の列の内容・PDF/領収書のSHA-256は移行前後で一致、案件ID列はNULL
+再起動後も退避は1件、schema_version=6、accounts=14
+移行後のエクスポート: schemaVersion=6、projects=1

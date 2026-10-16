@@ -1,0 +1,6 @@
+{
+  "btnBg": "rgb(58, 58, 60)",
+  "btnRadius": "6px",
+  "font": "-apple-system, \"system-ui\", \"Hiragino Sans\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Helvetica Neue\", Arial, sans-serif",
+  "thBg": "rgb(242, 242, 244)"
+}

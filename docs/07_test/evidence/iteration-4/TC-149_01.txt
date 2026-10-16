@@ -1,0 +1,139 @@
+gitleaks: 8.30.1
+一時リポジトリ(作業フォルダ .e2e-work/tools/ 配下)で、実際にコミットを試した結果
+
+PASS A-01 問題のない変更はコミットできる
+       終了コード=0 コミット作成=あり
+PASS A-02 プレースホルダのパス・許可ドメインのメール・SSH接続先・拡張子付きの名前・一時フォルダの文言は通る
+       終了コード=0 コミット作成=あり
+PASS B-01 アクセストークン形式の秘密情報は止まり、値は表示されない
+       終了コード=1 コミット作成=なし
+       WRN leaks found: 1
+PASS B-02 Slackトークン形式の秘密情報は止まる
+       終了コード=1 コミット作成=なし
+       WRN leaks found: 1
+PASS B-03 秘密鍵の形式は止まる
+       終了コード=1 コミット作成=なし
+       WRN leaks found: 1
+PASS C-01 個人の絶対パスは止まる: macOSのホーム配下
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-02 個人の絶対パスは止まる: 行末(後ろに「/」がない)
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-03 個人の絶対パスは止まる: 引用符で囲まれたパス
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-04 個人の絶対パスは止まる: 括弧・セミコロンの直前
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-05 個人の絶対パスは止まる: Linuxのホーム配下
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /home/<b***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-06 個人の絶対パスは止まる: Windowsのユーザーフォルダ
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: C:\Users\<c***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-07 個人の絶対パスは止まる: 日本語のユーザー名
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<野***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-08 個人の絶対パスは止まる: file:// の形
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: e:///Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS C-09 表示の伏せ字: ユーザー名は先頭1文字のみ表示される
+       終了コード=1 コミット作成=なし
+       [pre-commit] personal-path a.md:1 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-01 一時フォルダのパスは止まる: /var/folders
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <OS一時フォルダ(var-folders)>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-02 一時フォルダのパスは止まる: /private/var/folders
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <OS一時フォルダ(var-folders)>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-03 一時フォルダのパスは止まる: /private/tmp
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <OS一時フォルダ(private-tmp)>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-04 一時フォルダのパスは止まる: ルート直下の <ルートtmp>/(行頭)
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <ルートtmp>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-05 一時フォルダのパスは止まる: ルート直下の <ルートtmp>/(=の直後)
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <ルートtmp>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS D-06 一時フォルダのパスは止まる: ルート直下の <ルートtmp>/(引用符の直後)
+       終了コード=1 コミット作成=なし
+       [pre-commit] temp-path a.md:1 OSの一時フォルダのパスが含まれています: <ルートtmp>/
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS E-01 許可外のメールアドレスは止まる: 一般のドメイン
+       終了コード=1 コミット作成=なし
+       [pre-commit] email a.md:1 許可されたドメイン以外のメールアドレスが含まれています: b***@mail-sample.jp
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS E-02 許可外のメールアドレスは止まる: example.comに似た別ドメイン(example.com.xxx)
+       終了コード=1 コミット作成=なし
+       [pre-commit] email a.md:1 許可されたドメイン以外のメールアドレスが含まれています: b***@example.com.sample.jp
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS E-03 許可外のメールアドレスは止まる: example.comで終わる別ドメイン(notexample.com)
+       終了コード=1 コミット作成=なし
+       [pre-commit] email a.md:1 許可されたドメイン以外のメールアドレスが含まれています: b***@notexample.com
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS E-04 許可外のメールアドレスは止まる: 大文字小文字を含む一般のドメイン
+       終了コード=1 コミット作成=なし
+       [pre-commit] email a.md:1 許可されたドメイン以外のメールアドレスが含まれています: B***@Mail-Sample.Co.JP
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS E-05 表示の伏せ字: メールアドレスはローカル部の先頭1文字のみ表示される
+       終了コード=1 コミット作成=なし
+       [pre-commit] email a.md:1 許可されたドメイン以外のメールアドレスが含まれています: b***@mail-sample.jp
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS F-01 docs/ へのZIPの追加は止まる
+       終了コード=1 コミット作成=なし
+       [pre-commit] docs-zip docs/backup.zip docs/ 配下にZIPファイルが追加されています: docs/backup.zip
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS F-02 大文字の拡張子・深い階層でも止まる
+       終了コード=1 コミット作成=なし
+       [pre-commit] docs-zip docs/a/b/EVIDENCE.ZIP docs/ 配下にZIPファイルが追加されています: docs/a/b/EVIDENCE.ZIP
+       例外にする場合は許可リスト(app/scripts/pre-commit/allowlist.json)へ理由を付けて追記してください
+PASS F-03 docs/ 以外のZIP・docs/ の他のファイルは通る
+       終了コード=0 コミット作成=あり
+PASS G-01 追加・変更した行だけを検査し、過去の履歴や変更していない行は対象外
+       終了コード=0
+PASS G-02 新たに追加した違反の行は止まり、行番号が正しい
+       終了コード=1
+       [pre-commit] personal-path old.md:3 個人の絶対パス(ホームフォルダ配下)が含まれています: /Users/<a***>
+PASS G-03 バイナリファイルは検査の対象外
+       終了コード=0
+PASS G-04 コミットメッセージは検査の対象外
+       終了コード=0
+PASS H-01 許可リストの理由(reason)が空の場合はスクリプトの異常として終了コード2で止まる
+       フックの終了コード=2 コミット=なし
+       [pre-commit] スクリプトの異常: 許可リストの1件目に理由(reason)がありません
+PASS H-02 許可リストの rule が未知の値の場合は終了コード2
+       フックの終了コード=2 コミット=なし
+       [pre-commit] スクリプトの異常: 許可リストの1件目のルール(rule)が不明です
+PASS H-03 許可リストの pathGlob が空の場合は終了コード2
+       フックの終了コード=2 コミット=なし
+       [pre-commit] スクリプトの異常: 許可リストの1件目の対象のパス(pathGlob)がありません
+PASS H-04 許可リストがJSONとして不正な場合は終了コード2
+       フックの終了コード=2 コミット=なし
+       [pre-commit] スクリプトの異常: 許可リストは配列で記述してください
+PASS H-05 理由つきの許可リストに該当する検出は通る
+       終了コード=0
+PASS H-06 許可リストのパスに該当しない検出は引き続き止まる
+       終了コード=1
+PASS I-01 gitleaksが無い環境では、導入手順を案内して終了コード1で止まる
+       終了コード=1
+       gitleaksが見つかりません。`brew install gitleaks`で導入してから、もう一度コミットしてください
+PASS J-01 実リポジトリの core.hooksPath・HEAD・ステージは確認の前後で変わらない
+       core.hooksPath=app/.husky/_ HEAD=5ffd014 ステージ済み=なし
+
+結果: すべて期待どおり

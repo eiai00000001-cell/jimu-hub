@@ -869,7 +869,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     ).toBe(1)
     expect(dbQuery(dataDir, 'select count(*) from projects')).toBe('1')
     expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
-    // 移行後のデータのエクスポートは版5で、案件を含む
+    // 移行後のデータのエクスポートは版6で、案件を含む
     const out = join(workDir, 'migrated-export.zip')
     await setEnv(re2.app, 'JIMUHUB_E2E_EXPORT_PATH', out)
     const ex = await mustApi<{ success: boolean }>(re2.window, 'exportData')
@@ -882,7 +882,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     noteEvidence(
       'TC-118',
       '移行後の確認結果',
-      `schema_version=5、退避: ${backups.join(', ')}(退避内のschema_version=4、cash_records=3)\n案件のテーブル・案件ID列3・索引6・トリガー2を追加\n版4の列の内容・PDF/領収書のSHA-256は移行前後で一致、案件ID列はNULL\n再起動後も退避は1件、schema_version=5、accounts=14\n移行後のエクスポート: schemaVersion=${exp.manifest.schemaVersion}、projects=${exp.manifest.tables.projects.count}`
+      `schema_version=6(版4から最新まで移行)、退避: ${backups.join(', ')}(退避内のschema_version=4、cash_records=3)\n案件のテーブル・案件ID列3・索引6・トリガー2を追加\n版4の列の内容・PDF/領収書のSHA-256は移行前後で一致、案件ID列はNULL\n再起動後も退避は1件、schema_version=6、accounts=14\n移行後のエクスポート: schemaVersion=${exp.manifest.schemaVersion}、projects=${exp.manifest.tables.projects.count}`
     )
   } finally {
     // 一時フォルダは削除せずに残す
@@ -931,7 +931,7 @@ test('TC-119: [移行] 移行に失敗した場合のロールバック。スキ
     noteEvidence(
       'TC-119',
       '移行失敗時の結果',
-      `失敗時の画面の文言:\n${body.replace(/\s+/g, ' ').slice(0, 400)}\nロールバック後: schema_version=4、案件ID列なし、既存データは変更前と一致、退避=${backups.join(', ')}\n原因除去後の再起動: schema_version=5、データは変更前と一致`
+      `失敗時の画面の文言:\n${body.replace(/\s+/g, ' ').slice(0, 400)}\nロールバック後: schema_version=4、案件ID列なし、既存データは変更前と一致、退避=${backups.join(', ')}\n原因除去後の再起動: schema_version=6(最新まで移行)、データは変更前と一致`
     )
   } finally {
     // 一時フォルダは削除せずに残す

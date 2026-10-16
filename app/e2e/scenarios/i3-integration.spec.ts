@@ -178,7 +178,7 @@ test('TC-123: [通しシナリオ] 案件登録→見積書(案件指定)→請�
   )
 })
 
-test('TC-124: [画面遷移] 案件の画面のタイトルバー・サイドバー・離脱確認・準備中メニュー・一覧と詳細の行き来・レイアウトの一貫性', async () => {
+test('TC-124: [画面遷移] 案件の画面のタイトルバー・サイドバー・離脱確認・「タスク・期限」への遷移(準備中は廃止)・一覧と詳細の行き来・レイアウトの一貫性', async () => {
   launched = await launchApp()
   const { window } = launched
   await setupCompany(window)
@@ -214,12 +214,12 @@ test('TC-124: [画面遷移] 案件の画面のタイトルバー・サイドバ
   await window.getByRole('button', { name: '取引先管理' }).click()
   await leave
   await check('離脱確認で「はい」', '事務HUB - 取引先一覧', '取引先管理')
-  // 準備中のメニューは案内のみで遷移しない
+  // 「タスク・期限」はイテレーション4で実装済み(準備中ではなく、画面遷移する)
   await window.getByRole('button', { name: 'タスク・期限' }).click()
+  await check('タスク・期限(実装済み)', '事務HUB - タスク一覧', 'タスク・期限')
   await expect(
     window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
-  ).toBeVisible()
-  await check('準備中メニュー', '事務HUB - 取引先一覧', '取引先管理')
+  ).toHaveCount(0)
   // 見積書・請求書の詳細→案件詳細のリンク→戻る
   const q = await mustApi<{ id: number; quoteNumber: string }>(window, 'finalizeQuote', {
     clientId: client,

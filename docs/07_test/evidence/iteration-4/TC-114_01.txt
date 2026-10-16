@@ -1,0 +1,78 @@
+{
+  "format": "jimuhub-backup",
+  "schemaVersion": 6,
+  "appVersion": "44.5.1",
+  "exportedAt": "2026-10-16T15:55:47.159Z",
+  "tables": {
+    "clients": {
+      "file": "data/clients.jsonl",
+      "count": 1
+    },
+    "projects": {
+      "file": "data/projects.jsonl",
+      "count": 2
+    },
+    "companyProfile": {
+      "file": "data/companyProfile.jsonl",
+      "count": 1
+    },
+    "quotes": {
+      "file": "data/quotes.jsonl",
+      "count": 1
+    },
+    "quoteLineItems": {
+      "file": "data/quoteLineItems.jsonl",
+      "count": 1
+    },
+    "invoices": {
+      "file": "data/invoices.jsonl",
+      "count": 1
+    },
+    "invoiceLineItems": {
+      "file": "data/invoiceLineItems.jsonl",
+      "count": 1
+    },
+    "accounts": {
+      "file": "data/accounts.jsonl",
+      "count": 14
+    },
+    "cashRecords": {
+      "file": "data/cashRecords.jsonl",
+      "count": 3
+    },
+    "receipts": {
+      "file": "data/receipts.jsonl",
+      "count": 1
+    },
+    "cashRecordHistory": {
+      "file": "data/cashRecordHistory.jsonl",
+      "count": 3
+    },
+    "projectLinkHistory": {
+      "file": "data/projectLinkHistory.jsonl",
+      "count": 7
+    },
+    "tasks": {
+      "file": "data/tasks.jsonl",
+      "count": 0
+    }
+  }
+}
+--
+manifest.json
+data/clients.jsonl
+data/projects.jsonl
+data/companyProfile.jsonl
+data/quotes.jsonl
+data/invoices.jsonl
+data/quoteLineItems.jsonl
+data/invoiceLineItems.jsonl
+data/accounts.jsonl
+data/cashRecords.jsonl
+data/receipts.jsonl
+data/cashRecordHistory.jsonl
+data/projectLinkHistory.jsonl
+data/tasks.jsonl
+documents/quotes/2026/2026-001_案件往復商事株式会社.pdf
+documents/invoices/2026/2026-001_案件往復商事株式会社.pdf
+documents/receipts/2026/bf69bb9c-a971-484d-85d8-1ecd3aec446a.pdf

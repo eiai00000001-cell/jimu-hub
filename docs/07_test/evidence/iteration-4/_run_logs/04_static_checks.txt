@@ -1,0 +1,14 @@
+
+> jimu-hub@0.4.0 typecheck
+> tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json
+
+
+> jimu-hub@0.4.0 lint
+> eslint .
+
+
+> jimu-hub@0.4.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!

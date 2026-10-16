@@ -1,0 +1,21 @@
+manifest.json
+data/clients.jsonl
+data/projects.jsonl
+data/companyProfile.jsonl
+data/quotes.jsonl
+data/quoteLineItems.jsonl
+data/invoices.jsonl
+data/invoiceLineItems.jsonl
+data/accounts.jsonl
+data/cashRecords.jsonl
+data/receipts.jsonl
+data/cashRecordHistory.jsonl
+data/projectLinkHistory.jsonl
+data/tasks.jsonl
+documents/quotes/2026/2026-001_往復確認商事.pdf
+documents/invoices/2026/2026-001_往復確認商事.pdf
+documents/receipts/2026/9d8b5e1b-e049-48aa-a883-524c8c5aad7a.pdf
+documents/receipts/2026/ab2b06fc-f6c7-4662-9fbd-43fa8fd6ecb8.png
+documents/receipts/2026/0b6c9043-d8e0-4c5d-9516-71de507378b6.jpg
+accounts=15 cashRecords=5 receipts=3 cashRecordHistory=8
+schemaVersion=6

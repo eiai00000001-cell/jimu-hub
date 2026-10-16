@@ -160,7 +160,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
       .getEntries()
       .map((e) => e.entryName)
       .sort()
-    // イテレーション3以降: manifest.json + data/<テーブル>.jsonl(スキーマ版5)
+    // イテレーション3以降: manifest.json + data/<テーブル>.jsonl(スキーマ版6)
     const exportedZip = readExport(sourceZip)
     const dataJson = {
       schemaVersion: exportedZip.manifest.schemaVersion,

@@ -1,0 +1,3 @@
+cash_record|auto_release|進行中の案件|-
+quote|auto_release|進行中の案件|-
+invoice|auto_release|進行中の案件|-

@@ -186,7 +186,7 @@ test('TC-96: [通しシナリオ] 見積書→請求書→入金済み→入金�
   void createRecordApi
 })
 
-test('TC-97: [画面遷移] 新画面でのサイドバー遷移・離脱確認・準備中メニュー・画面タイトル・レイアウトの一貫性', async () => {
+test('TC-97: [画面遷移] 新画面でのサイドバー遷移・離脱確認・画面タイトル・レイアウトの一貫性(準備中メニューは廃止)', async () => {
   const { window } = launched
   const dialogs: string[] = []
   let accept = false
@@ -226,11 +226,13 @@ test('TC-97: [画面遷移] 新画面でのサイドバー遷移・離脱確認�
   await window.getByRole('button', { name: '取引先管理' }).click()
   expect(dialogs.length).toBe(2)
   expect(dialogs[1]).toBe(CONFIRM)
-  // 準備中メニュー(案件・タスク)は遷移せず案内
+  // 「タスク・期限」(イテレーション4で実装済み。準備中ではない)も、入力途中の画面では離脱確認が出る
   await window.getByRole('button', { name: 'タスク・期限' }).click()
+  expect(dialogs.length).toBe(3)
+  expect(dialogs[2]).toBe(CONFIRM)
   await expect(
     window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
-  ).toBeVisible()
+  ).toHaveCount(0)
   // OKで遷移
   accept = true
   await window.getByRole('button', { name: '取引先管理' }).click()

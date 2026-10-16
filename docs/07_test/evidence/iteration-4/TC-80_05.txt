@@ -1,0 +1,4 @@
+インターネット回線 10月分|6600|600|transfer|1|64|0|active|NULL
+create|NULL|64|NULL
+hash一致=1
+1|64|1|NULL

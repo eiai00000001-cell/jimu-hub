@@ -1,0 +1,15 @@
+quote|assign|-|案件A|2026-001
+quote|change|案件A|案件B|2026-001
+quote|unassign|案件B|-|2026-001
+invoice|assign|-|案件A|2026-001
+invoice|change|案件A|案件B|2026-001
+invoice|unassign|案件B|-|2026-001
+cash_record|assign|-|案件A|2026-10-01 案件に紐づける通信費(30文字を超える
+cash_record|change|案件A|案件B|2026-10-01 案件に紐づける通信費(30文字を超える
+cash_record|unassign|案件B|-|2026-10-01 案件に紐づける通信費(30文字を超える
+--
+変更前後のスナップショット一致:
+2026-10-16T15:57:20.041Z|611b2ca87ca5746e4e16b34c058e3dddc64ce350848d16419d64ef18b66f3d1a|0
+2026-10-16T15:57:20.378Z|ff3ed12ef66842c2b3f7995d4c31ea08680e95d7f34148a9b2066f4517b1fcd0|0
+2026-10-16T15:57:20.386Z|3226f10d20f0b02197b4600f460ef9e6fcd5653f053dac29de3778843d9135e3
+1

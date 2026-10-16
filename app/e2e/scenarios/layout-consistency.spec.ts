@@ -184,18 +184,19 @@ test.describe('トップ画面・画面横断の整合性', () => {
       log.join('\n')
     )
 
-    // 結合確認: 見積書・請求書一覧でも「準備中」メニュー押下時は案内が表示され、画面遷移しない(BUG-03(i1)修正確認)
+    // 結合確認: 見積書・請求書一覧からも、サイドバーの「タスク・期限」は準備中の案内ではなく画面遷移する
+    // (BUG-03(i1)は準備中メニューの挙動。イテレーション4で「タスク・期限」が実装済みとなり、準備中のメニューはなくなった)
     await window.getByText('一覧へ戻る').click()
-    // (イテレーション3で「案件管理」は実装済みのため、準備中の「タスク・期限」で確認する)
     await window.getByRole('button', { name: 'タスク・期限' }).click()
-    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書・請求書')
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - タスク一覧')
+    await expect(window.locator('.sidebar-item.active')).toHaveText('タスク・期限')
     await expect(
       window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
-    ).toBeVisible()
+    ).toHaveCount(0)
     await shot(
       window,
       'TC-73',
-      '見積書・請求書一覧で「タスク・期限」(準備中)を押した直後(案内が表示される。BUG-03修正後)'
+      '見積書・請求書一覧で「タスク・期限」を押した直後(準備中の案内ではなくタスク一覧へ遷移する)'
     )
   })
 
@@ -243,15 +244,17 @@ test.describe('トップ画面・画面横断の整合性', () => {
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書を作成')
     await expect(window.getByLabel('品名1')).toHaveValue('入力途中')
     expect(dialogs).toEqual([CONFIRM, CONFIRM])
-    // 準備中メニューは遷移しないため、確認は不要で案内が出る
+    // 「タスク・期限」も実装済みのメニューのため、入力画面からの遷移では離脱確認が出る(準備中の案内は出ない)
     await window.getByRole('button', { name: 'タスク・期限' }).click()
+    await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 見積書を作成')
+    expect(dialogs).toEqual([CONFIRM, CONFIRM, CONFIRM])
     await expect(
       window.getByText('「タスク・期限」は以降のイテレーションで実装予定です。')
-    ).toBeVisible()
+    ).toHaveCount(0)
     accept = true
     await window.getByRole('button', { name: '取引先管理' }).click()
     await expect(window.locator('.titlebar-title')).toHaveText('事務HUB - 取引先一覧')
-    expect(dialogs.length).toBe(3)
+    expect(dialogs.length).toBe(4)
     noteEvidence(
       'TC-73',
       '離脱確認ダイアログの文言と表示回数',
