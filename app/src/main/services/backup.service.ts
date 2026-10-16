@@ -72,6 +72,17 @@ import {
   type TableDef
 } from './backup-tables'
 
+/** ISO 8601の日時(タイムゾーン付き。長さの上限つき)。復元時のタスクの日時の検証に使う */
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
+function isIsoDateTime(value: unknown): boolean {
+  return (
+    typeof value === 'string' &&
+    value.length <= 40 &&
+    ISO_DATE_TIME.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  )
+}
+
 const MAX_BACKUP_GENERATIONS = 3
 const BACKUP_FILE_PREFIX = 'data_'
 const BACKUP_FILE_SUFFIX = '.sqlite'
@@ -467,7 +478,14 @@ export class BackupService {
     }
     return {
       schemaVersion: manifest.schemaVersion,
-      source: new JsonlRecordSource(dir),
+      // タスクは、スキーマバージョン6以上で、manifestに1件以上あると記載されている場合のみ読む。
+      // 事前確認(RestoreInspector.hasTasks)と同じ条件にし、警告と実際の取り込みを一致させる(SEC-23)
+      source: new JsonlRecordSource(
+        dir,
+        new Set(
+          manifest.schemaVersion >= 6 && (manifest.tables.tasks?.count ?? 0) >= 1 ? [] : ['tasks']
+        )
+      ),
       hasDocuments: true,
       hashes
     }
@@ -653,6 +671,21 @@ export class BackupService {
       tasks: (row) => {
         if (row.status !== 'open' && row.status !== 'done') {
           throw new BackupInvalidTaskError('invalid task status')
+        }
+        // id・日時の形式(SEC-23)。不正な行があれば、復元を中止する
+        if (typeof row.id !== 'number' || !Number.isSafeInteger(row.id) || row.id <= 0) {
+          throw new BackupInvalidTaskError('invalid task id')
+        }
+        if (!isIsoDateTime(row.createdAt) || !isIsoDateTime(row.updatedAt)) {
+          throw new BackupInvalidTaskError('invalid task timestamp')
+        }
+        if (
+          row.completedAt !== undefined &&
+          row.completedAt !== null &&
+          row.completedAt !== '' &&
+          !isIsoDateTime(row.completedAt)
+        ) {
+          throw new BackupInvalidTaskError('invalid task completedAt')
         }
         // タスク名・メモ・期限日は、登録時と同じ検証を通す(不正な行があれば復元を中止する。I4-04・★R6)
         const checked = TaskInputSchema.safeParse({

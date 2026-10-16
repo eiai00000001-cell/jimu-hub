@@ -245,6 +245,22 @@ describe('BackupService: タスクのエクスポート・復元(F-39。詳細�
         }
       ],
       ['memoが1001文字', (row) => ({ ...row, memo: 'あ'.repeat(1001) })],
+      ['idが負の数', (row) => ({ ...row, id: -5 })],
+      ['idが0', (row) => ({ ...row, id: 0 })],
+      ['idが小数', (row) => ({ ...row, id: 1.5 })],
+      ['idが文字列', (row) => ({ ...row, id: '1' })],
+      ['idがnull', (row) => ({ ...row, id: null })],
+      ['createdAtが日時でない文字列', (row) => ({ ...row, createdAt: 'いつか' })],
+      ['createdAtが数値', (row) => ({ ...row, createdAt: 12345 })],
+      ['createdAtがnull', (row) => ({ ...row, createdAt: null })],
+      ['updatedAtが10万文字の文字列', (row) => ({ ...row, updatedAt: 'a'.repeat(100000) })],
+      [
+        'updatedAtがスクリプトを含む文字列',
+        (row) => ({ ...row, updatedAt: '<script>alert(1)</script>' })
+      ],
+      ['updatedAtがオブジェクト', (row) => ({ ...row, updatedAt: { a: 1 } })],
+      ['completedAtが日時でない文字列', (row) => ({ ...row, completedAt: 'NaN-NaN-NaN' })],
+      ['completedAtが数値', (row) => ({ ...row, completedAt: 5 })],
       ['dueDateが日付でない文字列', (row) => ({ ...row, dueDate: 'そのうち' })],
       ['dueDateが存在しない日付', (row) => ({ ...row, dueDate: '2026-02-30' })]
     ]
@@ -253,6 +269,19 @@ describe('BackupService: タスクのエクスポート・復元(F-39。詳細�
         expectAborted(await tamper(map))
       })
     }
+
+    it('日時が、タイムゾーン付き・ミリ秒なしの正しいISO 8601の形式なら復元できる', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      mapExportTable(zipPath, 'tasks', (row) => ({
+        ...row,
+        createdAt: '2026-10-01T09:00:00+09:00',
+        updatedAt: '2026-10-02T00:00:00Z',
+        completedAt: row.status === 'done' ? '2026-10-03T00:00:00.123Z' : null
+      }))
+      expect((await dst.service.importData(zipPath)).success).toBe(true)
+      expect(taskRows(dst)[0]).toMatchObject({ createdAt: '2026-10-01T09:00:00+09:00' })
+    })
 
     it('境界の値(nameが100文字・memoが1000文字・dueDateがnullまたは実在日)は復元できる', async () => {
       seed()
@@ -266,6 +295,66 @@ describe('BackupService: タスクのエクスポート・復元(F-39。詳細�
       const rows = taskRows(dst)
       expect(rows[0]).toMatchObject({ dueDate: '2026-12-31' })
       expect(rows[1]).toMatchObject({ dueDate: null, memo: null })
+    })
+  })
+
+  describe('manifestと取り込みの条件の一致(SEC-23。事前確認の判定hasTasksと同じ)', () => {
+    /** 正常なエクスポートの manifest だけを書き換えた ZIP を作る(tasks.jsonl の行は残す) */
+    function withManifest(
+      edit: (manifest: ReturnType<typeof readExport>['manifest']) => void
+    ): string {
+      const exported = readExport(zipPath)
+      const manifest = exported.manifest
+      edit(manifest)
+      const entries: Record<string, Buffer | string> = {}
+      for (const [name, content] of exported.entries) {
+        if (name !== 'manifest.json') entries[name] = content
+      }
+      entries['manifest.json'] = JSON.stringify(manifest)
+      const path = join(src.dir, 'crafted.zip')
+      buildZip(path, entries)
+      return path
+    }
+
+    it('スキーマバージョン5のmanifestでtasks.jsonlに行があっても、読まない(タスクは空になる)', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      const crafted = withManifest((m) => {
+        m.schemaVersion = 5
+      })
+      dst.tasks.createTask({ name: '現在のタスク', memo: '', dueDate: '', projectId: null })
+
+      const result = await dst.service.importData(crafted)
+
+      expect(result.success).toBe(true)
+      expect(taskRows(dst)).toEqual([])
+    })
+
+    it('スキーマバージョン6でも、manifestのtasksの件数が0なら、tasks.jsonlの行を読まない', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      const crafted = withManifest((m) => {
+        m.tables.tasks = { file: 'data/tasks.jsonl', count: 0 }
+      })
+      expect((await dst.service.importData(crafted)).success).toBe(true)
+      expect(taskRows(dst)).toEqual([])
+    })
+
+    it('manifestにtasksの項目が無い場合も、tasks.jsonlの行を読まない', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      const crafted = withManifest((m) => {
+        delete m.tables.tasks
+      })
+      expect((await dst.service.importData(crafted)).success).toBe(true)
+      expect(taskRows(dst)).toEqual([])
+    })
+
+    it('manifestのtasksの件数が1以上なら、通常どおり取り込む', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      expect((await dst.service.importData(zipPath)).success).toBe(true)
+      expect(taskRows(dst)).toHaveLength(2)
     })
   })
 
