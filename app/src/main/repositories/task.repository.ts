@@ -209,4 +209,23 @@ export class TaskRepository {
         }
       : null
   }
+
+  /**
+   * 案件の削除前に、その案件に紐づくタスク(未完了・完了とも)を「案件なし」に戻す。タスクは削除しない。
+   * 戻した件数を返す。外部キーの`ON DELETE SET NULL`は安全策であり、更新日時が変わらないため、
+   * 通常はこのメソッドを先に呼ぶ(詳細設計書4.27章手順4、6.19章)。
+   */
+  clearProject(projectId: number, now: string): number {
+    return this.sqlite
+      .prepare('UPDATE tasks SET project_id = NULL, updated_at = ? WHERE project_id = ?')
+      .run(now, projectId).changes
+  }
+
+  /** 案件に紐づくタスクの件数 */
+  countByProject(projectId: number): number {
+    const row = this.sqlite
+      .prepare('SELECT COUNT(*) AS c FROM tasks WHERE project_id = ?')
+      .get(projectId) as { c: number }
+    return row.c
+  }
 }

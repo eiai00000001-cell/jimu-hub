@@ -3,7 +3,7 @@ import { TaskRepository } from '../repositories/task.repository'
 import { rmSync } from 'node:fs'
 import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROJECT_MESSAGES } from '@shared/messages/messages'
 import type { ProjectInput } from '@shared/schemas/project.schema'
 import { Database } from '../db/db'
@@ -35,7 +35,9 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
       db,
       new ProjectRepository(db),
       new ProjectSummaryRepository(db),
-      new TaskRepository(db)
+      new TaskRepository(db),
+      undefined,
+      () => new Date('2026-10-14T00:00:00.000Z')
     )
   })
   afterEach(() => {
@@ -211,6 +213,102 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
         (db.sqlite.prepare('SELECT COUNT(*) AS c FROM project_link_history').get() as { c: number })
           .c
       ).toBe(1)
+    })
+
+    describe('紐づくタスクの扱い(R-54。詳細設計書4.27章手順4)', () => {
+      const addTask = (name: string, projectId: number | null, done = false): number => {
+        const repo = new TaskRepository(db)
+        const { id } = repo.insert(
+          { name, memo: 'メモ', dueDate: '2026-10-20', projectId },
+          '2026-10-01T00:00:00.000Z'
+        )
+        if (done) repo.markDone(id, '2026-10-02T00:00:00.000Z')
+        return id
+      }
+
+      it('紐づくタスクは削除されず「案件なし」に戻り、戻した件数を返す。他の案件のタスクは変わらない', () => {
+        const target = service.createProject(input({ name: '削除する案件' })).id
+        const other = service.createProject(input({ name: '残る案件' })).id
+        const open = addTask('未完了', target)
+        const done = addTask('完了', target, true)
+        const otherTask = addTask('他の案件', other)
+
+        const result = service.deleteProject(target)
+
+        expect(result).toEqual({ success: true, releasedTaskCount: 2 })
+        const tasks = new TaskRepository(db)
+        expect(tasks.findById(open)).toMatchObject({
+          projectId: null,
+          name: '未完了',
+          memo: 'メモ',
+          dueDate: '2026-10-20',
+          status: 'open',
+          updatedAt: '2026-10-14T00:00:00.000Z'
+        })
+        expect(tasks.findById(done)).toMatchObject({
+          projectId: null,
+          status: 'done',
+          completedAt: '2026-10-02T00:00:00.000Z'
+        })
+        expect(tasks.findById(otherTask)?.projectId).toBe(other)
+        expect(() => service.getProject(target)).toThrow(PROJECT_MESSAGES.notFound)
+      })
+
+      it('タスクがない案件を削除すると、戻した件数は0', () => {
+        const { id } = service.createProject(input())
+        expect(service.deleteProject(id)).toEqual({ success: true, releasedTaskCount: 0 })
+      })
+
+      it('タスクは削除可否の判定(紐づけ件数・deletable)に含めない', () => {
+        const { id } = service.createProject(input())
+        addTask('タスク', id)
+        expect(service.getProject(id).deletable).toBe(true)
+        expect(new ProjectRepository(db).countLinks(id)).toBe(0)
+        expect(() => service.deleteProject(id)).not.toThrow()
+      })
+
+      it('書類・記録の紐づけがある案件は、タスクがあっても削除せず、タスクも変更しない', () => {
+        const { id } = service.createProject(input())
+        const task = addTask('タスク', id)
+        linkQuote(client(), id)
+        expect(() => service.deleteProject(id)).toThrow(PROJECT_MESSAGES.hasLinks)
+        expect(new TaskRepository(db).findById(task)).toMatchObject({
+          projectId: id,
+          updatedAt: '2026-10-01T00:00:00.000Z'
+        })
+      })
+
+      it('案件の削除に失敗した場合は、タスクを案件なしに戻した更新も含めてロールバックする', () => {
+        const { id } = service.createProject(input())
+        const task = addTask('タスク', id)
+        const spy = vi.spyOn(ProjectRepository.prototype, 'delete').mockImplementation(() => {
+          throw new Error('テスト用の削除失敗')
+        })
+        try {
+          expect(() => service.deleteProject(id)).toThrow('テスト用の削除失敗')
+        } finally {
+          spy.mockRestore()
+        }
+        expect(new TaskRepository(db).findById(task)).toMatchObject({
+          projectId: id,
+          updatedAt: '2026-10-01T00:00:00.000Z'
+        })
+        expect(service.getProject(id).id).toBe(id)
+      })
+
+      it('タスクの解除に失敗した場合も、案件は削除されない', () => {
+        const { id } = service.createProject(input())
+        addTask('タスク', id)
+        const spy = vi.spyOn(TaskRepository.prototype, 'clearProject').mockImplementation(() => {
+          throw new Error('テスト用の解除失敗')
+        })
+        try {
+          expect(() => service.deleteProject(id)).toThrow('テスト用の解除失敗')
+        } finally {
+          spy.mockRestore()
+        }
+        expect(service.getProject(id).tasks).toHaveLength(1)
+      })
     })
 
     it('存在しない案件の削除はエラー', () => {

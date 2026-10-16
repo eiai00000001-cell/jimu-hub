@@ -254,6 +254,40 @@ describe('TaskRepository(詳細設計書4.34〜4.36章、6.19章)', () => {
       expect(repo.findByProject(999, TODAY)).toEqual([])
     })
 
+    it('clearProjectは、その案件のタスク(未完了・完了とも)だけを案件なしに戻し、戻した件数と更新日時を返す', () => {
+      const a = project('案件A')
+      const b = project('案件B')
+      const t1 = task('A-未完了', '2026-10-20', a)
+      const t2 = task('A-完了', null, a, true)
+      const t3 = task('B', null, b)
+      const t4 = task('案件なし', null)
+      expect(repo.clearProject(a, '2026-10-09T00:00:00.000Z')).toBe(2)
+      expect(repo.findById(t1)).toMatchObject({
+        projectId: null,
+        status: 'open',
+        dueDate: '2026-10-20',
+        updatedAt: '2026-10-09T00:00:00.000Z'
+      })
+      expect(repo.findById(t2)).toMatchObject({
+        projectId: null,
+        status: 'done',
+        completedAt: T2,
+        updatedAt: '2026-10-09T00:00:00.000Z'
+      })
+      expect(repo.findById(t3)?.projectId).toBe(b)
+      expect(repo.findById(t4)?.updatedAt).toBe(T1)
+      expect(repo.clearProject(a, T2)).toBe(0)
+    })
+
+    it('countByProjectは、その案件に紐づくタスクの件数を返す', () => {
+      const a = project('案件A')
+      task('1', null, a)
+      task('2', null, a, true)
+      task('3', null)
+      expect(repo.countByProject(a)).toBe(2)
+      expect(repo.countByProject(999)).toBe(0)
+    })
+
     it('findDetailは、メモ・登録/更新日時を含む詳細を返す。なければnull', () => {
       const a = project('案件A')
       const { id } = repo.insert(

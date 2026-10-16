@@ -36,7 +36,8 @@ export class ProjectService {
     private readonly repository: ProjectRepository,
     private readonly summaryRepository: ProjectSummaryRepository,
     private readonly taskRepository: TaskRepository,
-    private readonly todayProvider: TodayProvider = new LocalTodayProvider()
+    private readonly todayProvider: TodayProvider = new LocalTodayProvider(),
+    private readonly now: () => Date = () => new Date()
   ) {}
 
   listProjects(filter: ProjectListFilter = {}): ProjectListItem[] {
@@ -82,14 +83,21 @@ export class ProjectService {
     return { success: true }
   }
 
-  /** 紐づけが1件でもある場合は削除しない(取引先は紐づけに含めない。付け替え履歴は残る) */
-  deleteProject(id: number): { success: true } {
-    this.database.transaction(() => {
+  /**
+   * 紐づけが1件でもある場合は削除しない(取引先・タスクは紐づけに含めない。付け替え履歴は残る)。
+   * 紐づくタスクは、削除せず「案件なし」に戻してから案件を削除する。全体を1つのトランザクションで行い、
+   * 途中で失敗した場合はタスクの更新も含めてロールバックする(R-54。詳細設計書4.27章手順4)。
+   * @returns 「案件なし」に戻したタスクの件数
+   */
+  deleteProject(id: number): { success: true; releasedTaskCount: number } {
+    const releasedTaskCount = this.database.transaction(() => {
       this.getOrThrow(id)
       if (this.repository.countLinks(id) > 0) throw new ProjectError(PROJECT_MESSAGES.hasLinks)
+      const released = this.taskRepository.clearProject(id, this.now().toISOString())
       this.repository.delete(id)
+      return released
     })
-    return { success: true }
+    return { success: true, releasedTaskCount }
   }
 
   completeProject(id: number): { success: true } {
