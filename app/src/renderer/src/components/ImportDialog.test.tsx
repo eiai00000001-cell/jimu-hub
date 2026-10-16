@@ -13,8 +13,10 @@ const inspection = (overrides: Partial<BackupInspection> = {}): InspectBackupRes
     schemaVersion: 5,
     hasReceipts: true,
     hasProjects: true,
+    hasTasks: true,
     currentReceiptCount: 0,
     currentProjectCount: 0,
+    currentTaskCount: 0,
     needsConfirmation: false,
     ...overrides
   }
@@ -210,6 +212,34 @@ describe('ImportDialog(詳細設計書3.7章の2段階フロー)', () => {
 
       expect(screen.getByText(/現在の領収書\(12件\)/)).toBeInTheDocument()
       expect(screen.getByText(/現在の案件\(5件\)/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /キャンセル|復元する/ })).toHaveLength(2)
+    })
+
+    it('タスクが消える場合は、タスクの件数を表示する(R-55)', async () => {
+      await openConfirm({ hasTasks: false, currentTaskCount: 4 })
+
+      expect(
+        screen.getByText(
+          'このバックアップにはタスクのデータが含まれていないため、復元すると現在のタスク(4件)はすべて消えます。'
+        )
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/領収書が含まれていない/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/案件のデータが含まれていない/)).not.toBeInTheDocument()
+    })
+
+    it('領収書・案件・タスクがすべて消える場合も、1つの確認画面に3項目を並べる', async () => {
+      await openConfirm({
+        hasReceipts: false,
+        hasProjects: false,
+        hasTasks: false,
+        currentReceiptCount: 12,
+        currentProjectCount: 5,
+        currentTaskCount: 4
+      })
+
+      expect(screen.getByText(/現在の領収書\(12件\)/)).toBeInTheDocument()
+      expect(screen.getByText(/現在の案件\(5件\)/)).toBeInTheDocument()
+      expect(screen.getByText(/現在のタスク\(4件\)/)).toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: /キャンセル|復元する/ })).toHaveLength(2)
     })
 

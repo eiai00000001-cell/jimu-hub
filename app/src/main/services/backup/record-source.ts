@@ -25,9 +25,14 @@ export interface RecordSource {
 export class JsonlRecordSource implements RecordSource {
   private readonly reader = new JsonlTableReader()
 
-  constructor(private readonly stagingDir: string) {}
+  /** @param skipTables 読み込まない(0件として扱う)テーブル。manifestが「含まない」としているもの(SEC-23) */
+  constructor(
+    private readonly stagingDir: string,
+    private readonly skipTables: ReadonlySet<string> = new Set()
+  ) {}
 
   readSync(tableName: string, onRecord: (record: BackupRow) => void): number {
+    if (this.skipTables.has(tableName)) return 0
     const path = join(this.stagingDir, jsonlEntryName(tableName))
     // ファイルが無いテーブルは0件として扱う(案件の無い版のバックアップ等)
     if (!existsSync(path)) return 0

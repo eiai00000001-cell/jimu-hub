@@ -15,6 +15,8 @@ import type {
 import type { Database } from '../db/db'
 import type { ProjectRecordInput, ProjectRepository } from '../repositories/project.repository'
 import type { ProjectSummaryRepository } from '../repositories/project-summary.repository'
+import type { TaskRepository } from '../repositories/task.repository'
+import { LocalTodayProvider, type TodayProvider } from './clock/today-provider'
 
 /** 案件の業務エラー(未存在・紐づけあり・状態不整合等)。メッセージは画面にそのまま表示する */
 export class ProjectError extends Error {
@@ -32,7 +34,10 @@ export class ProjectService {
   constructor(
     private readonly database: Database,
     private readonly repository: ProjectRepository,
-    private readonly summaryRepository: ProjectSummaryRepository
+    private readonly summaryRepository: ProjectSummaryRepository,
+    private readonly taskRepository: TaskRepository,
+    private readonly now: () => Date = () => new Date(),
+    private readonly todayProvider: TodayProvider = new LocalTodayProvider(now)
   ) {}
 
   listProjects(filter: ProjectListFilter = {}): ProjectListItem[] {
@@ -61,6 +66,8 @@ export class ProjectService {
       records: this.repository.listLinkedRecords(id),
       history: this.repository.listHistoryOfProject(id),
       summary: this.summaryRepository.summary(id),
+      // タスクは、収支・件数の内訳・削除可否には含めない(詳細設計書4.38章)
+      tasks: this.taskRepository.findByProject(id, this.todayProvider.today()),
       deletable: linkCount === 0
     }
   }
@@ -76,14 +83,21 @@ export class ProjectService {
     return { success: true }
   }
 
-  /** 紐づけが1件でもある場合は削除しない(取引先は紐づけに含めない。付け替え履歴は残る) */
-  deleteProject(id: number): { success: true } {
-    this.database.transaction(() => {
+  /**
+   * 紐づけが1件でもある場合は削除しない(取引先・タスクは紐づけに含めない。付け替え履歴は残る)。
+   * 紐づくタスクは、削除せず「案件なし」に戻してから案件を削除する。全体を1つのトランザクションで行い、
+   * 途中で失敗した場合はタスクの更新も含めてロールバックする(R-54。詳細設計書4.27章手順4)。
+   * @returns 「案件なし」に戻したタスクの件数
+   */
+  deleteProject(id: number): { success: true; releasedTaskCount: number } {
+    const releasedTaskCount = this.database.transaction(() => {
       this.getOrThrow(id)
       if (this.repository.countLinks(id) > 0) throw new ProjectError(PROJECT_MESSAGES.hasLinks)
+      const released = this.taskRepository.clearProject(id, this.now().toISOString())
       this.repository.delete(id)
+      return released
     })
-    return { success: true }
+    return { success: true, releasedTaskCount }
   }
 
   completeProject(id: number): { success: true } {

@@ -1,0 +1,6 @@
+schema_version=6、退避: pre-migration_v5_2026-10-16T15-57-51-267Z.sqlite(退避内のschema_version=5、tasksなし、projects=2)
+tasksと索引3つ(idx_tasks_status_due・idx_tasks_project・idx_tasks_due)を追加。列: id,name,memo,due_date,project_id,status,completed_at,created_at,updated_at
+既存の全テーブル(取引先・見積書・請求書・入出金・領収書・履歴・案件・付け替え履歴)の内容と、PDF・領収書のSHA-256は移行前後で一致
+記録ハッシュ・領収書・PDFの改変検知: 誤検知なし
+案件別収支は移行前と同じ(売上55000円・経費5500円)
+再起動後も退避は1件、schema_version=6、移行後に登録したタスクは維持

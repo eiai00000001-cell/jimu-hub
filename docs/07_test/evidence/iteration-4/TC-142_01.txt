@@ -1,0 +1,3 @@
+manifest: schemaVersion=6、tables.tasks={"file":"data/tasks.jsonl","count":4}
+data/tasks.jsonl: 4行、項目=completedAt,createdAt,dueDate,id,memo,name,projectId,status,updatedAt
+状態=open,done,open,done、案件ID=1,2,null,null、完了日時あり=N,Y,N,Y

@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BackupArchiveReader, LimitedCountingTransform, isAllowedEntryName } from './archive-reader'
@@ -53,7 +53,7 @@ describe('BackupArchiveReader(F-32。詳細設計書4.3章手順3)', () => {
   }
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'archive-reader-test-'))
+    dir = createWorkDir('unit', 'archive-reader-test')
     zipPath = join(dir, 'in.zip')
     staging = join(dir, 'staging')
   })

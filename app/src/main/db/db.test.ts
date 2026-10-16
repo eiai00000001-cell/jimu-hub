@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { Database } from './db'
 
@@ -56,7 +56,7 @@ describe('Database', () => {
     db.initialize()
 
     const row = db.sqlite.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-    expect(row).toEqual({ value: '5' })
+    expect(row).toEqual({ value: '6' })
   })
 
   it('transactionは正常終了時にコミットする', () => {
@@ -74,7 +74,7 @@ describe('Database', () => {
   })
 
   it('reopenで接続を張り直しても、ファイル上のデータは維持される(復元処理での再接続を想定)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'jimuhub-db-test-'))
+    const dir = createWorkDir('unit', 'jimuhub-db-test')
     const filePath = join(dir, 'data.sqlite')
     try {
       db = new Database(filePath)
@@ -108,7 +108,7 @@ describe('Database', () => {
   })
 
   describe('スキーマv4(イテレーション2。詳細設計書6.10〜6.13章)', () => {
-    it('新規作成時はschema_versionが4で、4テーブルと初期科目14件が作成される', () => {
+    it('新規作成時はschema_versionが最新(6)で、4テーブルと初期科目14件が作成される', () => {
       db = new Database(':memory:')
       db.initialize()
       const names = db.sqlite
@@ -121,7 +121,7 @@ describe('Database', () => {
       const version = db.sqlite
         .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
         .get() as { value: string }
-      expect(version.value).toBe('5')
+      expect(version.value).toBe('6')
 
       const rows = db.sqlite
         .prepare('SELECT name, kind, sort_order, is_default, default_key FROM accounts ORDER BY id')

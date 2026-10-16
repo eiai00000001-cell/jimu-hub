@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { Database } from '../../db/db'
 import { ReceiptRepository } from '../../repositories/receipt.repository'
@@ -28,7 +28,7 @@ describe('ReceiptPreviewService(F-22。詳細設計書4.22章)', () => {
   let db: Database
 
   beforeEach(() => {
-    docs = join(mkdtempSync(join(tmpdir(), 'jimuhub-rp2-')), 'documents')
+    docs = join(createWorkDir('unit', 'jimuhub-rp2'), 'documents')
     mkdirSync(join(docs, 'receipts', '2026'), { recursive: true })
     db = new Database(':memory:')
     db.initialize()

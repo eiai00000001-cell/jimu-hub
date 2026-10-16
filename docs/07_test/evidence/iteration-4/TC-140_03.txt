@@ -1,0 +1,4 @@
+並び順: 完了のタスク → 過去の期限のタスク → 遠い期限のタスク → 期限なしのタスク
+overdue: false,true,false,false
+売上=110000円(請求書のみ。タスクは含まない)、件数の内訳={"quotes":0,"invoicesIssued":1,"invoicesDraft":0,"incomes":0,"expenses":0}、deletable=false
+案件を完了にしてもタスクの行は不変

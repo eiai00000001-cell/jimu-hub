@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>事務HUB - 案件詳細(モックアップ v3.1)</title>
+<title>事務HUB - 案件詳細(モックアップ v4.1)</title>
 <style>
     :root {
       --color-white: #FFFFFF; --color-bg: #F2F2F4; --color-border: #D1D1D6;
@@ -179,13 +179,36 @@
     .count-item .value { font-size: 16px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .count-item .value small { font-size: 11px; font-weight: 400; color: var(--color-text-secondary); }
     .sub-total { font-size: 11px; color: var(--color-text-secondary); margin-top: 6px; }
+
+    /* v4.1 タスク・期限(既存6色のみ。期限超過は赤+文言+アイコン+行左帯の4重表現) */
+    .alert-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--color-red); color: var(--color-white); font-size: 11px; font-weight: 700; line-height: 1; flex-shrink: 0; }
+    .badge-overdue { display: inline-flex; align-items: center; gap: 5px; background: var(--color-red); color: var(--color-white); font-weight: 600; padding: 3px 10px 3px 6px; border-radius: var(--radius-badge); font-size: 11px; white-space: nowrap; }
+    .badge-overdue .alert-icon { background: var(--color-white); color: var(--color-red); width: 14px; height: 14px; font-size: 10px; }
+    .due-overdue { color: var(--color-red); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .table tr.overdue td { background: var(--color-white); }
+    .table tr.overdue td:first-child { box-shadow: inset 4px 0 0 var(--color-red); }
+    .table tr.done td.task-name button { color: var(--color-text-secondary); }
+    .task-counts { display: flex; gap: 16px; margin-bottom: 16px; }
+    .task-count { width: 240px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 20px; }
+    .task-count .label { font-size: 12px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; }
+    .task-count .value { font-size: 22px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .task-count .value small { font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+    .task-count.alert { border: 1px solid var(--color-red); border-left: 4px solid var(--color-red); }
+    .task-count.alert .label { color: var(--color-red); font-weight: 600; }
+    .task-count.alert .value, .task-count.alert .value small { color: var(--color-red); }
+    .task-count .note { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+    .result-count { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; }
+    .op-group { display: inline-flex; gap: 6px; }
+    .stack { margin-bottom: 20px; }
+    .form-panel { max-width: 640px; }
+    .field input[type=text] , .field textarea, .field select { width: 100%; }
 </style>
 </head>
 <body>
   <div class="window">
     <div class="titlebar"><div class="traffic-lights"><div class="traffic-light tl-close"></div><div class="traffic-light tl-min"></div><div class="traffic-light tl-zoom"></div></div><div class="titlebar-title">事務HUB - 案件詳細</div></div>
     <div class="app-body"><div class="sidebar"><div class="sidebar-header">事務HUB</div><ul class="sidebar-nav">
-<li class="sidebar-item"><span>ホーム</span></li><li class="sidebar-item"><span>取引先管理</span></li><li class="sidebar-item active"><span>案件管理</span></li><li class="sidebar-item"><span>見積書・請求書</span></li><li class="sidebar-item"><span>入出金・経費</span></li><li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li></ul></div>
+<li class="sidebar-item"><span>ホーム</span></li><li class="sidebar-item"><span>取引先管理</span></li><li class="sidebar-item active"><span>案件管理</span></li><li class="sidebar-item"><span>見積書・請求書</span></li><li class="sidebar-item"><span>入出金・経費</span></li><li class="sidebar-item"><span>タスク・期限</span></li></ul></div>
       <div class="main">
         <div class="page-header"><div class="page-title-group"><h1 class="page-title">案件詳細</h1></div><div class="header-actions"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">完了</button></div></div>
         <div class="page-content"><div class="panel"><dl class="info-grid"><dt>案件名</dt><dd>サンプル商事 Webサイト制作</dd><dt>取引先</dt><dd>サンプル商事株式会社</dd><dt>状態</dt><dd><span class="badge badge-active">進行中</span></dd><dt>期間</dt><dd>2026-08-01〜2026-11-30</dd><dt>メモ</dt><dd>トップページ・下層5ページの制作。公開は11月中旬の予定。</dd></dl></div>
@@ -193,8 +216,8 @@
 <p class="note-text" style="margin:-8px 0 0">売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。</p>
 <div class="section-title">件数の内訳</div><div class="count-grid"><div class="count-item"><div class="label">見積書</div><div class="value">1<small> 件</small></div></div><div class="count-item"><div class="label">請求書</div><div class="value">2<small> 件(発行済み 1 / 下書き 1)</small></div></div><div class="count-item"><div class="label">入金(取消済を含む)</div><div class="value">2<small> 件</small></div></div><div class="count-item"><div class="label">経費</div><div class="value">1<small> 件</small></div></div></div>
 <div class="section-title">紐づく見積書・請求書</div><table class="table"><thead><tr><th>書類番号</th><th>種別</th><th>発行日</th><th>取引先</th><th class="num">合計金額</th><th>状態</th><th class="op">操作</th></tr></thead><tbody><tr><td><button class="link" style="font-size:13px">2026-012</button></td><td>請求書</td><td>2026-09-22</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-inactive">PDF保存済み</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td><button class="link" style="font-size:13px">2026-008</button></td><td>見積書</td><td>2026-09-20</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-inactive">PDF保存済み</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td><button class="link" style="font-size:13px">下書き</button></td><td>請求書</td><td>2026-10-01</td><td>サンプル商事株式会社</td><td class="num">¥363,000</td><td><span class="badge badge-active">下書き</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr></tbody></table><div class="section-title">紐づく入出金・経費</div><table class="table"><thead><tr><th>日付</th><th>種別</th><th>摘要・メモ</th><th class="num">金額</th><th>状態</th><th class="op">操作</th></tr></thead><tbody><tr><td>2026-09-30</td><td><span class="badge badge-income">入金</span></td><td>入金(請求書から自動作成)</td><td class="num"><span class="sign">+¥332,370</span></td><td><span class="badge badge-active">有効</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr><td>2026-09-15</td><td><span class="badge badge-expense">経費</span></td><td>デザイン作業の外注</td><td class="num"><span class="sign">−¥55,000</span></td><td><span class="badge badge-active">有効</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr><tr class="cancelled"><td>2026-09-12</td><td><span class="badge badge-income">入金</span></td><td>入金(請求書から自動作成)</td><td class="num"><span class="sign">+¥332,370</span></td><td><span class="badge badge-cancelled">取消済</span></td><td class="op"><button class="btn btn-secondary btn-sm">案件を変更</button></td></tr></tbody></table><div class="section-title">付け替え履歴</div><table class="table"><thead><tr><th>日時</th><th>対象</th><th>付け替え前の案件</th><th>付け替え後の案件</th><th>操作の種類</th></tr></thead><tbody><tr><td>2026-10-03 09:42</td><td>請求書 2026-012</td><td>アルファ商事 保守契約</td><td>サンプル商事 Webサイト制作</td><td><span class="badge badge-op-minor">付け替え</span></td></tr><tr><td>2026-10-03 09:30</td><td>請求書 2026-012</td><td>案件なし</td><td>アルファ商事 保守契約</td><td><span class="badge badge-op-minor">付け替え</span></td></tr><tr><td>2026-09-30</td><td>入出金 2026-09-15 経費</td><td>案件なし</td><td>サンプル商事 Webサイト制作</td><td><span class="badge badge-op-minor">付け替え</span></td></tr></tbody></table>
-<div class="back-link"><button class="link">&larr; 一覧へ戻る</button></div><div class="reference-block"><div class="reference-label">参考: 完了の案件(「完了」バッジ。「完了」ボタンの代わりに「再開」を表示。完了でも「案件を変更」は操作できる)</div><div class="mini-header"><span style="font-weight:600">サンプル商事 ロゴ制作</span><span class="badge badge-inactive">完了</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">再開</button></span></div>
-<div class="reference-label again">参考: 紐づけが0件の案件(「削除」ボタンを表示。1件でも紐づく間は表示しない)</div><div class="mini-header"><span style="font-weight:600">オレンジ物産 パンフレット制作</span><span class="badge badge-active">進行中</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">完了</button><button class="btn btn-secondary">削除</button></span></div></div></div>
+<div class="section-title">紐づくタスク</div><table class="table"><thead><tr><th>タスク名</th><th>状態</th><th>期限日</th></tr></thead><tbody><tr class="overdue"><td><button class="link" style="font-size:13px">請求書の送付準備</button></td><td><span class="badge badge-active">未完了</span></td><td><span class="due-overdue">2026-10-09</span> <span class="badge-overdue"><span class="alert-icon">!</span>期限超過</span></td></tr><tr><td><button class="link" style="font-size:13px">打ち合わせ資料の準備</button></td><td><span class="badge badge-active">未完了</span></td><td>2026-10-14</td></tr><tr><td><button class="link" style="font-size:13px">公開前の最終確認</button></td><td><span class="badge badge-active">未完了</span></td><td>2026-11-10</td></tr><tr><td><button class="link" style="font-size:13px">ヒアリングシートの回収</button></td><td><span class="badge badge-inactive">完了</span></td><td>2026-09-20</td></tr></tbody></table><p class="note-text">期限日の早い順に表示します(期限なしは末尾)。紐づくタスクは、案件別収支・件数の内訳には含めず、「削除」ボタンの表示にも影響しません。</p><div class="back-link"><button class="link">&larr; 一覧へ戻る</button></div><div class="reference-block"><div class="reference-label">参考: 完了の案件(「完了」バッジ。「完了」ボタンの代わりに「再開」を表示。完了でも「案件を変更」は操作できる)</div><div class="mini-header"><span style="font-weight:600">サンプル商事 ロゴ制作</span><span class="badge badge-inactive">完了</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">再開</button></span></div>
+<div class="reference-label">参考: 紐づくタスクが0件の案件</div><div class="section-title" style="margin-top:0">紐づくタスク</div><div class="empty-state" style="margin-bottom:24px">この案件に紐づくタスクはありません</div><div class="reference-label again">参考: 紐づけが0件の案件(「削除」ボタンを表示。1件でも紐づく間は表示しない)</div><div class="mini-header"><span style="font-weight:600">オレンジ物産 パンフレット制作</span><span class="badge badge-active">進行中</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary">編集</button><button class="btn btn-secondary">完了</button><button class="btn btn-secondary">削除</button></span></div></div></div>
       </div>
       
     </div>

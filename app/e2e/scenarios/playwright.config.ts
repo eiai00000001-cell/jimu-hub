@@ -18,6 +18,8 @@ import { defineConfig } from '@playwright/test'
  */
 export default defineConfig({
   testDir: '.',
+  globalSetup: '../global-setup.ts',
+  globalTeardown: '../global-teardown.ts',
   timeout: 60_000,
   retries: 0,
   fullyParallel: false,

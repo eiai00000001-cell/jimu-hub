@@ -1,15 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import AdmZip from 'adm-zip'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchApp, closeApp } from '../fixtures/electron-app'
@@ -29,7 +21,7 @@ test.describe.serial('F-09: 起動エラー画面からの復元', () => {
   const CORRUPT = 'これは正しいSQLiteファイルではありません(破損の再現用)'
 
   test.beforeAll(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-recovery-'))
+    workDir = createWorkDir('e2e', 'jimuhub-scenario-recovery')
     zipPath = join(workDir, 'good.zip')
     const src = await launchApp({ JIMUHUB_E2E_EXPORT_PATH: zipPath })
     await setupCompany(src.window)
@@ -57,7 +49,7 @@ test.describe.serial('F-09: 起動エラー画面からの復元', () => {
   }
 
   test('TC-40: 破損DBの起動エラー画面から復元でき、破損DBは退避され、再起動後は復元データで正常に起動する', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-broken-'))
+    const dataDir = createWorkDir('e2e', 'jimuhub-scenario-broken')
     writeFileSync(join(dataDir, 'data.sqlite'), CORRUPT)
     const app = await launchBroken(dataDir, {
       JIMUHUB_E2E_IMPORT_PATH: zipPath,
@@ -140,7 +132,7 @@ test.describe.serial('F-09: 起動エラー画面からの復元', () => {
   })
 
   test('TC-41: 起動エラー画面での復元失敗(不正ファイル)はエラー表示となり、破損DBは元の位置に戻り、再度選び直せる', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-broken-'))
+    const dataDir = createWorkDir('e2e', 'jimuhub-scenario-broken')
     writeFileSync(join(dataDir, 'data.sqlite'), CORRUPT)
     // data.jsonを持たないZIP
     const badZip = join(workDir, 'bad.zip')

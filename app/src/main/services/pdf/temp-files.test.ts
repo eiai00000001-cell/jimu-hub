@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, rmSync, writeFileSync, symlinkSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { cleanupLeftoverPdfTempFiles, newPdfTempFilePath, pdfTempDir } from './temp-files'
 
@@ -8,7 +8,7 @@ describe('PDF一時ファイルの掃除(SEC-11)', () => {
   let base: string
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'jimuhub-temp-test-'))
+    base = createWorkDir('unit', 'jimuhub-temp-test')
   })
   afterEach(() => rmSync(base, { recursive: true, force: true }))
 

@@ -250,6 +250,23 @@ export const CASH_RECORD_HISTORY_TABLE: TableDef = {
   ]
 }
 
+/** タスク(スキーマバージョン6で追加。`projects`を参照するため、`projects`の後に取り込む) */
+export const TASKS_TABLE: TableDef = {
+  table: 'tasks',
+  orderBy: 'id',
+  columns: [
+    ['id', 'id'],
+    ['name', 'name'],
+    ['memo', 'memo'],
+    ['dueDate', 'due_date'],
+    ['projectId', 'project_id'],
+    ['status', 'status'],
+    ['completedAt', 'completed_at'],
+    ['createdAt', 'created_at'],
+    ['updatedAt', 'updated_at']
+  ]
+}
+
 /**
  * バックアップ対象テーブルの一覧(JSON Linesのファイル名・manifestのキー・定義)。
  * 復元時の取り込み順は、この配列の順(外部キーの参照先から先に)とする(詳細設計書4.3章手順6)。
@@ -272,7 +289,8 @@ export const BACKUP_TABLES: readonly BackupTableEntry[] = [
   { name: 'cashRecords', def: CASH_RECORDS_TABLE },
   { name: 'receipts', def: RECEIPTS_TABLE },
   { name: 'cashRecordHistory', def: CASH_RECORD_HISTORY_TABLE },
-  { name: 'projectLinkHistory', def: PROJECT_LINK_HISTORY_TABLE }
+  { name: 'projectLinkHistory', def: PROJECT_LINK_HISTORY_TABLE },
+  { name: 'tasks', def: TASKS_TABLE }
 ]
 
 /** テーブルの全行を、JSONキー(camelCase)のレコードとして取得する */

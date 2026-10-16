@@ -261,13 +261,11 @@ describe('DocumentListPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('「準備中」メニューを押すと案内を表示する(BUG-03(i1))', async () => {
+  it('「タスク・期限」は準備中ではなく、案内メッセージも出ない(v4.1。BUG-03(i1)の仕組みは残す)', async () => {
     setupApi()
     render(<DocumentListPage {...baseProps} />)
     await userEvent.click(screen.getByText('タスク・期限'))
-    expect(
-      await screen.findByText(/「タスク・期限」は以降のイテレーションで実装予定です/)
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/実装予定です/)).not.toBeInTheDocument()
   })
 
   it('[F-26]下書きの行にのみ「削除」を表示し、確認後に削除して一覧を再取得する', async () => {

@@ -1,13 +1,13 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { resolveReceiptPath } from './receipt-path'
 
 describe('resolveReceiptPath', () => {
   let docs: string
   beforeEach(() => {
-    docs = join(mkdtempSync(join(tmpdir(), 'jimuhub-rp-')), 'documents')
+    docs = join(createWorkDir('unit', 'jimuhub-rp'), 'documents')
     mkdirSync(join(docs, 'receipts', '2026'), { recursive: true })
     writeFileSync(join(docs, 'receipts', '2026', 'a.pdf'), '%PDF-')
     writeFileSync(join(docs, 'receipts', '2026', 'a.exe'), 'x')

@@ -1,0 +1,2 @@
+TZ=Pacific/Kiritimati: ローカルの今日=2026-10-17(UTCの今日=2026-10-16) → {"昨日が期限":true,"完了済みの昨日":false,"今日が期限":false,"明日が期限":false,"期限なし":false} counts={"open":4,"overdue":1}
+TZ=Pacific/Pago_Pago: ローカルの今日=2026-10-16(UTCの今日=2026-10-16) → {"昨日が期限":true,"完了済みの昨日":false,"今日が期限":false,"明日が期限":false,"期限なし":false} counts={"open":4,"overdue":1}

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>事務HUB - 案件管理(モックアップ v3.1)</title>
+<title>事務HUB - 案件管理(モックアップ v4.1)</title>
 <style>
     :root {
       --color-white: #FFFFFF; --color-bg: #F2F2F4; --color-border: #D1D1D6;
@@ -179,13 +179,36 @@
     .count-item .value { font-size: 16px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .count-item .value small { font-size: 11px; font-weight: 400; color: var(--color-text-secondary); }
     .sub-total { font-size: 11px; color: var(--color-text-secondary); margin-top: 6px; }
+
+    /* v4.1 タスク・期限(既存6色のみ。期限超過は赤+文言+アイコン+行左帯の4重表現) */
+    .alert-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--color-red); color: var(--color-white); font-size: 11px; font-weight: 700; line-height: 1; flex-shrink: 0; }
+    .badge-overdue { display: inline-flex; align-items: center; gap: 5px; background: var(--color-red); color: var(--color-white); font-weight: 600; padding: 3px 10px 3px 6px; border-radius: var(--radius-badge); font-size: 11px; white-space: nowrap; }
+    .badge-overdue .alert-icon { background: var(--color-white); color: var(--color-red); width: 14px; height: 14px; font-size: 10px; }
+    .due-overdue { color: var(--color-red); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .table tr.overdue td { background: var(--color-white); }
+    .table tr.overdue td:first-child { box-shadow: inset 4px 0 0 var(--color-red); }
+    .table tr.done td.task-name button { color: var(--color-text-secondary); }
+    .task-counts { display: flex; gap: 16px; margin-bottom: 16px; }
+    .task-count { width: 240px; background: var(--color-white); border: 1px solid var(--color-border); padding: 14px 20px; }
+    .task-count .label { font-size: 12px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; }
+    .task-count .value { font-size: 22px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .task-count .value small { font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+    .task-count.alert { border: 1px solid var(--color-red); border-left: 4px solid var(--color-red); }
+    .task-count.alert .label { color: var(--color-red); font-weight: 600; }
+    .task-count.alert .value, .task-count.alert .value small { color: var(--color-red); }
+    .task-count .note { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+    .result-count { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; }
+    .op-group { display: inline-flex; gap: 6px; }
+    .stack { margin-bottom: 20px; }
+    .form-panel { max-width: 640px; }
+    .field input[type=text] , .field textarea, .field select { width: 100%; }
 </style>
 </head>
 <body>
   <div class="window" style="min-height:560px">
     <div class="titlebar"><div class="traffic-lights"><div class="traffic-light tl-close"></div><div class="traffic-light tl-min"></div><div class="traffic-light tl-zoom"></div></div><div class="titlebar-title">事務HUB - 案件管理</div></div>
     <div class="app-body"><div class="sidebar"><div class="sidebar-header">事務HUB</div><ul class="sidebar-nav">
-<li class="sidebar-item"><span>ホーム</span></li><li class="sidebar-item"><span>取引先管理</span></li><li class="sidebar-item active"><span>案件管理</span></li><li class="sidebar-item"><span>見積書・請求書</span></li><li class="sidebar-item"><span>入出金・経費</span></li><li class="sidebar-item disabled"><span>タスク・期限</span><span class="badge badge-soon">準備中</span></li></ul></div>
+<li class="sidebar-item"><span>ホーム</span></li><li class="sidebar-item"><span>取引先管理</span></li><li class="sidebar-item active"><span>案件管理</span></li><li class="sidebar-item"><span>見積書・請求書</span></li><li class="sidebar-item"><span>入出金・経費</span></li><li class="sidebar-item"><span>タスク・期限</span></li></ul></div>
       <div class="main">
         <div class="page-header"><div class="page-title-group"><h1 class="page-title">案件管理</h1></div><div class="header-actions"><button class="btn btn-primary">+ 案件を登録</button></div></div>
         <div class="page-content"><div class="filter-bar"><div class="filter-field"><label>案件名</label><input type="text" value="" placeholder="キーワード" style="width:200px"></div>
@@ -198,6 +221,6 @@
   </div>
 <div class="sheet"><div class="reference-block" style="margin-top:0"><div class="reference-label">参考: 「再開」「削除」押下時の確認ダイアログ(上の画面は「完了」押下時。OS標準の確認ダイアログの見本)</div><div class="reference-label again">「再開」押下時</div><div class="overlay-ref"><div class="modal"><h2>案件を進行中に戻しますか</h2><p>この案件を進行中に戻します。よろしいですか</p><div class="modal-actions"><button class="btn btn-secondary">いいえ</button><button class="btn btn-primary">はい</button></div></div></div>
 <div class="reference-label again">案件詳細の「削除」押下時(紐づけが0件の場合のみ)</div><div class="overlay-ref"><div class="modal"><h2>案件を削除しますか</h2><p>この案件を削除します。削除すると元に戻せません。よろしいですか</p><div class="modal-actions"><button class="btn btn-secondary">いいえ</button><button class="btn btn-primary">はい</button></div></div></div>
-<p class="note-text">いずれも「はい」で実行、「いいえ」で中止します。削除は取り消せないため確認しますが、他の確認ダイアログと同じ主ボタンとし、赤は復元(全置換)専用の方針を維持します。</p></div>
+<div class="reference-label again">案件詳細の「削除」押下時(紐づくタスクが1件以上ある場合。件数を併記し、タスクは削除されず「案件なし」に戻ることを伝える)</div><div class="overlay-ref"><div class="modal wide"><h2>案件を削除しますか</h2><p>この案件を削除します。削除すると元に戻せません。<br>紐づくタスク3件は削除されず、「案件なし」に戻ります。よろしいですか</p><div class="modal-actions"><button class="btn btn-secondary">いいえ</button><button class="btn btn-primary">はい</button></div></div></div><p class="note-text">いずれも「はい」で実行、「いいえ」で中止します。削除は取り消せないため確認しますが、他の確認ダイアログと同じ主ボタンとし、赤は復元(全置換)専用の方針を維持します。</p></div>
 </body>
 </html>

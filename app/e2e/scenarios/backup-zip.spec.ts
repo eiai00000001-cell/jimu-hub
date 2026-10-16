@@ -6,16 +6,8 @@ import {
   mapExportTable,
   readExport
 } from '../../src/main/services/backup/test-helpers'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -75,7 +67,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
   let launched: LaunchedApp | undefined
 
   test.beforeAll(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-zip-'))
+    workDir = createWorkDir('e2e', 'jimuhub-scenario-zip')
     sourceZip = join(workDir, 'source.zip')
     // 元データの作成(自社情報・取引先2件・見積書3件〔確定2・下書き1〕・請求書1件〔見積書から変換→確定→入金済み〕)
     const src = await launchApp({ JIMUHUB_E2E_EXPORT_PATH: sourceZip })
@@ -168,7 +160,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
       .getEntries()
       .map((e) => e.entryName)
       .sort()
-    // イテレーション3以降: manifest.json + data/<テーブル>.jsonl(スキーマ版5)
+    // イテレーション3以降: manifest.json + data/<テーブル>.jsonl(スキーマ版6)
     const exportedZip = readExport(sourceZip)
     const dataJson = {
       schemaVersion: exportedZip.manifest.schemaVersion,
@@ -178,7 +170,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
         clients: exportedZip.records('clients')
       }
     }
-    expect(dataJson.schemaVersion).toBe(5)
+    expect(dataJson.schemaVersion).toBe(6)
     expect(names).toContain('manifest.json')
     expect(names).toContain('data/quotes.jsonl')
     expect(names.filter((n) => n.startsWith('documents/') && n.endsWith('.pdf'))).toHaveLength(3)
@@ -362,7 +354,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
     writeFileSync(v1Path, JSON.stringify(v1))
 
     // --- v2 ---
-    const dataDirMark = mkdtempSync(join(tmpdir(), 'jimuhub-mark-'))
+    const dataDirMark = createWorkDir('e2e', 'jimuhub-mark')
     try {
       const { window, dataDir } = await launchTarget(v2Path)
       mkdirSync(join(dataDir, 'documents'), { recursive: true })

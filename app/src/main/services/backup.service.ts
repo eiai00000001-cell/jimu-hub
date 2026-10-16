@@ -1,3 +1,4 @@
+import { TaskInputSchema } from '@shared/schemas/task.schema'
 import {
   closeSync,
   copyFileSync,
@@ -42,7 +43,12 @@ import { IntegrityService } from './integrity/integrity.service'
 import { resolveReceiptPath } from './receipts/receipt-path'
 import { BackupArchiveWriter } from './backup/archive-writer'
 import { BackupArchiveReader } from './backup/archive-reader'
-import { BackupDiskShortError, BackupParseError, BackupSizeLimitError } from './backup/errors'
+import {
+  BackupDiskShortError,
+  BackupInvalidTaskError,
+  BackupParseError,
+  BackupSizeLimitError
+} from './backup/errors'
 import { toRestoreErrorMessage } from './backup/restore-errors'
 import { LegacyJsonRecordSource } from './backup/legacy-record-source'
 import {
@@ -60,10 +66,22 @@ import {
   INVOICES_TABLE,
   CASH_RECORDS_TABLE,
   PROJECTS_TABLE,
+  TASKS_TABLE,
   QUOTES_TABLE,
   insertRow,
   type TableDef
 } from './backup-tables'
+
+/** ISO 8601の日時(タイムゾーン付き。長さの上限つき)。復元時のタスクの日時の検証に使う */
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
+function isIsoDateTime(value: unknown): boolean {
+  return (
+    typeof value === 'string' &&
+    value.length <= 40 &&
+    ISO_DATE_TIME.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  )
+}
 
 const MAX_BACKUP_GENERATIONS = 3
 const BACKUP_FILE_PREFIX = 'data_'
@@ -398,10 +416,14 @@ export class BackupService {
               }
             : {})
         }
-      } catch {
+      } catch (error) {
         const restoreResult = this.restoreFromLatestSafeguardCopy(documentsBackupPath)
         if (!restoreResult.success) {
           return { success: false, error: BACKUP_MESSAGES.importSafeguardRestoreFailure }
+        }
+        // タスクの行の不正は、原因が分かる文言で伝える(トランザクションは巻き戻され、データは復元前のまま)
+        if (error instanceof BackupInvalidTaskError) {
+          return { success: false, error: BACKUP_MESSAGES.importInvalidTask }
         }
         return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
       }
@@ -456,7 +478,14 @@ export class BackupService {
     }
     return {
       schemaVersion: manifest.schemaVersion,
-      source: new JsonlRecordSource(dir),
+      // タスクは、スキーマバージョン6以上で、manifestに1件以上あると記載されている場合のみ読む。
+      // 事前確認(RestoreInspector.hasTasks)と同じ条件にし、警告と実際の取り込みを一致させる(SEC-23)
+      source: new JsonlRecordSource(
+        dir,
+        new Set(
+          manifest.schemaVersion >= 6 && (manifest.tables.tasks?.count ?? 0) >= 1 ? [] : ['tasks']
+        )
+      ),
       hasDocuments: true,
       hashes
     }
@@ -570,6 +599,7 @@ export class BackupService {
     }
     // 外部キーの参照元(見積書・請求書・入出金が案件を、案件が取引先を参照する)から先に削除する
     for (const table of [
+      'tasks',
       'project_link_history',
       'cash_record_history',
       'receipts',
@@ -635,6 +665,49 @@ export class BackupService {
         }
         insertRow(sqlite, PROJECTS_TABLE, row, overrides)
         importedProjectIds.add(Number(row.id))
+      },
+      // タスク(F-39): 存在しない案件は「案件なし」に補正して件数に含める。
+      // statusとcompletedAtが整合しない行は、statusを正として補正する(CHECK制約による復元全体の失敗を防ぐ)
+      tasks: (row) => {
+        if (row.status !== 'open' && row.status !== 'done') {
+          throw new BackupInvalidTaskError('invalid task status')
+        }
+        // id・日時の形式(SEC-23)。不正な行があれば、復元を中止する
+        if (typeof row.id !== 'number' || !Number.isSafeInteger(row.id) || row.id <= 0) {
+          throw new BackupInvalidTaskError('invalid task id')
+        }
+        if (!isIsoDateTime(row.createdAt) || !isIsoDateTime(row.updatedAt)) {
+          throw new BackupInvalidTaskError('invalid task timestamp')
+        }
+        if (
+          row.completedAt !== undefined &&
+          row.completedAt !== null &&
+          row.completedAt !== '' &&
+          !isIsoDateTime(row.completedAt)
+        ) {
+          throw new BackupInvalidTaskError('invalid task completedAt')
+        }
+        // タスク名・メモ・期限日は、登録時と同じ検証を通す(不正な行があれば復元を中止する。I4-04・★R6)
+        const checked = TaskInputSchema.safeParse({
+          name: row.name,
+          memo: row.memo,
+          dueDate: row.dueDate,
+          projectId: null
+        })
+        if (!checked.success) throw new BackupInvalidTaskError('invalid task field')
+        const completedAt =
+          row.status === 'done'
+            ? typeof row.completedAt === 'string' && row.completedAt !== ''
+              ? row.completedAt
+              : (row.updatedAt ?? row.createdAt ?? new Date().toISOString())
+            : null
+        insertRow(sqlite, TASKS_TABLE, row, {
+          ...projectIdOverride(row),
+          name: checked.data.name,
+          memo: checked.data.memo,
+          dueDate: checked.data.dueDate,
+          completedAt
+        })
       },
       cashRecords: (row) => insertRow(sqlite, CASH_RECORDS_TABLE, row, projectIdOverride(row)),
       quotes: documentInserter(QUOTES_TABLE, 'quote'),

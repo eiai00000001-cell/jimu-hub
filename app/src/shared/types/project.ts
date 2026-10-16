@@ -3,6 +3,8 @@
  * 参照元: 詳細設計書 3.22〜3.26章、4.27〜4.30章、6.14〜6.15章、7章
  */
 
+import type { TaskListItem } from './task'
+
 export const PROJECT_STATUSES = ['active', 'completed'] as const
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
 
@@ -122,4 +124,6 @@ export interface ProjectDetail extends Project {
   summary: ProjectSummary
   /** 紐づけが0件で、削除できるか */
   deletable: boolean
+  /** 紐づくタスク(未完了・完了とも。期限日の昇順。詳細設計書4.38章) */
+  tasks: TaskListItem[]
 }

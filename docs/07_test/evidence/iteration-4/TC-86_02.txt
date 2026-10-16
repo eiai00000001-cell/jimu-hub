@@ -1,0 +1,5 @@
+receipt_sample.pdf -> receipts/2026/6c036a15-b926-4e1c-b46b-80e50bb9a9b6.pdf (application/pdf, 70B, sha256=2a95182aa1d8…一致)
+receipt_sample.png -> receipts/2026/a53edb36-6415-43f0-8d13-2e35ed5d1064.png (image/png, 70B, sha256=c414cd0e204d…一致)
+receipt_sample.jpg -> receipts/2026/6f901527-125f-4d04-baaa-820cebd63d2d.jpg (image/jpeg, 776B, sha256=6b2dea61dca0…一致)
+UPPER.PDF -> receipts/2026/5fb7d7fe-1fd8-41ab-bd97-d9fb50050533.pdf (application/pdf, 70B, sha256=2a95182aa1d8…一致)
+保存先ディレクトリの権限: 700

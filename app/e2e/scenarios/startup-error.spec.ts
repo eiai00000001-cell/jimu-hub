@@ -1,6 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { shot } from './evidence-dir'
@@ -22,7 +22,7 @@ const MAIN_ENTRY = join(__dirname, '..', '..', 'out', 'main', 'index.js')
 
 test.describe('F-01: データベース破損時の起動エラー画面(TC-02)', () => {
   test('データベースファイルが破損している場合、起動エラー画面が表示される', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-startup-'))
+    const dataDir = createWorkDir('e2e', 'jimuhub-scenario-startup')
 
     // 有効なSQLiteファイルではない内容を、データベースファイルとして事前に配置しておく
     writeFileSync(join(dataDir, 'data.sqlite'), 'これは正しいSQLiteファイルではありません', 'utf-8')

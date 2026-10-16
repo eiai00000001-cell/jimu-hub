@@ -3,12 +3,11 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   writeFileSync
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -54,7 +53,7 @@ let fx: Fixtures
 let launched: LaunchedApp | undefined
 
 test.beforeAll(() => {
-  workDir = mkdtempSync(join(tmpdir(), 'jimuhub-i3-backup-'))
+  workDir = createWorkDir('e2e', 'jimuhub-i3-backup')
   fx = makeReceiptFixtures()
 })
 // 作業用の一時フォルダは、ユーザーの許可なく削除しない運用のため、削除せずに残す(場所はテスト結果報告書に記載)
@@ -186,7 +185,7 @@ test('TC-114: [F-32] ストリーム方式のエクスポート→復元の往�
 
   // 形式: manifest.json + data/<テーブル>.jsonl、PDF・領収書の実体。作業用の.partialは残らない
   const exp = readExport(zip)
-  expect(exp.manifest.schemaVersion).toBe(5)
+  expect(exp.manifest.schemaVersion).toBe(6)
   expect(exp.manifest.tables.projects.count).toBe(2)
   expect(exp.manifest.tables.projectLinkHistory.count).toBeGreaterThanOrEqual(6)
   expect(exp.records('projects').map((r) => r.name)).toEqual(['往復の案件A', '往復の案件B(完了)'])
@@ -464,9 +463,9 @@ test('TC-116: [F-33] 復元前の確認の判定。領収書・案件を含ま�
       hasP: false,
       schema: 4
     },
-    { label: '版5(案件0件・領収書あり)', path: v5NoProjects, hasR: true, hasP: false, schema: 5 },
-    { label: '版5(領収書0件・案件あり)', path: v5NoReceipts, hasR: false, hasP: true, schema: 5 },
-    { label: '版5(領収書・案件とも含む)', path: src, hasR: true, hasP: true, schema: 5 }
+    { label: '版5(案件0件・領収書あり)', path: v5NoProjects, hasR: true, hasP: false, schema: 6 },
+    { label: '版5(領収書0件・案件あり)', path: v5NoReceipts, hasR: false, hasP: true, schema: 6 },
+    { label: '版5(領収書・案件とも含む)', path: src, hasR: true, hasP: true, schema: 6 }
   ]
 
   const { window, dataDir, app } = await start()
@@ -671,7 +670,7 @@ test('TC-117: [F-33] 復元前の確認画面の操作。領収書・案件が�
 
 /** 旧版(スキーマ版4。タグ v0.3.0)の実際のスキーマで、データ保存先を作る(docs/07_test/tools/make-v4-fixture.mjs) */
 function makeV4DataDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'jimuhub-i3-v4-'))
+  const dir = createWorkDir('e2e', 'jimuhub-i3-v4')
   const repoRoot = join(__dirname_i3(), '..', '..', '..')
   execFileSync(
     'node',
@@ -757,7 +756,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     const re = await relaunchOnDir(dataDir)
     await expect(re.window.getByText('事務HUB').first()).toBeVisible()
     await expect(re.window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
-    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     // 移行前の自動退避(VACUUM INTO)。退避は移行前の版4のまま
     const backups = readdirSync(join(dataDir, 'backups')).filter((n) =>
       n.startsWith('pre-migration_v4_')
@@ -864,26 +863,26 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     // 再起動: 移行は冪等で、退避は増えない
     const re2 = await relaunchOnDir(dataDir)
     await expect(re2.window.getByText('事務HUB').first()).toBeVisible()
-    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     expect(
       readdirSync(join(dataDir, 'backups')).filter((n) => n.startsWith('pre-migration_')).length
     ).toBe(1)
     expect(dbQuery(dataDir, 'select count(*) from projects')).toBe('1')
     expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
-    // 移行後のデータのエクスポートは版5で、案件を含む
+    // 移行後のデータのエクスポートは版6で、案件を含む
     const out = join(workDir, 'migrated-export.zip')
     await setEnv(re2.app, 'JIMUHUB_E2E_EXPORT_PATH', out)
     const ex = await mustApi<{ success: boolean }>(re2.window, 'exportData')
     expect(ex.success).toBe(true)
     const exp = readExport(out)
-    expect(exp.manifest.schemaVersion).toBe(5)
+    expect(exp.manifest.schemaVersion).toBe(6)
     expect(exp.manifest.tables.projects.count).toBe(1)
     expect(exp.manifest.tables.projectLinkHistory.count).toBe(2)
     await re2.app.close()
     noteEvidence(
       'TC-118',
       '移行後の確認結果',
-      `schema_version=5、退避: ${backups.join(', ')}(退避内のschema_version=4、cash_records=3)\n案件のテーブル・案件ID列3・索引6・トリガー2を追加\n版4の列の内容・PDF/領収書のSHA-256は移行前後で一致、案件ID列はNULL\n再起動後も退避は1件、schema_version=5、accounts=14\n移行後のエクスポート: schemaVersion=${exp.manifest.schemaVersion}、projects=${exp.manifest.tables.projects.count}`
+      `schema_version=6(版4から最新まで移行)、退避: ${backups.join(', ')}(退避内のschema_version=4、cash_records=3)\n案件のテーブル・案件ID列3・索引6・トリガー2を追加\n版4の列の内容・PDF/領収書のSHA-256は移行前後で一致、案件ID列はNULL\n再起動後も退避は1件、schema_version=6、accounts=14\n移行後のエクスポート: schemaVersion=${exp.manifest.schemaVersion}、projects=${exp.manifest.tables.projects.count}`
     )
   } finally {
     // 一時フォルダは削除せずに残す
@@ -926,13 +925,13 @@ test('TC-119: [移行] 移行に失敗した場合のロールバック。スキ
     const re2 = await relaunchOnDir(dataDir)
     await expect(re2.window.getByText('事務HUB').first()).toBeVisible()
     await expect(re2.window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
-    expect(dbRead(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbRead(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     expect(dumpV4Columns(dataDir, columns, dbRead)).toBe(pre)
     await re2.app.close()
     noteEvidence(
       'TC-119',
       '移行失敗時の結果',
-      `失敗時の画面の文言:\n${body.replace(/\s+/g, ' ').slice(0, 400)}\nロールバック後: schema_version=4、案件ID列なし、既存データは変更前と一致、退避=${backups.join(', ')}\n原因除去後の再起動: schema_version=5、データは変更前と一致`
+      `失敗時の画面の文言:\n${body.replace(/\s+/g, ' ').slice(0, 400)}\nロールバック後: schema_version=4、案件ID列なし、既存データは変更前と一致、退避=${backups.join(', ')}\n原因除去後の再起動: schema_version=6(最新まで移行)、データは変更前と一致`
     )
   } finally {
     // 一時フォルダは削除せずに残す

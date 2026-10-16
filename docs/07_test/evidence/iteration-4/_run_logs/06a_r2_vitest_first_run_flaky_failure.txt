@@ -1,0 +1,45 @@
+
+> jimu-hub@0.4.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v5.0.2 <repo>/app
+      Coverage enabled with v8
+
+ ❯ src/main/services/backup/archive-writer.test.ts (4 tests | 1 failed) 75ms
+   ❯ BackupArchiveWriter(F-32) (4)
+     × ファイルをストリームでZIPへ追加し、エントリごとに通知して、作業用ファイルの実サイズを返す 57ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/main/services/backup/archive-writer.test.ts > BackupArchiveWriter(F-32) > ファイルをストリームでZIPへ追加し、エントリごとに通知して、作業用ファイルの実サイズを返す
+AssertionError: expected [ 'documents/b.bin', 'data/a.txt' ] to deeply equal [ 'data/a.txt', 'documents/b.bin' ]
+
+- Expected
++ Received
+
+  [
+-   "data/a.txt",
+    "documents/b.bin",
++   "data/a.txt",
+  ]
+
+ ❯ src/main/services/backup/archive-writer.test.ts:27:19
+     25|
+     26|     expect(size).toBeGreaterThan(0)
+     27|     expect(names).toEqual(['data/a.txt', 'documents/b.bin'])
+       |                   ^
+     28|     const zip = new AdmZip(partial)
+     29|     expect(zip.getEntry('data/a.txt')!.getData().toString('utf-8')).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 119 passed (120)
+      Tests  1 failed | 1241 passed (1242)
+   Start at  05:15:12
+   Duration  17.66s (tests 42%, import 21%, environment 17%, setup 14%, transform 5%, worker 3%)
+
+    Isolate  120 workers spawned · ~244ms startup each (spawn + environment, per file)
+             at least ~3.95s faster with isolate: false — reuses workers across files instead of one per file
+

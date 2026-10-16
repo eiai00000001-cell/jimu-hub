@@ -1,0 +1,4 @@
+schema_version=5
+テーブル: accounts,app_meta,cash_record_history,cash_records,clients,company_profile,document_number_sequences,invoice_line_items,invoices,project_link_history,projects,quote_line_items,quotes,receipts,sqlite_sequence
+件数: clients=2 projects=2 quotes=2 invoices=1 cash_records=3 receipts=1
+ファイル数: 3

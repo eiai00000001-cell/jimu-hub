@@ -1,6 +1,7 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { TaskRepository } from '../repositories/task.repository'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BACKUP_MESSAGES, PROJECT_MESSAGES } from '@shared/messages/messages'
@@ -24,7 +25,7 @@ interface Env {
 }
 
 function createEnv(name: string): Env {
-  const dir = mkdtempSync(join(tmpdir(), `jimuhub-bkp-${name}-`))
+  const dir = createWorkDir('unit', `jimuhub-bkp-${name}`)
   const dbFile = join(dir, 'data.sqlite')
   const documentsDir = join(dir, 'documents')
   const db = new Database(dbFile)
@@ -44,7 +45,12 @@ function createEnv(name: string): Env {
       appVersion: '0.4.0'
     }),
     records: createRecordServices(db, documentsDir),
-    projects: new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
+    projects: new ProjectService(
+      db,
+      new ProjectRepository(db),
+      new ProjectSummaryRepository(db),
+      new TaskRepository(db)
+    )
   }
 }
 

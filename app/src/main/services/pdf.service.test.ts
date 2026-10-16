@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, readFileSync, readdirSync, existsSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { pdfTempDir } from './pdf/temp-files'
@@ -80,7 +80,7 @@ describe('PdfService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     printToPDF.mockResolvedValue(FAKE_PDF_CONTENT)
-    documentsDir = mkdtempSync(join(tmpdir(), 'jimuhub-pdf-service-test-'))
+    documentsDir = createWorkDir('unit', 'jimuhub-pdf-service-test')
     service = new PdfService({ documentsDir })
   })
 

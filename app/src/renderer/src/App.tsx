@@ -15,6 +15,9 @@ import { AccountListPage } from './pages/AccountListPage'
 import { ProjectListPage } from './pages/ProjectListPage'
 import { ProjectFormPage } from './pages/ProjectFormPage'
 import { ProjectDetailPage } from './pages/ProjectDetailPage'
+import { TaskListPage } from './pages/TaskListPage'
+import { TaskFormPage } from './pages/TaskFormPage'
+import { TaskDetailPage } from './pages/TaskDetailPage'
 import { StartupErrorPage } from './pages/StartupErrorPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { NavigationContext } from './layout/NavigationContext'
@@ -46,6 +49,10 @@ type Route =
   | { name: 'projectNew' }
   | { name: 'projectEdit'; id: number }
   | { name: 'projectDetail'; id: number; flashMessage?: string }
+  | { name: 'taskList' }
+  | { name: 'taskNew' }
+  | { name: 'taskEdit'; id: number }
+  | { name: 'taskDetail'; id: number }
   | { name: 'cashList'; tab?: CashTab; flashMessage?: string }
   | { name: 'cashNew'; kind: 'income' | 'expense' }
   | { name: 'cashEdit'; id: number }
@@ -92,7 +99,8 @@ export function App(): ReactElement {
         goClients: () => setRoute({ name: 'clientList' }),
         goProjects: () => setRoute({ name: 'projectList' }),
         goDocuments: () => setRoute({ name: 'documentList' }),
-        goCash: () => setRoute({ name: 'cashList' })
+        goCash: () => setRoute({ name: 'cashList' }),
+        goTasks: () => setRoute({ name: 'taskList' })
       }}
     >
       {renderRoute()}
@@ -179,6 +187,42 @@ export function App(): ReactElement {
             onOpenQuote={(id) => setRoute({ name: 'quoteDetail', id })}
             onOpenInvoice={(id) => setRoute({ name: 'invoiceDetail', id })}
             onOpenRecord={(id) => setRoute({ name: 'cashDetail', id, from: 'records' })}
+            onOpenTask={(id) => setRoute({ name: 'taskDetail', id })}
+          />
+        )
+      case 'taskList':
+        return (
+          <TaskListPage
+            onNewTask={() => setRoute({ name: 'taskNew' })}
+            onSelectTask={(id) => setRoute({ name: 'taskDetail', id })}
+          />
+        )
+      case 'taskNew':
+        return (
+          <TaskFormPage
+            mode="new"
+            onSaved={(id) => setRoute({ name: 'taskDetail', id })}
+            onCancel={() => setRoute({ name: 'taskList' })}
+          />
+        )
+      case 'taskEdit':
+        return (
+          <TaskFormPage
+            mode="edit"
+            taskId={route.id}
+            onSaved={(id) => setRoute({ name: 'taskDetail', id })}
+            onCancel={() => setRoute({ name: 'taskDetail', id: route.id })}
+          />
+        )
+      case 'taskDetail':
+        return (
+          <TaskDetailPage
+            key={route.id}
+            taskId={route.id}
+            onBackToList={() => setRoute({ name: 'taskList' })}
+            onEdit={(id) => setRoute({ name: 'taskEdit', id })}
+            onDeleted={() => setRoute({ name: 'taskList' })}
+            onOpenProject={(id) => setRoute({ name: 'projectDetail', id })}
           />
         )
       case 'accountList':

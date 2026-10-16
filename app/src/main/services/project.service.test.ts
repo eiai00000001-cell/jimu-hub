@@ -1,8 +1,9 @@
 import { ProjectSummaryRepository } from '../repositories/project-summary.repository'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { TaskRepository } from '../repositories/task.repository'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROJECT_MESSAGES } from '@shared/messages/messages'
 import type { ProjectInput } from '@shared/schemas/project.schema'
 import { Database } from '../db/db'
@@ -26,11 +27,17 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
   let clients: ClientRepository
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'project-service-test-'))
+    dir = createWorkDir('unit', 'project-service-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     clients = new ClientRepository(db)
-    service = new ProjectService(db, new ProjectRepository(db), new ProjectSummaryRepository(db))
+    service = new ProjectService(
+      db,
+      new ProjectRepository(db),
+      new ProjectSummaryRepository(db),
+      new TaskRepository(db),
+      () => new Date('2026-10-14T00:00:00.000Z')
+    )
   })
   afterEach(() => {
     db.close()
@@ -205,6 +212,102 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
         (db.sqlite.prepare('SELECT COUNT(*) AS c FROM project_link_history').get() as { c: number })
           .c
       ).toBe(1)
+    })
+
+    describe('紐づくタスクの扱い(R-54。詳細設計書4.27章手順4)', () => {
+      const addTask = (name: string, projectId: number | null, done = false): number => {
+        const repo = new TaskRepository(db)
+        const { id } = repo.insert(
+          { name, memo: 'メモ', dueDate: '2026-10-20', projectId },
+          '2026-10-01T00:00:00.000Z'
+        )
+        if (done) repo.markDone(id, '2026-10-02T00:00:00.000Z')
+        return id
+      }
+
+      it('紐づくタスクは削除されず「案件なし」に戻り、戻した件数を返す。他の案件のタスクは変わらない', () => {
+        const target = service.createProject(input({ name: '削除する案件' })).id
+        const other = service.createProject(input({ name: '残る案件' })).id
+        const open = addTask('未完了', target)
+        const done = addTask('完了', target, true)
+        const otherTask = addTask('他の案件', other)
+
+        const result = service.deleteProject(target)
+
+        expect(result).toEqual({ success: true, releasedTaskCount: 2 })
+        const tasks = new TaskRepository(db)
+        expect(tasks.findById(open)).toMatchObject({
+          projectId: null,
+          name: '未完了',
+          memo: 'メモ',
+          dueDate: '2026-10-20',
+          status: 'open',
+          updatedAt: '2026-10-14T00:00:00.000Z'
+        })
+        expect(tasks.findById(done)).toMatchObject({
+          projectId: null,
+          status: 'done',
+          completedAt: '2026-10-02T00:00:00.000Z'
+        })
+        expect(tasks.findById(otherTask)?.projectId).toBe(other)
+        expect(() => service.getProject(target)).toThrow(PROJECT_MESSAGES.notFound)
+      })
+
+      it('タスクがない案件を削除すると、戻した件数は0', () => {
+        const { id } = service.createProject(input())
+        expect(service.deleteProject(id)).toEqual({ success: true, releasedTaskCount: 0 })
+      })
+
+      it('タスクは削除可否の判定(紐づけ件数・deletable)に含めない', () => {
+        const { id } = service.createProject(input())
+        addTask('タスク', id)
+        expect(service.getProject(id).deletable).toBe(true)
+        expect(new ProjectRepository(db).countLinks(id)).toBe(0)
+        expect(() => service.deleteProject(id)).not.toThrow()
+      })
+
+      it('書類・記録の紐づけがある案件は、タスクがあっても削除せず、タスクも変更しない', () => {
+        const { id } = service.createProject(input())
+        const task = addTask('タスク', id)
+        linkQuote(client(), id)
+        expect(() => service.deleteProject(id)).toThrow(PROJECT_MESSAGES.hasLinks)
+        expect(new TaskRepository(db).findById(task)).toMatchObject({
+          projectId: id,
+          updatedAt: '2026-10-01T00:00:00.000Z'
+        })
+      })
+
+      it('案件の削除に失敗した場合は、タスクを案件なしに戻した更新も含めてロールバックする', () => {
+        const { id } = service.createProject(input())
+        const task = addTask('タスク', id)
+        const spy = vi.spyOn(ProjectRepository.prototype, 'delete').mockImplementation(() => {
+          throw new Error('テスト用の削除失敗')
+        })
+        try {
+          expect(() => service.deleteProject(id)).toThrow('テスト用の削除失敗')
+        } finally {
+          spy.mockRestore()
+        }
+        expect(new TaskRepository(db).findById(task)).toMatchObject({
+          projectId: id,
+          updatedAt: '2026-10-01T00:00:00.000Z'
+        })
+        expect(service.getProject(id).id).toBe(id)
+      })
+
+      it('タスクの解除に失敗した場合も、案件は削除されない', () => {
+        const { id } = service.createProject(input())
+        addTask('タスク', id)
+        const spy = vi.spyOn(TaskRepository.prototype, 'clearProject').mockImplementation(() => {
+          throw new Error('テスト用の解除失敗')
+        })
+        try {
+          expect(() => service.deleteProject(id)).toThrow('テスト用の解除失敗')
+        } finally {
+          spy.mockRestore()
+        }
+        expect(service.getProject(id).tasks).toHaveLength(1)
+      })
     })
 
     it('存在しない案件の削除はエラー', () => {
@@ -408,6 +511,84 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
         incomes: 0,
         expenses: 0
       })
+    })
+  })
+
+  describe('案件詳細のタスク(F-38。詳細設計書4.38章)', () => {
+    it('紐づくタスクを未完了・完了とも、期限順・overdue付きで返し、収支・削除可否には含めない', () => {
+      const a = service.createProject(input({ name: '案件A' })).id
+      const b = service.createProject(input({ name: '案件B' })).id
+      const tasks = new TaskRepository(db)
+      tasks.insert(
+        { name: 'A-期限なし', memo: null, dueDate: null, projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      )
+      const done = tasks.insert(
+        { name: 'A-完了', memo: null, dueDate: '2026-09-01', projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      ).id
+      tasks.markDone(done, '2026-10-02T00:00:00.000Z')
+      tasks.insert(
+        { name: 'A-超過', memo: null, dueDate: '2026-10-01', projectId: a },
+        '2026-10-01T00:00:00.000Z'
+      )
+      tasks.insert(
+        { name: 'B', memo: null, dueDate: null, projectId: b },
+        '2026-10-01T00:00:00.000Z'
+      )
+
+      const detail = service.getProject(a)
+      expect(detail.tasks.map((t) => t.name)).toEqual(['A-完了', 'A-超過', 'A-期限なし'])
+      expect(detail.tasks.map((t) => t.status)).toEqual(['done', 'open', 'open'])
+      expect(detail.tasks.map((t) => t.overdue)).toEqual([false, true, false])
+      expect(detail.deletable).toBe(true)
+      expect(detail.summary.counts).toEqual(service.getProject(b).summary.counts)
+      expect(service.getProject(a).tasks.length).toBe(3)
+    })
+
+    it('「今日」は、現在時刻の関数(now)と連動する(todayProvider省略時。R-29)', () => {
+      const tasks = new TaskRepository(db)
+      const projects = new ProjectRepository(db)
+      const pid = service.createProject(input()).id
+      tasks.insert(
+        { name: '昨日が期限', memo: null, dueDate: '2026-10-14', projectId: pid },
+        '2026-10-01T00:00:00.000Z'
+      )
+      tasks.insert(
+        { name: '今日が期限', memo: null, dueDate: '2026-10-15', projectId: pid },
+        '2026-10-01T00:00:00.000Z'
+      )
+      const at = (y: number, m: number, d: number, h: number): ProjectService =>
+        new ProjectService(
+          db,
+          projects,
+          new ProjectSummaryRepository(db),
+          tasks,
+          () => new Date(y, m - 1, d, h)
+        )
+      const overdue = (s: ProjectService): Record<string, boolean> =>
+        Object.fromEntries(s.getProject(pid).tasks.map((t) => [t.name, t.overdue]))
+      expect(overdue(at(2026, 10, 15, 0))).toEqual({ 昨日が期限: true, 今日が期限: false })
+      expect(overdue(at(2026, 10, 14, 23))).toEqual({ 昨日が期限: false, 今日が期限: false })
+      expect(overdue(at(2026, 10, 16, 0))).toEqual({ 昨日が期限: true, 今日が期限: true })
+    })
+
+    it('タスクがない案件は空の配列。案件を完了にしても、タスクは変更されない', () => {
+      const id = service.createProject(input()).id
+      expect(service.getProject(id).tasks).toEqual([])
+      new TaskRepository(db).insert(
+        { name: 't', memo: null, dueDate: null, projectId: id },
+        '2026-10-01T00:00:00.000Z'
+      )
+      service.completeProject(id)
+      expect(service.getProject(id).tasks).toMatchObject([
+        {
+          name: 't',
+          status: 'open',
+          projectName: 'アルファ商事 保守契約',
+          projectStatus: 'completed'
+        }
+      ])
     })
   })
 })

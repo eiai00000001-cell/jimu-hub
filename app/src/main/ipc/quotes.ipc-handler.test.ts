@@ -1,8 +1,8 @@
 import { ProjectRepository } from '../repositories/project.repository'
 import { ProjectLinkService } from '../services/project-link.service'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '@shared/ipc/channels'
 
@@ -89,7 +89,7 @@ describe('QuotesIpcHandler', () => {
     handlers.clear()
     vi.clearAllMocks()
     openPath.mockResolvedValue('')
-    documentsDir = join(mkdtempSync(join(tmpdir(), 'jimuhub-quote-ipc-')), 'documents')
+    documentsDir = join(createWorkDir('unit', 'jimuhub-quote-ipc'), 'documents')
     mkdirSync(documentsDir, { recursive: true })
     pdfFile = join(documentsDir, '2026-001_株式会社サンプル.pdf')
     writeFileSync(pdfFile, '%PDF')

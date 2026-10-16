@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import AdmZip from 'adm-zip'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -8,7 +8,7 @@ import { BackupArchiveWriter } from './archive-writer'
 describe('BackupArchiveWriter(F-32)', () => {
   let dir: string
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'archive-writer-test-'))
+    dir = createWorkDir('unit', 'archive-writer-test')
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 

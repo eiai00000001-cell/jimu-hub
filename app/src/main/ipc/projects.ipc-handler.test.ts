@@ -151,4 +151,20 @@ describe('ProjectsIpcHandler(IPC境界での再検証)', () => {
     ).rejects.toThrow()
     expect(linkService.changeLink).toHaveBeenCalledTimes(2)
   })
+
+  it('削除: 案件なしに戻したタスクの件数を、結果にそのまま含めて返す(F-27・R-54)', async () => {
+    service.deleteProject!.mockReturnValue({ success: true, releasedTaskCount: 3 })
+    expect(await call(IPC_CHANNELS.projectsDelete, 4)).toEqual({
+      success: true,
+      releasedTaskCount: 3
+    })
+  })
+
+  it('案件詳細: 紐づくタスク(tasks)を含めた結果をそのまま返す(F-38)', async () => {
+    service.getProject!.mockReturnValue({ id: 4, tasks: [{ id: 1, name: 't' }] })
+    expect(await call(IPC_CHANNELS.projectsGet, 4)).toEqual({
+      id: 4,
+      tasks: [{ id: 1, name: 't' }]
+    })
+  })
 })

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, rmSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -11,7 +11,7 @@ import { COMPANY, dbQuery, pdfText, sha256File } from './helpers'
  * エクスポート→(別データを追加)→復元、までをすべて画面操作で通す。機能横断のデータ受け渡しを確認する(観点5)。
  */
 test('TC-74: 初回設定から見積書・請求書・入金・バックアップ復元までの通しシナリオ', async () => {
-  const workDir = mkdtempSync(join(tmpdir(), 'jimuhub-scenario-journey-'))
+  const workDir = createWorkDir('e2e', 'jimuhub-scenario-journey')
   const zip = join(workDir, 'journey.zip')
   const launched: LaunchedApp = await launchApp({
     JIMUHUB_E2E_EXPORT_PATH: zip,

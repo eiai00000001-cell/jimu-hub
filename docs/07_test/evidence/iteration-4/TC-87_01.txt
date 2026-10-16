@@ -1,0 +1,1 @@
+作成→更新→領収書追加→領収書を外す の各時点: recordHashOk=true historyHashOk=true receipts=ok,ok,ok

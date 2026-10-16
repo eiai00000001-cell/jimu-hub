@@ -1,6 +1,5 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { createWorkDir, removeWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -25,7 +24,7 @@ export interface LaunchedApp {
  *   (`npm run test:e2e` / `test:e2e:headed` はビルドを自動実行してから起動する)。
  */
 export async function launchApp(extraEnv: Record<string, string> = {}): Promise<LaunchedApp> {
-  const dataDir = mkdtempSync(join(tmpdir(), 'jimuhub-e2e-'))
+  const dataDir = createWorkDir('e2e', 'jimuhub-e2e')
   const headed = process.env.E2E_HEADED === '1'
 
   const app = await electron.launch({
@@ -45,5 +44,5 @@ export async function launchApp(extraEnv: Record<string, string> = {}): Promise<
 
 export async function closeApp(launched: LaunchedApp): Promise<void> {
   await launched.app.close()
-  rmSync(launched.dataDir, { recursive: true, force: true })
+  removeWorkDir(launched.dataDir)
 }

@@ -11,7 +11,8 @@ function renderShell(props: Partial<Parameters<typeof AppShell>[0]> = {}) {
     goClients: vi.fn(),
     goProjects: vi.fn(),
     goDocuments: vi.fn(),
-    goCash: vi.fn()
+    goCash: vi.fn(),
+    goTasks: vi.fn()
   }
   render(
     <NavigationContext.Provider value={actions}>
@@ -33,6 +34,8 @@ describe('AppShell(サイドバーの既定動作・O2)', () => {
     await userEvent.click(screen.getByText('見積書・請求書'))
     await userEvent.click(screen.getByText('入出金・経費'))
     await userEvent.click(screen.getByText('案件管理'))
+    await userEvent.click(screen.getByText('タスク・期限'))
+    expect(actions.goTasks).toHaveBeenCalledTimes(1)
     expect(actions.goProjects).toHaveBeenCalledTimes(1)
     expect(actions.goCash).toHaveBeenCalledTimes(1)
     expect(actions.goHome).toHaveBeenCalledTimes(1)
@@ -40,12 +43,16 @@ describe('AppShell(サイドバーの既定動作・O2)', () => {
     expect(actions.goDocuments).toHaveBeenCalledTimes(1)
   })
 
-  it('「準備中」メニューを押すと案内を表示する', async () => {
+  it('「タスク・期限」は有効なメニューで、「準備中」の表示や案内は出ない(v4.1)', async () => {
     renderShell()
+    expect(screen.queryByText('準備中')).not.toBeInTheDocument()
     await userEvent.click(screen.getByText('タスク・期限'))
-    expect(
-      screen.getByText(/「タスク・期限」は以降のイテレーションで実装予定です/)
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/実装予定です/)).not.toBeInTheDocument()
+  })
+
+  it('タスク・期限の画面では、サイドバーの「タスク・期限」が選択状態になる', () => {
+    renderShell({ activeMenu: 'tasks' })
+    expect(screen.getByText('タスク・期限').closest('button')).toHaveClass('active')
   })
 
   it('confirmLeaveがfalseを返した場合は遷移しない', async () => {

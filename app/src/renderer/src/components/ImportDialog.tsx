@@ -134,6 +134,11 @@ export function ImportDialog({ onClose, onImported }: ImportDialogProps): ReactE
               {BACKUP_MESSAGES.confirmNoProjects(inspection.currentProjectCount)}
             </Message>
           ) : null}
+          {!inspection.hasTasks && inspection.currentTaskCount >= 1 ? (
+            <Message variant="warning">
+              {BACKUP_MESSAGES.confirmNoTasks(inspection.currentTaskCount)}
+            </Message>
+          ) : null}
           <p className="note">{BACKUP_MESSAGES.confirmBackupNotice}</p>
           <div className="modal-actions">
             <Button

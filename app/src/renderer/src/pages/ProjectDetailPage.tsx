@@ -4,7 +4,8 @@ import { Button, TextLink } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import { ProjectChangeDialog } from '../components/ProjectChangeDialog'
-import { PROJECT_MESSAGES } from '@shared/messages/messages'
+import { PROJECT_MESSAGES, TASK_MESSAGES } from '@shared/messages/messages'
+import { TaskDueDate } from '../components/TaskDueDate'
 import type { ProjectDetail, ProjectLinkTargetType, ProjectRef } from '@shared/types/project'
 import { toErrorMessage } from '../utils/error-message'
 import {
@@ -30,6 +31,7 @@ interface ProjectDetailPageProps {
   onOpenQuote: (id: number) => void
   onOpenInvoice: (id: number) => void
   onOpenRecord: (id: number) => void
+  onOpenTask: (id: number) => void
 }
 
 /**
@@ -45,7 +47,8 @@ export function ProjectDetailPage({
   onDeleted,
   onOpenQuote,
   onOpenInvoice,
-  onOpenRecord
+  onOpenRecord,
+  onOpenTask
 }: ProjectDetailPageProps): ReactElement {
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -98,7 +101,14 @@ export function ProjectDetailPage({
   }
 
   async function handleDelete(): Promise<void> {
-    if (!window.confirm(PROJECT_MESSAGES.confirmDelete)) return
+    if (!project) return
+    // 紐づくタスクがある場合は、件数と「案件なし」に戻る旨を併記する(F-28)
+    const taskCount = project.tasks.length
+    const message =
+      taskCount >= 1
+        ? PROJECT_MESSAGES.confirmDeleteWithTasks(taskCount)
+        : PROJECT_MESSAGES.confirmDelete
+    if (!window.confirm(message)) return
     try {
       await window.jimuhubApi.deleteProject(projectId)
       onDeleted()
@@ -114,13 +124,13 @@ export function ProjectDetailPage({
       pageTitle="案件詳細"
       headerActions={
         project ? (
-          <>
+          <div className="header-actions">
             <Button onClick={() => onEdit(projectId)}>編集</Button>
             <Button onClick={() => void handleStatusChange()}>
               {project.status === 'active' ? '完了' : '再開'}
             </Button>
             {project.deletable ? <Button onClick={() => void handleDelete()}>削除</Button> : null}
-          </>
+          </div>
         ) : null
       }
     >
@@ -363,6 +373,42 @@ export function ProjectDetailPage({
                     <td>{formatHistoryProject(entry.toProjectName)}</td>
                     <td>
                       <span className="badge badge-op-minor">{formatHistoryKind(entry.kind)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <div className="section-title">紐づくタスク</div>
+          {project.tasks.length === 0 ? (
+            <div className="empty-state">{TASK_MESSAGES.noLinkedTasks}</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>タスク名</th>
+                  <th>状態</th>
+                  <th>期限日</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.tasks.map((task) => (
+                  <tr
+                    key={task.id}
+                    className={`clickable${task.overdue ? ' overdue' : ''}${task.status === 'done' ? ' done' : ''}`}
+                    onClick={() => onOpenTask(task.id)}
+                  >
+                    <td className="task-name">
+                      <button className="link" style={{ fontSize: 13 }}>
+                        {task.name}
+                      </button>
+                    </td>
+                    <td>
+                      <Badge variant={task.status === 'open' ? 'taskOpen' : 'taskDone'} />
+                    </td>
+                    <td>
+                      <TaskDueDate dueDate={task.dueDate} overdue={task.overdue} />
                     </td>
                   </tr>
                 ))}

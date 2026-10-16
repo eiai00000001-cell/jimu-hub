@@ -1,5 +1,5 @@
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Database } from '../db/db'
@@ -15,7 +15,7 @@ describe('ProjectSummaryRepository(F-31。詳細設計書4.31章)', () => {
   let b: number
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'project-summary-test-'))
+    dir = createWorkDir('unit', 'project-summary-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     repository = new ProjectSummaryRepository(db)

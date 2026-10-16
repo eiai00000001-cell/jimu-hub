@@ -14,6 +14,8 @@ import type {
   ProjectSelectable
 } from '../types/project'
 import type { ProjectInput, ProjectLinkChange, ProjectListFilter } from '../schemas/project.schema'
+import type { TaskInput, TaskListFilterInput } from '../schemas/task.schema'
+import type { TaskDetail, TaskListResult } from '../types/task'
 import type { SummaryResult } from '../types/summary'
 import type { PickReceiptsResult, ReceiptPreviewResult } from '../types/receipt'
 import type {
@@ -94,9 +96,11 @@ export interface BackupInspection {
   schemaVersion: number
   hasReceipts: boolean
   hasProjects: boolean
+  hasTasks: boolean
   currentReceiptCount: number
   currentProjectCount: number
-  /** 領収書・案件が消える旨の確認画面が必要か */
+  currentTaskCount: number
+  /** 領収書・案件・タスクが消える旨の確認画面が必要か */
   needsConfirmation: boolean
 }
 
@@ -173,7 +177,8 @@ export interface JimuhubApi {
   getProject(id: number): Promise<ProjectDetail>
   createProject(input: ProjectInput): Promise<{ id: number }>
   updateProject(id: number, input: ProjectInput): Promise<{ success: true }>
-  deleteProject(id: number): Promise<{ success: true }>
+  /** 紐づくタスクは削除されず「案件なし」に戻る。`releasedTaskCount`は戻したタスクの件数(R-54) */
+  deleteProject(id: number): Promise<{ success: true; releasedTaskCount: number }>
   completeProject(id: number): Promise<{ success: true }>
   reopenProject(id: number): Promise<{ success: true }>
   /** 紐づけ先の候補(進行中の案件。`includeId`の案件は完了でも含める) */
@@ -183,6 +188,18 @@ export interface JimuhubApi {
     targetType: ProjectLinkTargetType,
     targetId: number
   ): Promise<ProjectLinkHistoryEntry[]>
+  /**
+   * タスク・期限管理(F-34〜F-37)。対象が存在しない場合などはPromiseがrejectされ、メッセージは`TASK_MESSAGES`の文言。
+   * `listTasks`の`counts`は、絞り込みにかかわらず全タスクを対象にした件数
+   */
+  listTasks(filter?: TaskListFilterInput): Promise<TaskListResult>
+  getTask(id: number): Promise<TaskDetail>
+  createTask(input: TaskInput): Promise<{ id: number }>
+  updateTask(id: number, input: TaskInput): Promise<{ success: true }>
+  /** すでに完了(未完了)の場合は何も変更せず`changed: false`を返す */
+  completeTask(id: number): Promise<{ changed: boolean }>
+  reopenTask(id: number): Promise<{ changed: boolean }>
+  deleteTask(id: number): Promise<{ success: true }>
   listAccounts(filter?: AccountListFilter): Promise<AccountView[]>
   createAccount(input: AccountInput): Promise<{ id: number }>
   renameAccount(id: number, name: string): Promise<DeactivateClientResult>

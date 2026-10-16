@@ -1,0 +1,17 @@
+金額0: ok=false error=金額は1円以上9,999,999,999円以下の整数で入力してください
+金額10,000,000,000: ok=false error=金額は1円以上9,999,999,999円以下の整数で入力してください
+金額1.5: ok=false error=金額は1円以上9,999,999,999円以下の整数で入力してください
+日付1999-12-31: ok=false error=日付は2000年〜2099年の範囲で入力してください
+日付2026-02-30: ok=false error=日付は「YYYY-MM-DD」形式の正しい日付で入力してください
+摘要空白のみ: ok=false error=摘要・メモを入力してください
+摘要201文字: ok=false error=摘要・メモは200文字以内で入力してください
+種別と科目の区分不一致: ok=false error=勘定科目が種別と一致しません
+種別が列挙値外: ok=false error=Invalid option: expected one of "income"|"expense"
+税区分が列挙値外: ok=false error=Invalid option: expected one of "standard_10"|"reduced_8"|"tax_exempt"|"not_applicable"
+科目が存在しない: ok=false error=勘定科目を選択してください
+境界(金額9,999,999,999・摘要200文字): ok=true
+利用停止の取引先: 利用停止中の勘定科目・取引先は選択できません
+領収書の選択結果: [{"fileName":"memo.txt","error":"領収書として添付できるのは、PDF・JPEG・PNGのファイルです"},{"fileName":"fake.png","error":"領収書として添付できるのは、PDF・JPEG・PNGのファイルです"},{"fileName":"empty.pdf","error":"領収書として添付できるのは、PDF・JPEG・PNGのファイルです"},{"fileName":"too_big.pdf","error":"領収書は1ファイル10MBまでです"}]
+token重複: 同じ領収書が重複して指定されています
+6件: 領収書は1つの記録につき5件までです
+無効token: 選択したファイルが無効になりました。もう一度ファイルを選択してください

@@ -1,0 +1,3 @@
+UPDATE: ERROR: Error: stepping, 履歴は変更できません (19)
+DELETE: ERROR: Error: stepping, 履歴は削除できません (19)
+件数: 3

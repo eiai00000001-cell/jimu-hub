@@ -1,5 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Database } from '../../db/db'
@@ -14,11 +14,17 @@ const LIMITS = {
   maxTotalUncompressedBytes: 1024 * 1024
 }
 
-function manifest(schemaVersion: number, receipts: number, projects?: number): string {
+function manifest(
+  schemaVersion: number,
+  receipts: number,
+  projects?: number,
+  tasks?: number
+): string {
   const tables: Record<string, unknown> = {
     receipts: { file: 'data/receipts.jsonl', count: receipts }
   }
   if (projects !== undefined) tables.projects = { file: 'data/projects.jsonl', count: projects }
+  if (tasks !== undefined) tables.tasks = { file: 'data/tasks.jsonl', count: tasks }
   return JSON.stringify({
     format: 'jimuhub-backup',
     schemaVersion,
@@ -63,7 +69,7 @@ describe('RestoreInspector(F-33。詳細設計書4.33章)', () => {
   }
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'inspector-test-'))
+    dir = createWorkDir('unit', 'inspector-test')
     db = new Database(join(dir, 'data.sqlite'))
     db.initialize()
     store = new RestoreSessionStore()
@@ -211,5 +217,87 @@ describe('RestoreInspector(F-33。詳細設計書4.33章)', () => {
     await expect(inspector(db, { ...LIMITS, maxEntries: 1 }).inspect(path)).rejects.toBeInstanceOf(
       BackupParseError
     )
+  })
+
+  describe('タスク(v4.1。R-55)', () => {
+    const addTasks = (n: number): void => {
+      for (let i = 0; i < n; i += 1) {
+        db.sqlite.exec(
+          `INSERT INTO tasks (name, status, completed_at) VALUES ('t${i}', '${i % 2 === 0 ? 'open' : 'done'}', ${i % 2 === 0 ? 'NULL' : "'2026-10-01T00:00:00.000Z'"})`
+        )
+      }
+    }
+
+    it('タスクの有無は、スキーマバージョン6のmanifestのtasksの件数で判定する', async () => {
+      const path = join(dir, 't.zip')
+      buildZip(path, { 'manifest.json': manifest(6, 0, 0, 3) })
+      expect(await inspector().inspect(path)).toMatchObject({
+        schemaVersion: 6,
+        hasTasks: true,
+        currentTaskCount: 0,
+        needsConfirmation: false
+      })
+    })
+
+    it('現在のタスクが1件以上あり、バックアップにタスクが無い場合は確認が必要(完了のタスクも数える)', async () => {
+      addTasks(3)
+      const path = join(dir, 'nt.zip')
+      buildZip(path, { 'manifest.json': manifest(6, 0, 0, 0) })
+
+      const result = await inspector().inspect(path)
+
+      expect(result).toMatchObject({
+        hasTasks: false,
+        currentTaskCount: 3,
+        needsConfirmation: true
+      })
+    })
+
+    it('スキーマバージョン5以前のファイルは、常にタスクを含まないものとして扱う', async () => {
+      addTasks(1)
+      const v5 = join(dir, 'v5.zip')
+      buildZip(v5, { 'manifest.json': manifest(5, 0, 1) })
+      expect(await inspector().inspect(v5)).toMatchObject({
+        hasTasks: false,
+        currentTaskCount: 1,
+        needsConfirmation: true
+      })
+      const v4 = join(dir, 'v4.zip')
+      buildZip(v4, { 'data.json': legacy(4, [{ id: 1 }]) })
+      expect(await inspector().inspect(v4)).toMatchObject({
+        hasTasks: false,
+        needsConfirmation: true
+      })
+      const json = join(dir, 'legacy.json')
+      writeFileSync(json, legacy(3))
+      expect(await inspector().inspect(json)).toMatchObject({
+        hasTasks: false,
+        needsConfirmation: true
+      })
+    })
+
+    it('現在のタスクが0件なら、タスクを含まないバックアップでも確認は不要', async () => {
+      const path = join(dir, 'zero.zip')
+      buildZip(path, { 'manifest.json': manifest(5, 0) })
+      expect(await inspector().inspect(path)).toMatchObject({
+        hasTasks: false,
+        currentTaskCount: 0,
+        needsConfirmation: false
+      })
+    })
+
+    it('データベースを読めない場合は、現在のタスクを0件として扱う', async () => {
+      const path = join(dir, 'nodb.zip')
+      buildZip(path, { 'manifest.json': manifest(5, 0) })
+      expect(await inspector(null).inspect(path)).toMatchObject({ currentTaskCount: 0 })
+    })
+
+    it('領収書・案件・タスクの確認は、1回の確認画面にまとめて必要になる(いずれか1つで必要)', async () => {
+      addTasks(1)
+      const path = join(dir, 'only-tasks.zip')
+      buildZip(path, { 'manifest.json': manifest(5, 1, 1) })
+      // 領収書・案件は含まれ、タスクだけが消える場合も確認が必要
+      expect((await inspector().inspect(path)).needsConfirmation).toBe(true)
+    })
   })
 })

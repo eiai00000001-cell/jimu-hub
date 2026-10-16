@@ -60,7 +60,7 @@ describe('TopPage', () => {
     expect(onNavigateClients).toHaveBeenCalled()
   })
 
-  it('「準備中」メニュー押下では案内を表示し遷移しない', async () => {
+  it('準備中のメニューはなく、案内文は「準備中」に触れない(モックアップ F-01_top)', () => {
     render(
       <TopPage
         onNavigateClients={vi.fn()}
@@ -71,8 +71,8 @@ describe('TopPage', () => {
       />
     )
 
-    await userEvent.click(screen.getByText('タスク・期限'))
-    expect(await screen.findByText(/実装予定です/)).toBeInTheDocument()
+    expect(screen.queryByText(/準備中/)).not.toBeInTheDocument()
+    expect(screen.getByText('左のサイドメニューから機能を選択してください。')).toBeInTheDocument()
   })
 
   it('「データをエクスポート」押下でエクスポートダイアログを開く', async () => {

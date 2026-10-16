@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import AdmZip from 'adm-zip'
 import { mapExportTable, readExport, renameEntryInZip } from './backup/test-helpers'
@@ -24,7 +24,7 @@ interface Env {
 }
 
 function createEnv(name: string, restoreLimits?: { maxFileBytes: number }): Env {
-  const dir = mkdtempSync(join(tmpdir(), `jimuhub-bk-${name}-`))
+  const dir = createWorkDir('unit', `jimuhub-bk-${name}`)
   const dbFile = join(dir, 'data.sqlite')
   const documentsDir = join(dir, 'documents')
   const db = new Database(dbFile)
@@ -99,11 +99,11 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     return { recordId: id }
   }
 
-  it('エクスポート: スキーマv5のmanifest・JSON Linesに新テーブルを含め、領収書のfilePathは`documents/`始まり、履歴はオブジェクト、領収書ファイルを同梱する(外した領収書も)', async () => {
+  it('エクスポート: 最新スキーマ(v6)のmanifest・JSON Linesに新テーブルを含め、領収書のfilePathは`documents/`始まり、履歴はオブジェクト、領収書ファイルを同梱する(外した領収書も)', async () => {
     seed()
     expect((await src.service.exportData(zipPath)).success).toBe(true)
     const exported = readExport(zipPath)
-    expect(exported.manifest.schemaVersion).toBe(5)
+    expect(exported.manifest.schemaVersion).toBe(6)
     expect(exported.records('accounts')).toHaveLength(INITIAL_ACCOUNTS.length)
     expect(exported.records('cashRecords')).toHaveLength(2)
     expect(exported.records('cashRecords').find((r) => r.isDeleted === true)).toBeDefined()
@@ -346,8 +346,8 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     const exp: Array<[string, number, number]> = []
     await src.service.exportData(zipPath, (p) => exp.push([p.stage, p.current, p.total]))
     const records = exp.filter(([stage]) => stage === 'records')
-    expect(records).toHaveLength(12)
-    expect(records.at(-1)).toEqual(['records', 12, 12])
+    expect(records).toHaveLength(13)
+    expect(records.at(-1)).toEqual(['records', 13, 13])
     // PDF・領収書ファイル(領収書2件)は、1件ごとに通知する。最後はZIPの仕上げ中を示す通知(packing)
     expect(exp.filter(([stage]) => stage === 'files')).toEqual([
       ['files', 1, 2],
@@ -359,8 +359,8 @@ describe('BackupService: 入出金・領収書のエクスポート/復元(F-02/
     await dst.service.importData(zipPath, (p) => imp.push([p.phase, p.stage, p.current, p.total]))
     // 展開したファイル(manifest・.jsonl・領収書)ごとに通知する
     const extract = imp.filter(([, stage]) => stage === 'extract')
-    expect(extract).toHaveLength(15)
-    expect(extract.at(-1)).toEqual(['import', 'extract', 15, 15])
+    expect(extract).toHaveLength(16)
+    expect(extract.at(-1)).toEqual(['import', 'extract', 16, 16])
     expect(imp.every(([phase]) => phase === 'import')).toBe(true)
   })
 

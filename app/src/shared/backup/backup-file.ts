@@ -9,9 +9,10 @@ import { z } from 'zod'
  * エクスポートファイルの最新スキーマバージョン(DBのschema_versionと同一の値)。
  * 1: 取引先のみ / 2: フリガナ・自社情報・見積書・請求書を追加 / 3: pdfHashMismatchを追加(ZIP形式) /
  * 4: 勘定科目・入出金経費の記録・領収書・履歴を追加(領収書ファイルはZIPの`documents/receipts/`に同梱) /
- * 5: `data.json`1本から`manifest.json`+JSON Lines(`data/<名前>.jsonl`)へ変更し、案件(`projects`等)を追加
+ * 5: `data.json`1本から`manifest.json`+JSON Lines(`data/<名前>.jsonl`)へ変更し、案件(`projects`等)を追加 /
+ * 6: タスク(`tasks`)を追加
  */
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6
 
 export const BackupClientRecordSchema = z.object({
   id: z.number().int(),
@@ -57,7 +58,9 @@ export const BackupFileSchema = z.object({
     cashRecordHistory: z.array(BackupRowSchema).default([]),
     // スキーマバージョン4以前のファイルには存在しない(案件なし。詳細設計書4.3章手順4)
     projects: z.array(BackupRowSchema).default([]),
-    projectLinkHistory: z.array(BackupRowSchema).default([])
+    projectLinkHistory: z.array(BackupRowSchema).default([]),
+    // スキーマバージョン5以前のファイルには存在しない(タスクなし。詳細設計書4.3章手順4)
+    tasks: z.array(BackupRowSchema).default([])
   })
 })
 /** 検証・正規化後のバックアップ構造(省略可能なテーブルは既定値で補われている) */

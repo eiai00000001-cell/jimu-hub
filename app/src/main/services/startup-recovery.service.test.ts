@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
+import { createWorkDir } from '@test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { exportToLegacyJson } from './backup/test-helpers'
 import { Database } from '../db/db'
@@ -33,7 +33,7 @@ describe('StartupRecoveryService(F-09)', () => {
   let service: StartupRecoveryService
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'jimuhub-recovery-test-'))
+    dir = createWorkDir('unit', 'jimuhub-recovery-test')
     dbFilePath = join(dir, 'data.sqlite')
     backupsDir = join(dir, 'backups')
     documentsDir = join(dir, 'documents')

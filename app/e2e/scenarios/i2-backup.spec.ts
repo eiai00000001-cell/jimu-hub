@@ -10,7 +10,6 @@ import {
 } from '../../src/main/services/backup/test-helpers'
 import {
   existsSync,
-  mkdtempSync,
   openSync,
   closeSync,
   writeSync,
@@ -20,7 +19,7 @@ import {
   copyFileSync,
   readdirSync
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -64,7 +63,7 @@ const state: Apps = {}
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async () => {
-  workDir = mkdtempSync(join(tmpdir(), 'jimuhub-i2-backup-'))
+  workDir = createWorkDir('e2e', 'jimuhub-i2-backup')
   fx = makeReceiptFixtures()
   sourceZip = join(workDir, 'source.zip')
   const src = await launchApp({
@@ -198,7 +197,7 @@ interface ZipEdit {
   editManifest: (edit: (manifest: Record<string, unknown>) => void) => void
 }
 
-/** 元のZIP(新形式、スキーマ版5)を複製して加工する */
+/** 元のZIP(新形式、スキーマ版6)を複製して加工する */
 function modifiedZip(name: string, mutate: (ctx: ZipEdit) => void): string {
   const out = join(workDir, name)
   copyFileSync(sourceZip, out)
@@ -262,7 +261,7 @@ test('TC-92: エクスポート→復元の往復(領収書・勘定科目・記
       cashRecordHistory: exported.records('cashRecordHistory')
     } as Record<string, Array<Record<string, unknown>>>
   }
-  expect(data.schemaVersion).toBe(5)
+  expect(data.schemaVersion).toBe(6)
   expect(Object.keys(exported.manifest.tables)).toEqual(
     expect.arrayContaining([
       'accounts',
@@ -542,7 +541,7 @@ test('TC-93: 復元時の改変検知(領収書ファイルの改ざん・欠落
   }
 })
 
-test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き戻し(スキーマv1〜v3のZIP、JSON単体、v5、壊れたファイル、1GiB超、DB整合性違反)', async () => {
+test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き戻し(スキーマv1〜v3のZIP、JSON単体、v7(現行より新しい版)、壊れたファイル、1GiB超、DB整合性違反)', async () => {
   const { window, dataDir } = await startTarget(sourceZip)
   await mustApi(window, 'importData') // まず通常の復元(領収書ありの状態にする)
   const base = dumpAll(dataDir, dbQuery)
@@ -559,9 +558,9 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   const r1 = await mustApi<ImportRes>(window, 'importData')
   expect(r1.success).toBe(false)
   expect(r1.error).toContain('読み込めませんでした')
-  const v5 = modifiedZip('v6.zip', ({ editManifest }) =>
+  const v5 = modifiedZip('v7.zip', ({ editManifest }) =>
     editManifest((m) => {
-      m.schemaVersion = 6 // 現在のアプリが対応する版(5)より新しい
+      m.schemaVersion = 7 // 現在のアプリが対応する版(6)より新しい
     })
   )
   await setImport(v5)
@@ -787,8 +786,8 @@ test('TC-95: スキーマv3(イテレーション1)のデータからの起動(�
   // v4アプリで起動
   const re = await relaunchOnDir(dataDir)
   await expect(re.window.getByText('事務HUB').first()).toBeVisible()
-  // イテレーション3以降は、v3からの起動でも最新(スキーマ版5)まで移行する
-  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+  // イテレーション3以降は、v3からの起動でも最新(スキーマ版6)まで移行する
+  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
   expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
   expect(dbQuery(dataDir, "select count(*) from accounts where kind='expense'")).toBe('12')
   expect(dbQuery(dataDir, "select name from accounts where default_key='sales_revenue'")).toBe(
@@ -837,7 +836,7 @@ test('TC-95: スキーマv3(イテレーション1)のデータからの起動(�
   noteEvidence(
     'TC-95',
     '移行の確認結果',
-    `schema_version=5(v3から最新まで移行)、accounts=14(経費12・収入2)、既存7テーブルの内容とPDFのSHA-256は移行前後で一致、再起動後もaccounts=14`
+    `schema_version=6(v3から最新まで移行)、accounts=14(経費12・収入2)、既存7テーブルの内容とPDFのSHA-256は移行前後で一致、再起動後もaccounts=14`
   )
   await re2.app.close()
   rmSync(dataDir, { recursive: true, force: true })

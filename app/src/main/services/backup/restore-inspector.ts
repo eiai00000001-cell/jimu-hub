@@ -45,17 +45,21 @@ export class RestoreInspector {
       'SELECT COUNT(*) AS c FROM receipts WHERE removed_at IS NULL'
     )
     const currentProjectCount = this.count('SELECT COUNT(*) AS c FROM projects')
+    const currentTaskCount = this.count('SELECT COUNT(*) AS c FROM tasks')
     return {
       token: this.deps.store.register(filePath),
       fileName: basename(filePath),
       schemaVersion: found.schemaVersion,
       hasReceipts: found.hasReceipts,
       hasProjects: found.hasProjects,
+      hasTasks: found.hasTasks,
       currentReceiptCount,
       currentProjectCount,
+      currentTaskCount,
       needsConfirmation:
         (!found.hasReceipts && currentReceiptCount >= 1) ||
-        (!found.hasProjects && currentProjectCount >= 1)
+        (!found.hasProjects && currentProjectCount >= 1) ||
+        (!found.hasTasks && currentTaskCount >= 1)
     }
   }
 
@@ -70,9 +74,12 @@ export class RestoreInspector {
     }
   }
 
-  private async inspectZip(
-    filePath: string
-  ): Promise<{ schemaVersion: number; hasReceipts: boolean; hasProjects: boolean }> {
+  private async inspectZip(filePath: string): Promise<{
+    schemaVersion: number
+    hasReceipts: boolean
+    hasProjects: boolean
+    hasTasks: boolean
+  }> {
     const reader = new BackupArchiveReader(filePath, this.deps)
     try {
       const scan = await reader.scan()
@@ -89,7 +96,9 @@ export class RestoreInspector {
         return {
           schemaVersion: manifest.schemaVersion,
           hasReceipts: (manifest.tables.receipts?.count ?? 0) >= 1,
-          hasProjects: (manifest.tables.projects?.count ?? 0) >= 1
+          hasProjects: (manifest.tables.projects?.count ?? 0) >= 1,
+          // タスクはスキーマバージョン6から(5以前のmanifestにtasksがあっても採用しない)
+          hasTasks: manifest.schemaVersion >= 6 && (manifest.tables.tasks?.count ?? 0) >= 1
         }
       }
       return this.inspectLegacyJson(await reader.readText(LEGACY_DATA_ENTRY, MAX_INSPECT_BYTES))
@@ -103,6 +112,7 @@ export class RestoreInspector {
     schemaVersion: number
     hasReceipts: boolean
     hasProjects: boolean
+    hasTasks: boolean
   } {
     let parsed: ReturnType<typeof BackupFileSchema.safeParse>
     try {
@@ -114,7 +124,8 @@ export class RestoreInspector {
     return {
       schemaVersion: parsed.data.schemaVersion,
       hasReceipts: parsed.data.schemaVersion >= 4 && parsed.data.data.receipts.length >= 1,
-      hasProjects: false
+      hasProjects: false,
+      hasTasks: false
     }
   }
 

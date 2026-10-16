@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readdirSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { noteEvidence, shot } from './evidence-dir'
@@ -47,7 +47,7 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
 
   test('TC-127: 配布版で、案件の登録・紐づけ・案件別収支、エクスポート・復元(ストリーム)、復元前の確認、旧版(スキーマ版4)データの移行が動作する', async () => {
     test.setTimeout(180_000)
-    const work = mkdtempSync(join(tmpdir(), 'jimuhub-i3-pkg-'))
+    const work = createWorkDir('e2e', 'jimuhub-i3-pkg')
     const zip = join(work, 'packaged.zip')
     const srcUd = join(work, 'src-ud')
     const dstUd = join(work, 'dst-ud')
@@ -99,7 +99,7 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
       }>(w2, 'inspectBackup')
       expect(ins.inspection).toMatchObject({
         hasProjects: true,
-        schemaVersion: 5,
+        schemaVersion: 6,
         needsConfirmation: false
       })
       const r = await mustApi<{ success: boolean; error?: string }>(w2, 'importData', {
@@ -131,7 +131,7 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
     }
 
     // --- 3) 旧版(スキーマ版4)のデータから、配布版で移行する
-    const v4Ud = mkdtempSync(join(tmpdir(), 'jimuhub-i3-pkg-v4-'))
+    const v4Ud = createWorkDir('e2e', 'jimuhub-i3-pkg-v4')
     const repoRoot = join(here, '..', '..', '..')
     execFileSync(
       'node',
@@ -143,14 +143,14 @@ test.describe('配布版: 案件管理・バックアップ・復元・移行', 
     try {
       const w3 = await a3.firstWindow({ timeout: 30_000 })
       await expect(w3.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
-      expect(dbQuery(v4Ud, "select value from app_meta where key='schema_version'")).toBe('5')
+      expect(dbQuery(v4Ud, "select value from app_meta where key='schema_version'")).toBe('6')
       expect(
         readdirSync(join(v4Ud, 'backups')).filter((n) => n.startsWith('pre-migration_v4_'))
       ).toHaveLength(1)
       expect(dbQuery(v4Ud, 'select count(*) from cash_records')).toBe('3')
       await shot(w3, 'TC-127', '配布版で旧版(スキーマ版4)のデータから起動(移行済み)')
       lines.push(
-        '配布版で旧版(スキーマ版4)のデータから起動し、スキーマ版5へ移行・移行前の退避を作成・既存データを保持'
+        '配布版で旧版(スキーマ版4)のデータから起動し、最新のスキーマ版6へ移行・移行前の退避を作成・既存データを保持'
       )
     } finally {
       await a3.close().catch(() => undefined)

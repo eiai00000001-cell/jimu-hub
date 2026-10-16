@@ -8,6 +8,8 @@ interface ProjectSelectFieldProps {
   /** 編集時の現在の案件(完了の案件でも、選択肢に含める) */
   current?: ProjectRef | null
   onChange: (projectId: number | null) => void
+  /** 入力欄の下の案内文。未指定の場合は書類・入出金と共通の文言 */
+  hint?: string
 }
 
 /**
@@ -19,7 +21,8 @@ export function ProjectSelectField({
   id,
   value,
   current,
-  onChange
+  onChange,
+  hint = '任意です。完了の案件には、新しく紐づけられません'
 }: ProjectSelectFieldProps): ReactElement {
   const [projects, setProjects] = useState<ProjectSelectable[]>([])
   const currentId = current?.id
@@ -46,7 +49,7 @@ export function ProjectSelectField({
           </option>
         ))}
       </select>
-      <div className="hint">任意です。完了の案件には、新しく紐づけられません</div>
+      <div className="hint">{hint}</div>
     </div>
   )
 }

@@ -73,10 +73,26 @@ export const PROJECT_MESSAGES = {
   confirmComplete: 'この案件を完了にします。完了にしても、データは残ります。よろしいですか',
   confirmReopen: 'この案件を進行中に戻します。よろしいですか',
   confirmDelete: 'この案件を削除します。削除すると元に戻せません。よろしいですか',
+  /** 紐づくタスクがある案件の削除確認。タスクは削除されず「案件なし」に戻る(R-54。モックアップ F-28) */
+  confirmDeleteWithTasks: (count: number): string =>
+    `この案件を削除します。削除すると元に戻せません。\n紐づくタスク${count}件は削除されず、「案件なし」に戻ります。よろしいですか`,
   salesNote: '売上は、発行済みの請求書の金額(源泉徴収前)です。入金額は含みません。',
   empty: '該当する案件がありません',
   saveSuccess: '案件を保存しました',
   deleteSuccess: '案件を削除しました'
+} as const
+
+/** タスク・期限管理(F-34〜F-39。詳細設計書3.27〜3.29章、8章) */
+export const TASK_MESSAGES = {
+  nameRequired: 'タスク名を入力してください',
+  nameTooLong: 'タスク名は100文字以内で入力してください',
+  memoTooLong: 'メモは1000文字以内で入力してください',
+  dueRangeInvalid: '期限の終了日は、開始日以降の日付を入力してください',
+  notFound: '対象のタスクが見つかりません。一覧を更新しました',
+  projectNotFound: '指定された案件が見つかりません',
+  confirmDelete: 'このタスクを削除します。削除すると元に戻せません。よろしいですか',
+  emptyList: '該当するタスクはありません',
+  noLinkedTasks: 'この案件に紐づくタスクはありません'
 } as const
 
 export const RECORD_MESSAGES = {
@@ -196,6 +212,8 @@ export const BACKUP_MESSAGES = {
     `このバックアップには領収書が含まれていないため、復元すると現在の領収書(${count}件)はすべて消えます。`,
   confirmNoProjects: (count: number): string =>
     `このバックアップには案件のデータが含まれていないため、復元すると現在の案件(${count}件)と、案件への紐づけ・付け替え履歴はすべて消えます。`,
+  confirmNoTasks: (count: number): string =>
+    `このバックアップにはタスクのデータが含まれていないため、復元すると現在のタスク(${count}件)はすべて消えます。`,
   confirmBackupNotice: '復元前の状態は自動で退避され、直近3回分が保存されます。',
   confirmRestore: '復元する',
   importDiskShort:
@@ -203,6 +221,8 @@ export const BACKUP_MESSAGES = {
   importTooLarge: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした',
   importVersionTooNew:
     'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください',
+  importInvalidTask:
+    'バックアップ内のタスクのデータに、不正な項目(タスク名・メモ・期限日・状態)があるため、復元を中止しました。データは復元前の状態のままです',
   importTransactionFailure: '復元に失敗しました。データは復元前の状態に戻しました',
   importSafeguardRestoreFailure:
     '復元に失敗した上、退避データへの復旧にも失敗しました。データが破損している可能性があります。エクスポートファイルからの復元をお試しいただくか、サポートにご連絡ください'

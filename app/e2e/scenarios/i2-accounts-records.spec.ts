@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { rmSync } from 'node:fs'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 import { noteEvidence, shot } from './evidence-dir'
@@ -82,7 +83,7 @@ test('TC-78: 初期科目14件(経費12・収入2)が表示順どおりに用意
   expect(db[0]).toBe('14')
   expect(db[1]).toBe('14')
   expect(db[2]).toBe('売上高|sales_revenue')
-  expect(db[3]).toBe('5') // イテレーション3でスキーマ版5へ
+  expect(db[3]).toBe('6') // イテレーション3でスキーマ版6へ(イテレーション4でタスクを追加)
   expect(db[4]).toBe('10,20,30,40,50,60,70,80,90,100,110,120')
   noteEvidence(
     'TC-78',
@@ -803,10 +804,9 @@ test('TC-84: 履歴(タブ・種別/操作日の絞り込み・変更前後の�
   // 履歴テーブルのトリガー: DBのコピーに対してUPDATE/DELETEを試み、拒否されることを確認(実DBは変更しない)
   await app.close()
   const { execFileSync } = await import('node:child_process')
-  const { copyFileSync, mkdtempSync } = await import('node:fs')
+  const { copyFileSync } = await import('node:fs')
   const { join } = await import('node:path')
-  const { tmpdir } = await import('node:os')
-  const tmp = mkdtempSync(join(tmpdir(), 'jimuhub-i2-trg-'))
+  const tmp = createWorkDir('e2e', 'jimuhub-i2-trg')
   copyFileSync(join(dataDir, 'data.sqlite'), join(tmp, 'copy.sqlite'))
   const run = (sql: string): string => {
     try {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync, writeFileSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 
@@ -15,7 +15,7 @@ test.describe('データ復元: 領収書が消える場合の確認(F-33)', () 
   let workDir: string
 
   test.beforeEach(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-e2e-restore-confirm-'))
+    workDir = createWorkDir('e2e', 'jimuhub-e2e-restore-confirm')
     const receiptPath = join(workDir, 'dummy_receipt.pdf')
     writeFileSync(receiptPath, '%PDF-1.4\nダミーの領収書(テスト用)\n')
     const legacyPath = join(workDir, 'legacy.json')

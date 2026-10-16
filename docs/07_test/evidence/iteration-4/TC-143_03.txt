@@ -1,0 +1,7 @@
+版6(タスク4件): schemaVersion=6 hasTasks=true currentTaskCount=4 needsConfirmation=false
+版6(タスク0件): schemaVersion=6 hasTasks=false currentTaskCount=4 needsConfirmation=true
+版5のZIP(manifest。tasksなし): schemaVersion=5 hasTasks=false currentTaskCount=4 needsConfirmation=true
+版4のZIP(従来形式 data.json): schemaVersion=4 hasTasks=false currentTaskCount=4 needsConfirmation=true
+版3のJSON単体: schemaVersion=3 hasTasks=false currentTaskCount=4 needsConfirmation=true
+現在のタスク0件で版5: currentTaskCount=0 needsConfirmation=false
+現在の領収書・案件・タスクが混在しJSON単体を復元: needsConfirmation=true currentTaskCount=1

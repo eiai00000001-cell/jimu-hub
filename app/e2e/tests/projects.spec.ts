@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { createWorkDir } from '../../test-support/work-dir.mjs'
 import { join } from 'node:path'
 import { launchApp, closeApp, type LaunchedApp } from '../fixtures/electron-app'
 
@@ -18,7 +18,7 @@ test.describe('案件管理: 通し確認', () => {
   let workDir: string
 
   test.beforeEach(async () => {
-    workDir = mkdtempSync(join(tmpdir(), 'jimuhub-e2e-projects-'))
+    workDir = createWorkDir('e2e', 'jimuhub-e2e-projects')
     launched = await launchApp({
       JIMUHUB_E2E_EXPORT_PATH: join(workDir, 'backup.zip'),
       JIMUHUB_E2E_IMPORT_PATH: join(workDir, 'backup.zip')
