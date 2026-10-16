@@ -1,0 +1,7 @@
+schema_version=4
+テーブル: clients,sqlite_sequence,app_meta,company_profile,document_number_sequences,quotes,quote_line_items,invoices,invoice_line_items,accounts,cash_records,receipts,cash_record_history
+件数: clients=2 quotes=2 invoices=1 cash_records=3 receipts=1
+ファイル:
+/documents/invoices/2026/2026-001_旧版確認商事株式会社.pdf 87fbb7f3102e6bbcff37c530bb03110e0ff896a38b7595d6f67873c4523fee8f
+/documents/quotes/2026/2026-001_旧版確認商事株式会社.pdf e3434d59caf1f28a7c7129f4bc7394db247b218aa045bc9bb8f1277fa805b426
+/documents/receipts/2026/<uuid>.pdf 7916bd58b93e65ba6444461e08b146208f1032103b04283a9ebbaf777b6e51a6

@@ -1,0 +1,42 @@
+PASS K-01 .e2e-work/ が無い場合は「残骸はありません」で終了コード0
+       終了コード=0
+       残骸はありません。
+PASS K-02 空の種別フォルダ(e2e・unit・tools)のみなら残骸なし(終了コード0)
+       終了コード=0
+PASS K-03 種別の中に作業フォルダが残っていれば、件数・サイズ・名前を表示して終了コード1
+       終了コード=1
+       .e2e-work/ の中身: 2件、0.3MB(実使用量)
+         - e2e/jimuhub-e2e-sample
+         - unit/precommit-hook-sample
+PASS K-04 .e2e-work/ 直下の種別外のフォルダ・ファイル(screens・memo.txt)も残骸として報告する
+       終了コード=1
+       .e2e-work/ の中身: 4件、0.3MB(実使用量)
+         - e2e/jimuhub-e2e-sample
+         - memo.txt
+         - screens
+         - unit/precommit-hook-sample
+PASS K-05 OS一時領域の jimuhub-* は名前を表示するのみ(除外: pdf-tmp・pdf-tools・evidence-run、他の名前は対象外)で、削除はしない
+       終了コード=1
+       .e2e-work/ の中身: 4件、0.3MB(実使用量)
+         - e2e/jimuhub-e2e-sample
+         - memo.txt
+         - screens
+         - unit/precommit-hook-sample
+       OS一時領域の jimuhub-*(削除はしません): 1件、0.0MB(実使用量)
+         - jimuhub-leftover
+PASS K-06 clean:work は .e2e-work/ の中身(種別外を含む)を削除し、外側のファイルとOS一時領域は削除しない
+       終了コード=0
+       .e2e-work/ の中身を削除しました。
+PASS K-07 .e2e-work/ を空にしても、OS一時領域の残骸が残っていれば終了コード1(残骸の削除は人が判断する)
+       終了コード=1
+       OS一時領域の jimuhub-*(削除はしません): 1件、0.0MB(実使用量)
+         - jimuhub-leftover
+PASS K-08 .e2e-work が通常のフォルダでない(シンボリックリンク)場合は、何も削除せず異常終了する
+       終了コード=1
+       Error: 作業ルートが通常のフォルダではないため、削除しません
+PASS K-09 removeWorkDir は .e2e-work/ の外側を指定されると、削除せずに例外を投げる
+       例外=あり 対象は残存=true
+PASS K-10 作業ルートの親にGitのルートが無い場合は、掃除を拒否する(削除しない)
+       終了コード=1
+
+結果: すべて期待どおり

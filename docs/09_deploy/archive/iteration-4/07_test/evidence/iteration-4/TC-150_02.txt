@@ -1,0 +1,7 @@
+開始前: .e2e-work/e2e/marker-from-tester を作成(check:work の結果)
+.e2e-work/ の中身: 1件、0.0MB(実使用量)
+  - e2e/marker-from-tester
+(終了コード=0は grep のもの)
+  1 passed (1.6s)
+実行後:
+残骸はありません。

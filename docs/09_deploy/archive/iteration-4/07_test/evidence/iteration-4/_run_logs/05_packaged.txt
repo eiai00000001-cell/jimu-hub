@@ -1,0 +1,26 @@
+  • electron-builder  version=26.15.3 os=25.6.0
+  • loaded configuration  file=<repo>/app/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=44.5.1 arch=arm64 buildFromSource=false workspaceRoot=<repo>/app projectDir=./ appDir=./
+  • installing native dependencies  arch=arm64
+  • preparing       moduleName=better-sqlite3 arch=arm64
+  • finished        moduleName=better-sqlite3 arch=arm64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=arm64 electron=44.5.1 appOutDir=<repo>/.e2e-work/tools/pkg-build-L46Kvo/mac-arm64
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=<repo>/.e2e-work/tools/pkg-build-L46Kvo/mac-arm64
+  • searching for node modules  pm=npm searchDir=<repo>/app
+  • duplicate dependency references  dependencies=["streamx@2.28.1","streamx@2.28.1","abort-controller@3.0.0","buffer@6.0.3","abort-controller@3.0.0","buffer@6.0.3","abort-controller@3.0.0","buffer@6.0.3","better-sqlite3@13.0.3"]
+  • skipped macOS code signing  reason=identity explicitly is set to null
+
+Running 5 tests using 1 worker
+
+
+  ✓  1 e2e/scenarios/i3-packaged.spec.ts:48:3 › 配布版: 案件管理・バックアップ・復元・移行 › TC-127: 配布版で、案件の登録・紐づけ・案件別収支、エクスポート・復元(ストリーム)、復元前の確認、旧版(スキーマ版4)データの移行が動作する (4.6s)
+
+  ✓  2 e2e/scenarios/i4-packaged.spec.ts:28:3 › 配布版: タスク・移行 › TC-153: 配布版で、スキーマ版5のデータが版6へ移行し、タスクの登録・エクスポート・復元が動作する (1.9s)
+  ✓  3 e2e/scenarios/packaged-app.spec.ts:30:3 › 配布物(パッケージ済み.app) › TC-70: 配布物から不要な同梱物が除外され、必要なファイルは含まれる(SEC-07) (59ms)
+
+  ✓  4 e2e/scenarios/packaged-app.spec.ts:92:3 › 配布物(パッケージ済み.app) › TC-71: アプリアイコン(案C)が設定され、icnsに必要なサイズが含まれる (70ms)
+  ✓  5 e2e/scenarios/packaged-app.spec.ts:138:3 › 配布物(パッケージ済み.app) › TC-72: 配布版が起動し、データは--user-data-dirに作成され(JIMUHUB_DATA_DIRは無視)、DB・PDF生成が動作する (1.2s)
+
+  5 passed (8.1s)
