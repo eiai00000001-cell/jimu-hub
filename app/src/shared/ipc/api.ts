@@ -94,9 +94,11 @@ export interface BackupInspection {
   schemaVersion: number
   hasReceipts: boolean
   hasProjects: boolean
+  hasTasks: boolean
   currentReceiptCount: number
   currentProjectCount: number
-  /** 領収書・案件が消える旨の確認画面が必要か */
+  currentTaskCount: number
+  /** 領収書・案件・タスクが消える旨の確認画面が必要か */
   needsConfirmation: boolean
 }
 

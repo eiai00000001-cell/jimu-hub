@@ -261,7 +261,7 @@ test('TC-92: エクスポート→復元の往復(領収書・勘定科目・記
       cashRecordHistory: exported.records('cashRecordHistory')
     } as Record<string, Array<Record<string, unknown>>>
   }
-  expect(data.schemaVersion).toBe(5)
+  expect(data.schemaVersion).toBe(6)
   expect(Object.keys(exported.manifest.tables)).toEqual(
     expect.arrayContaining([
       'accounts',
@@ -558,9 +558,9 @@ test('TC-94: 旧形式・不正ファイル・上限超過・失敗時の巻き�
   const r1 = await mustApi<ImportRes>(window, 'importData')
   expect(r1.success).toBe(false)
   expect(r1.error).toContain('読み込めませんでした')
-  const v5 = modifiedZip('v6.zip', ({ editManifest }) =>
+  const v5 = modifiedZip('v7.zip', ({ editManifest }) =>
     editManifest((m) => {
-      m.schemaVersion = 6 // 現在のアプリが対応する版(5)より新しい
+      m.schemaVersion = 7 // 現在のアプリが対応する版(6)より新しい
     })
   )
   await setImport(v5)
@@ -787,7 +787,7 @@ test('TC-95: スキーマv3(イテレーション1)のデータからの起動(�
   const re = await relaunchOnDir(dataDir)
   await expect(re.window.getByText('事務HUB').first()).toBeVisible()
   // イテレーション3以降は、v3からの起動でも最新(スキーマ版5)まで移行する
-  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+  expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
   expect(dbQuery(dataDir, 'select count(*) from accounts')).toBe('14')
   expect(dbQuery(dataDir, "select count(*) from accounts where kind='expense'")).toBe('12')
   expect(dbQuery(dataDir, "select name from accounts where default_key='sales_revenue'")).toBe(

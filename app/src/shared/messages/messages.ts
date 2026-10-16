@@ -208,6 +208,8 @@ export const BACKUP_MESSAGES = {
     `このバックアップには領収書が含まれていないため、復元すると現在の領収書(${count}件)はすべて消えます。`,
   confirmNoProjects: (count: number): string =>
     `このバックアップには案件のデータが含まれていないため、復元すると現在の案件(${count}件)と、案件への紐づけ・付け替え履歴はすべて消えます。`,
+  confirmNoTasks: (count: number): string =>
+    `このバックアップにはタスクのデータが含まれていないため、復元すると現在のタスク(${count}件)はすべて消えます。`,
   confirmBackupNotice: '復元前の状態は自動で退避され、直近3回分が保存されます。',
   confirmRestore: '復元する',
   importDiskShort:

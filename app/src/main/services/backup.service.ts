@@ -60,6 +60,7 @@ import {
   INVOICES_TABLE,
   CASH_RECORDS_TABLE,
   PROJECTS_TABLE,
+  TASKS_TABLE,
   QUOTES_TABLE,
   insertRow,
   type TableDef
@@ -570,6 +571,7 @@ export class BackupService {
     }
     // 外部キーの参照元(見積書・請求書・入出金が案件を、案件が取引先を参照する)から先に削除する
     for (const table of [
+      'tasks',
       'project_link_history',
       'cash_record_history',
       'receipts',
@@ -635,6 +637,20 @@ export class BackupService {
         }
         insertRow(sqlite, PROJECTS_TABLE, row, overrides)
         importedProjectIds.add(Number(row.id))
+      },
+      // タスク(F-39): 存在しない案件は「案件なし」に補正して件数に含める。
+      // statusとcompletedAtが整合しない行は、statusを正として補正する(CHECK制約による復元全体の失敗を防ぐ)
+      tasks: (row) => {
+        if (row.status !== 'open' && row.status !== 'done') {
+          throw new BackupParseError('invalid task status')
+        }
+        const completedAt =
+          row.status === 'done'
+            ? typeof row.completedAt === 'string' && row.completedAt !== ''
+              ? row.completedAt
+              : (row.updatedAt ?? row.createdAt ?? new Date().toISOString())
+            : null
+        insertRow(sqlite, TASKS_TABLE, row, { ...projectIdOverride(row), completedAt })
       },
       cashRecords: (row) => insertRow(sqlite, CASH_RECORDS_TABLE, row, projectIdOverride(row)),
       quotes: documentInserter(QUOTES_TABLE, 'quote'),

@@ -35,7 +35,8 @@ const sampleData: BackupFile = {
     receipts: [],
     cashRecordHistory: [],
     projects: [],
-    projectLinkHistory: []
+    projectLinkHistory: [],
+    tasks: []
   }
 }
 
@@ -85,6 +86,26 @@ describe('MigrationService', () => {
       quoteNumber: '2026-001',
       pdfHashMismatch: false
     })
+  })
+
+  it('schemaVersion 5以前のデータは、tasksを空として扱う(F-39。tasksを持っていても採用しない)', () => {
+    const service = new MigrationService()
+    const withTasks: BackupFile = {
+      ...sampleData,
+      schemaVersion: 5,
+      data: { ...sampleData.data, tasks: [{ id: 1, name: '旧版にはない' }] }
+    }
+    expect(service.migrateExportData(withTasks, 5).data.tasks).toEqual([])
+    expect(service.migrateExportData({ ...sampleData, schemaVersion: 4 }, 4).data.tasks).toEqual([])
+  })
+
+  it('現行バージョン(6)のデータは、tasksをそのまま保持する', () => {
+    const service = new MigrationService()
+    const current: BackupFile = {
+      ...sampleData,
+      data: { ...sampleData.data, tasks: [{ id: 1, name: 'タスク' }] }
+    }
+    expect(service.migrateExportData(current, CURRENT_SCHEMA_VERSION).data.tasks).toHaveLength(1)
   })
 
   it('schemaVersion 1(取引先のみ)のデータも現行構造へ変換できる', () => {

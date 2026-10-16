@@ -185,7 +185,7 @@ test('TC-114: [F-32] ストリーム方式のエクスポート→復元の往�
 
   // 形式: manifest.json + data/<テーブル>.jsonl、PDF・領収書の実体。作業用の.partialは残らない
   const exp = readExport(zip)
-  expect(exp.manifest.schemaVersion).toBe(5)
+  expect(exp.manifest.schemaVersion).toBe(6)
   expect(exp.manifest.tables.projects.count).toBe(2)
   expect(exp.manifest.tables.projectLinkHistory.count).toBeGreaterThanOrEqual(6)
   expect(exp.records('projects').map((r) => r.name)).toEqual(['往復の案件A', '往復の案件B(完了)'])
@@ -463,9 +463,9 @@ test('TC-116: [F-33] 復元前の確認の判定。領収書・案件を含ま�
       hasP: false,
       schema: 4
     },
-    { label: '版5(案件0件・領収書あり)', path: v5NoProjects, hasR: true, hasP: false, schema: 5 },
-    { label: '版5(領収書0件・案件あり)', path: v5NoReceipts, hasR: false, hasP: true, schema: 5 },
-    { label: '版5(領収書・案件とも含む)', path: src, hasR: true, hasP: true, schema: 5 }
+    { label: '版5(案件0件・領収書あり)', path: v5NoProjects, hasR: true, hasP: false, schema: 6 },
+    { label: '版5(領収書0件・案件あり)', path: v5NoReceipts, hasR: false, hasP: true, schema: 6 },
+    { label: '版5(領収書・案件とも含む)', path: src, hasR: true, hasP: true, schema: 6 }
   ]
 
   const { window, dataDir, app } = await start()
@@ -756,7 +756,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     const re = await relaunchOnDir(dataDir)
     await expect(re.window.getByText('事務HUB').first()).toBeVisible()
     await expect(re.window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
-    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     // 移行前の自動退避(VACUUM INTO)。退避は移行前の版4のまま
     const backups = readdirSync(join(dataDir, 'backups')).filter((n) =>
       n.startsWith('pre-migration_v4_')
@@ -863,7 +863,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     // 再起動: 移行は冪等で、退避は増えない
     const re2 = await relaunchOnDir(dataDir)
     await expect(re2.window.getByText('事務HUB').first()).toBeVisible()
-    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbQuery(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     expect(
       readdirSync(join(dataDir, 'backups')).filter((n) => n.startsWith('pre-migration_')).length
     ).toBe(1)
@@ -875,7 +875,7 @@ test('TC-118: [移行] スキーマ版4(イテレーション2の旧版が作っ
     const ex = await mustApi<{ success: boolean }>(re2.window, 'exportData')
     expect(ex.success).toBe(true)
     const exp = readExport(out)
-    expect(exp.manifest.schemaVersion).toBe(5)
+    expect(exp.manifest.schemaVersion).toBe(6)
     expect(exp.manifest.tables.projects.count).toBe(1)
     expect(exp.manifest.tables.projectLinkHistory.count).toBe(2)
     await re2.app.close()
@@ -925,7 +925,7 @@ test('TC-119: [移行] 移行に失敗した場合のロールバック。スキ
     const re2 = await relaunchOnDir(dataDir)
     await expect(re2.window.getByText('事務HUB').first()).toBeVisible()
     await expect(re2.window.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
-    expect(dbRead(dataDir, "select value from app_meta where key='schema_version'")).toBe('5')
+    expect(dbRead(dataDir, "select value from app_meta where key='schema_version'")).toBe('6')
     expect(dumpV4Columns(dataDir, columns, dbRead)).toBe(pre)
     await re2.app.close()
     noteEvidence(

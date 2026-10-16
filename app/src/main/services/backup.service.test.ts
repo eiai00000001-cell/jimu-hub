@@ -64,6 +64,7 @@ function buildBrokenPayload(): BackupFile {
       cashRecordHistory: [],
       projects: [],
       projectLinkHistory: [],
+      tasks: [],
       clients: [
         {
           id: 999,

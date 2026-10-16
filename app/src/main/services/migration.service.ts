@@ -49,7 +49,9 @@ export class MigrationService {
         accounts: withInitialAccounts,
         cashRecords: fromVersion < 4 ? [] : data.data.cashRecords,
         receipts: fromVersion < 4 ? [] : data.data.receipts,
-        cashRecordHistory: fromVersion < 4 ? [] : data.data.cashRecordHistory
+        cashRecordHistory: fromVersion < 4 ? [] : data.data.cashRecordHistory,
+        // スキーマバージョン5以前にはタスクが無い(詳細設計書4.3章手順4)
+        tasks: fromVersion < 6 ? [] : data.data.tasks
       }
     }
   }

@@ -85,7 +85,7 @@ test.describe('F-02/F-03: エクスポート・復元の異常系とデータ整
     // イテレーション3以降のエクスポートは manifest.json + テーブルごとのJSON Lines(スキーマ版5。詳細設計書4.2章)
     const exported = readExport(filePath)
     expect(exported.manifest.format).toBeTruthy()
-    expect(exported.manifest.schemaVersion).toBe(5)
+    expect(exported.manifest.schemaVersion).toBe(6)
     expect(typeof exported.manifest.appVersion).toBe('string')
     expect(typeof exported.manifest.exportedAt).toBe('string')
     expect(exported.manifest.tables.clients.count).toBe(1)

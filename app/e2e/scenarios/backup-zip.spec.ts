@@ -170,7 +170,7 @@ test.describe.serial('F-02/F-03: ZIP形式のエクスポート・復元', () =>
         clients: exportedZip.records('clients')
       }
     }
-    expect(dataJson.schemaVersion).toBe(5)
+    expect(dataJson.schemaVersion).toBe(6)
     expect(names).toContain('manifest.json')
     expect(names).toContain('data/quotes.jsonl')
     expect(names.filter((n) => n.startsWith('documents/') && n.endsWith('.pdf'))).toHaveLength(3)
