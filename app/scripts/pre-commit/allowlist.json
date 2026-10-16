@@ -10,5 +10,23 @@
     "rule": "*",
     "pathGlob": "app/scripts/pre-commit/**",
     "reason": "検査ルール自身の定義・テストは、検出対象の例を含むため"
+  },
+  {
+    "id": "A-003",
+    "rule": "temp-path",
+    "pathGlob": "docs/09_deploy/archive/iteration-4/**",
+    "reason": "レビュー・セキュリティチェック済みの正本の写し(記録のため改変しない)。iteration-4の納品時の記録"
+  },
+  {
+    "id": "A-004",
+    "rule": "personal-path",
+    "pathGlob": "docs/09_deploy/archive/iteration-4/**",
+    "reason": "レビュー・セキュリティチェック済みの正本の写し(記録のため改変しない)。iteration-4の納品時の記録"
+  },
+  {
+    "id": "A-005",
+    "rule": "email",
+    "pathGlob": "docs/09_deploy/archive/iteration-4/**",
+    "reason": "レビュー・セキュリティチェック済みの正本の写し(記録のため改変しない)。iteration-4の納品時の記録"
   }
 ]
