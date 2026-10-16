@@ -190,7 +190,7 @@ try {
       ['括弧・セミコロンの直前', `(/${U}/alice);`],
       ['Linuxのホーム配下', `/${H}/bob/proj`],
       ['Windowsのユーザーフォルダ', `C:\\${U}\\carol\\Documents`],
-      ['日本語のユーザー名', `/${U}/野田/Desktop`],
+      ['日本語のユーザー名', `/${U}/山田/Desktop`],
       ['file:// の形', `file:///${U}/alice/x.pdf`]
     ].entries()) {
       expectCommit(dir, `C-0${i + 1}`, `個人の絶対パスは止まる: ${label}`, { 'a.md': text + '\n' }, { blocked: true, code: 1, expectText: '[pre-commit] personal-path a.md:1' })
