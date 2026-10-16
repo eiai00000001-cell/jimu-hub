@@ -221,6 +221,8 @@ export const BACKUP_MESSAGES = {
   importTooLarge: 'ファイルの容量が復元できる上限(1GB)を超えているため、読み込めませんでした',
   importVersionTooNew:
     'このファイルは新しいバージョンの事務HUBで作成されたため復元できません。アプリを更新してください',
+  importInvalidTask:
+    'バックアップ内のタスクのデータに、不正な項目(タスク名・メモ・期限日・状態)があるため、復元を中止しました。データは復元前の状態のままです',
   importTransactionFailure: '復元に失敗しました。データは復元前の状態に戻しました',
   importSafeguardRestoreFailure:
     '復元に失敗した上、退避データへの復旧にも失敗しました。データが破損している可能性があります。エクスポートファイルからの復元をお試しいただくか、サポートにご連絡ください'

@@ -1,6 +1,9 @@
 /** 復元ファイルの解析エラー(形式不正・必須ファイルの欠落・不正なエントリ等) */
 export class BackupParseError extends Error {}
 
+/** 復元ファイルのタスクの行に、不正な項目がある(タスク名・メモ・期限日・状態。I4-04) */
+export class BackupInvalidTaskError extends BackupParseError {}
+
 /** 容量上限の超過(復元ファイルの大きさ・展開後の合計サイズ・空き容量不足) */
 export class BackupSizeLimitError extends BackupParseError {}
 

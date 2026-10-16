@@ -210,7 +210,63 @@ describe('BackupService: タスクのエクスポート・復元(F-39。詳細�
     const result = await dst.service.importData(zipPath)
 
     expect(result.success).toBe(false)
+    expect(result.error).toBe(BACKUP_MESSAGES.importInvalidTask)
     expect(taskRows(dst).map((r) => r.name)).toEqual(['現在のタスク'])
+  })
+
+  describe('不正なタスクの行は、復元を中止する(I4-04・★R6。現在のデータは変わらない)', () => {
+    const tamper = async (
+      map: (row: Record<string, unknown>) => Record<string, unknown>
+    ): Promise<ReturnType<typeof dst.service.importData>> => {
+      seed()
+      await src.service.exportData(zipPath)
+      mapExportTable(zipPath, 'tasks', map)
+      dst.tasks.createTask({ name: '現在のタスク', memo: '', dueDate: '', projectId: null })
+      return dst.service.importData(zipPath)
+    }
+    const expectAborted = (result: { success: boolean; error?: string }): void => {
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(BACKUP_MESSAGES.importInvalidTask)
+      expect(taskRows(dst).map((r) => r.name)).toEqual(['現在のタスク'])
+    }
+
+    const cases: Array<[string, (row: Record<string, unknown>) => Record<string, unknown>]> = [
+      ['nameが空', (row) => ({ ...row, name: '' })],
+      ['nameが空白のみ', (row) => ({ ...row, name: '   ' })],
+      ['nameが101文字', (row) => ({ ...row, name: 'あ'.repeat(101) })],
+      ['nameが数値', (row) => ({ ...row, name: 123 })],
+      ['nameがnull', (row) => ({ ...row, name: null })],
+      [
+        'nameが欠落',
+        (row) => {
+          const copy = { ...row }
+          delete copy.name
+          return copy
+        }
+      ],
+      ['memoが1001文字', (row) => ({ ...row, memo: 'あ'.repeat(1001) })],
+      ['dueDateが日付でない文字列', (row) => ({ ...row, dueDate: 'そのうち' })],
+      ['dueDateが存在しない日付', (row) => ({ ...row, dueDate: '2026-02-30' })]
+    ]
+    for (const [label, map] of cases) {
+      it(`${label}の場合は復元を中止し、専用の文言を表示する`, async () => {
+        expectAborted(await tamper(map))
+      })
+    }
+
+    it('境界の値(nameが100文字・memoが1000文字・dueDateがnullまたは実在日)は復元できる', async () => {
+      seed()
+      await src.service.exportData(zipPath)
+      mapExportTable(zipPath, 'tasks', (row, i) =>
+        i === 0
+          ? { ...row, name: 'あ'.repeat(100), memo: 'あ'.repeat(1000), dueDate: '2026-12-31' }
+          : { ...row, dueDate: null, memo: null }
+      )
+      expect((await dst.service.importData(zipPath)).success).toBe(true)
+      const rows = taskRows(dst)
+      expect(rows[0]).toMatchObject({ dueDate: '2026-12-31' })
+      expect(rows[1]).toMatchObject({ dueDate: null, memo: null })
+    })
   })
 
   it('スキーマバージョン5のバックアップ(tasksなし)を復元すると、タスクは空になる', async () => {

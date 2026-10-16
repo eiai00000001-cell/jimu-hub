@@ -1,3 +1,4 @@
+import { TaskInputSchema } from '@shared/schemas/task.schema'
 import {
   closeSync,
   copyFileSync,
@@ -42,7 +43,12 @@ import { IntegrityService } from './integrity/integrity.service'
 import { resolveReceiptPath } from './receipts/receipt-path'
 import { BackupArchiveWriter } from './backup/archive-writer'
 import { BackupArchiveReader } from './backup/archive-reader'
-import { BackupDiskShortError, BackupParseError, BackupSizeLimitError } from './backup/errors'
+import {
+  BackupDiskShortError,
+  BackupInvalidTaskError,
+  BackupParseError,
+  BackupSizeLimitError
+} from './backup/errors'
 import { toRestoreErrorMessage } from './backup/restore-errors'
 import { LegacyJsonRecordSource } from './backup/legacy-record-source'
 import {
@@ -399,10 +405,14 @@ export class BackupService {
               }
             : {})
         }
-      } catch {
+      } catch (error) {
         const restoreResult = this.restoreFromLatestSafeguardCopy(documentsBackupPath)
         if (!restoreResult.success) {
           return { success: false, error: BACKUP_MESSAGES.importSafeguardRestoreFailure }
+        }
+        // タスクの行の不正は、原因が分かる文言で伝える(トランザクションは巻き戻され、データは復元前のまま)
+        if (error instanceof BackupInvalidTaskError) {
+          return { success: false, error: BACKUP_MESSAGES.importInvalidTask }
         }
         return { success: false, error: BACKUP_MESSAGES.importTransactionFailure }
       }
@@ -642,15 +652,29 @@ export class BackupService {
       // statusとcompletedAtが整合しない行は、statusを正として補正する(CHECK制約による復元全体の失敗を防ぐ)
       tasks: (row) => {
         if (row.status !== 'open' && row.status !== 'done') {
-          throw new BackupParseError('invalid task status')
+          throw new BackupInvalidTaskError('invalid task status')
         }
+        // タスク名・メモ・期限日は、登録時と同じ検証を通す(不正な行があれば復元を中止する。I4-04・★R6)
+        const checked = TaskInputSchema.safeParse({
+          name: row.name,
+          memo: row.memo,
+          dueDate: row.dueDate,
+          projectId: null
+        })
+        if (!checked.success) throw new BackupInvalidTaskError('invalid task field')
         const completedAt =
           row.status === 'done'
             ? typeof row.completedAt === 'string' && row.completedAt !== ''
               ? row.completedAt
               : (row.updatedAt ?? row.createdAt ?? new Date().toISOString())
             : null
-        insertRow(sqlite, TASKS_TABLE, row, { ...projectIdOverride(row), completedAt })
+        insertRow(sqlite, TASKS_TABLE, row, {
+          ...projectIdOverride(row),
+          name: checked.data.name,
+          memo: checked.data.memo,
+          dueDate: checked.data.dueDate,
+          completedAt
+        })
       },
       cashRecords: (row) => insertRow(sqlite, CASH_RECORDS_TABLE, row, projectIdOverride(row)),
       quotes: documentInserter(QUOTES_TABLE, 'quote'),
