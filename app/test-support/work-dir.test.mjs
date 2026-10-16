@@ -135,6 +135,40 @@ describe('sweepWorkRoot', () => {
     expect(existsSync(e)).toBe(true)
   })
 
+  it('省略時は、3種別の中身に加えて、種別外のサブフォルダ・ファイルも削除する(種別のフォルダは残す)(I4-02)', () => {
+    const { root, tools } = fakeRepo()
+    const dirs = ['e2e', 'unit', 'tools'].map((k) => tools.createWorkDir(k, 'x'))
+    mkdirSync(join(root, 'screens'))
+    writeFileSync(join(root, 'screens', 'a.png'), 'x')
+    writeFileSync(join(root, 'note.txt'), 'x')
+    tools.sweepWorkRoot()
+    expect(dirs.some((d) => existsSync(d))).toBe(false)
+    expect(existsSync(join(root, 'screens'))).toBe(false)
+    expect(existsSync(join(root, 'note.txt'))).toBe(false)
+    expect(existsSync(join(root, 'unit'))).toBe(true)
+  })
+
+  it('種別を指定した掃除は、種別外のサブフォルダに及ばない(自動掃除の範囲)', () => {
+    const { root, tools } = fakeRepo()
+    tools.createWorkDir('unit', 'x')
+    mkdirSync(join(root, 'screens'))
+    writeFileSync(join(root, 'screens', 'a.png'), 'x')
+    tools.sweepWorkRoot('unit')
+    tools.sweepWorkRoot('e2e')
+    expect(existsSync(join(root, 'screens', 'a.png'))).toBe(true)
+  })
+
+  it('作業ルート自身がシンボリックリンクの場合は、外側を削除せず例外にする(R-30)', () => {
+    const { repo, tools } = fakeRepo()
+    const outside = join(repo, 'outside')
+    mkdirSync(join(outside, 'unit'), { recursive: true })
+    writeFileSync(join(outside, 'unit', 'keep.txt'), 'x')
+    symlinkSync(outside, join(repo, '.e2e-work'))
+    expect(() => tools.sweepWorkRoot('unit')).toThrow()
+    expect(() => tools.sweepWorkRoot()).toThrow()
+    expect(existsSync(join(outside, 'unit', 'keep.txt'))).toBe(true)
+  })
+
   it('省略時は3種別すべての中身を削除する', () => {
     const { tools } = fakeRepo()
     const dirs = ['e2e', 'unit', 'tools'].map((k) => tools.createWorkDir(k, 'x'))
@@ -180,6 +214,17 @@ describe('reportLeftovers', () => {
     expect(r.work.bytes % 512).toBe(0)
     expect(r.tmp.names).toEqual(['jimuhub-old'])
     expect(existsSync(join(tmp, 'jimuhub-old'))).toBe(true)
+  })
+
+  it('種別外のサブフォルダ・ファイルも残骸として数える(I4-02)', () => {
+    const { root, tools } = fakeRepo()
+    mkdirSync(join(root, 'screens'), { recursive: true })
+    writeFileSync(join(root, 'screens', 'a.png'), '12345')
+    writeFileSync(join(root, 'memo.txt'), 'x')
+    const r = tools.reportLeftovers(join(getSandbox(), 'no-tmp'))
+    expect(r.work.names).toEqual(['memo.txt', 'screens'])
+    expect(r.work.count).toBe(2)
+    expect(r.work.bytes).toBeGreaterThan(0)
   })
 
   it('空の種別サブフォルダは数えない', () => {

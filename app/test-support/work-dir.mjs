@@ -91,30 +91,63 @@ export function createWorkTools(root) {
     for (const dir of [...created]) removeWorkDir(dir)
   }
 
-  function sweepWorkRoot(kind) {
-    assertRoot()
-    const kinds = kind === undefined ? KINDS : [kind]
-    kinds.forEach(assertKind)
-    for (const k of kinds) {
-      const sub = join(root, k)
-      if (!existsSync(sub)) continue
-      if (!lstatSync(sub).isDirectory()) continue // シンボリックリンク等はたどらない
-      for (const name of readdirSync(sub)) {
-        rmSync(join(sub, name), { recursive: true, force: true })
-      }
+  /** 作業ルート自身が、通常のフォルダ(シンボリックリンクでない)で、実パスも期待どおりであることを確認する(R-30) */
+  function assertRealRoot() {
+    if (!existsSync(root)) return
+    const st = lstatSync(root)
+    if (st.isSymbolicLink() || !st.isDirectory()) {
+      throw new Error('作業ルートが通常のフォルダではないため、削除しません')
+    }
+    if (realpathSync(root) !== join(realpathSync(dirname(root)), WORK_ROOT_NAME)) {
+      throw new Error('作業ルートの実パスが想定と異なるため、削除しません')
     }
   }
 
-  /** 各種別のサブフォルダの中にある作業フォルダ(<種別>/<名前>)を数える。空のサブフォルダは数えない */
+  function sweepFolderContents(sub) {
+    if (!existsSync(sub)) return
+    if (!lstatSync(sub).isDirectory()) return // シンボリックリンク等はたどらない
+    for (const name of readdirSync(sub)) {
+      rmSync(join(sub, name), { recursive: true, force: true })
+    }
+  }
+
+  /**
+   * 種別を指定した場合は、その種別のサブフォルダの中身を削除する(自動掃除。種別外には及ばない)。
+   * 省略した場合(`clean:work`)は、3種別の中身に加えて、作業ルート直下の種別外のサブフォルダ・ファイルも削除する(I4-02)。
+   */
+  function sweepWorkRoot(kind) {
+    assertRoot()
+    assertRealRoot()
+    if (kind !== undefined) {
+      assertKind(kind)
+      sweepFolderContents(join(root, kind))
+      return
+    }
+    if (!existsSync(root)) return
+    for (const name of readdirSync(root)) {
+      if (KINDS.includes(name)) sweepFolderContents(join(root, name))
+      else rmSync(join(root, name), { recursive: true, force: true })
+    }
+  }
+
+  /**
+   * 各種別のサブフォルダの中にある作業フォルダ(<種別>/<名前>)と、作業ルート直下の種別外のサブフォルダ・ファイルを数える。
+   * 空の種別サブフォルダは数えない(I4-02)
+   */
   function listWorkEntries() {
     const names = []
     let bytes = 0
-    for (const k of KINDS) {
-      const sub = join(root, k)
-      if (!existsSync(sub) || !lstatSync(sub).isDirectory()) continue
-      for (const name of readdirSync(sub).sort()) {
-        names.push(`${k}/${name}`)
-        bytes += sizeOf(join(sub, name))
+    if (!existsSync(root)) return { count: 0, bytes: 0, names }
+    for (const top of readdirSync(root).sort()) {
+      const path = join(root, top)
+      if (KINDS.includes(top) && lstatSync(path).isDirectory()) {
+        for (const name of readdirSync(path).sort()) {
+          names.push(`${top}/${name}`)
+          bytes += sizeOf(join(path, name))
+        }
+      } else {
+        names.push(top)
+        bytes += sizeOf(path)
       }
     }
     return { count: names.length, bytes, names }
