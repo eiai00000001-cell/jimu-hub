@@ -295,7 +295,6 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | 45 | `reportLeftovers()`のサイズはdu相当の実使用量(ブロック数×512)で算出し、作業フォルダ側は`<種別>/<名前>`単位で数える(空の種別サブフォルダは数えない)。OS一時領域の確認から`jimuhub-evidence-run`(証跡出力先)を、`jimuhub-pdf-tmp`・`jimuhub-pdf-tools`と同様に除外した | 容量確認用のsparseファイルで論理サイズが過大になるため。証跡出力先は現状維持の判断 |
 | 46 | `e2e/scenarios`(tester所有)の`os.tmpdir()`の直接利用20ファイルを、作業フォルダ(`createWorkDir('e2e', …)`)へ置き換えた | 設計書4.41章の「E2E全体を作業フォルダへ」に従うための機械的な置換。シナリオの内容・判定は変更していない(通常E2E 6件・結合シナリオ90件成功・5件スキップ) |
 | 47 | フックの実コミットテスト(`hook.test.mjs`)は、`gitleaks`が未導入の環境では自動的にスキップされる(未導入時の案内のテストは実行される) | CI等で未導入でも他のテストを止めないため。開発機では導入が前提 |
-
 | 48 | タスクの`TaskRepository.insert`・`update`・`markDone`・`markOpen`・`clearProject`は、日時(`now`)を呼び出し側(Service)から受け取る。`TaskService`・`ProjectService`は、現在時刻の関数と`TodayProvider`を注入できる | 設計書は、Repository内で`new Date()`を使う記述(4.34章手順4)だったが、テストで時刻を固定するため。値の形式(ISO8601)は設計どおり |
 | 49 | `TaskRepository`に、設計書の一覧にない`findDetail(id, today)`(案件名・案件の状態・`overdue`を含む詳細)と`countByProject(projectId)`を追加した | 詳細取得と、案件ごとの件数を、`findById`とは別の形で必要としたため |
 | 50 | `ProjectService.deleteProject`の戻り値を`{ success: true; releasedTaskCount: number }`とし、IPC公開型(`deleteProject`)も同様に拡張した(設計書7章は`{ success: true }`) | 「案件なしに戻したタスクの件数」を返せるようにするため。`{ success: true }`と互換 |
@@ -322,7 +321,6 @@ npm run test:e2e:scenarios:headed    # 見るだけ実行(ウィンドウを表�
 | ★G1 | `e2e/scenarios`のうち、エクスポートしたZIPの`data.json`を読み書きする箇所(`backup-zip`・`backup-integrity`・`i2-backup`・`i2-capacity`等)は、新形式(`manifest.json`+JSON Lines)に追随していないため、そのままでは失敗する見込み(未実行) | 結合テスト実施時に不合格として現れる(実装不具合ではない) | シナリオの改訂(新形式の読み書きヘルパーは`src/main/services/backup/test-helpers.ts`を参考にできる) | tester | テストフェーズ着手時 |
 | ★F3 | (T-62で一部解消)高の2件は`npm audit fix`で解消。残る中8件は`sprintf-js`(DoS。`roarr`→`global-agent`→`@electron/get`→`app-builder-lib`→`electron-builder`の連鎖)で、修正には`npm audit fix --force`(`electron-builder`を26.5.0へ下げる破壊的変更)が必要なため未対応 | 開発・配布ツールのみ。配布物(`--omit=dev`)は0件 | 依頼者ご本人のご判断(`--force`を使うか、上流の修正を待つか) | project-leader / security-expert | セキュリティフェーズ |
 | ★F4 | `e2e/scenarios`の期待値3件を最小限に更新した(上記5.3参照)。シナリオの見直しはテストフェーズの担当 | テスト仕様書との整合 | テスト仕様書・ケースの改訂 | tester | テストフェーズ |
-
 | ★H1 | 結合シナリオ5件(`design-conformance`のTC-03、`i2-integration`のTC-97、`i3-integration`のTC-124、`layout-consistency`のTC-73・TC-73b)が、「準備中」メニューの廃止により失敗している。あわせて、シナリオ・テスト仕様書の版数(スキーマバージョン6)の記載の見直しが必要 | 結合テストの合否 | テストフェーズでシナリオの改訂(準備中メニューの検証の扱い、タスク画面のタイトルバー・サイドバー・離脱確認の追加) | tester | テストフェーズ |
 | ★H2 | 実機確認用のスクリーンショット(`.e2e-work/screens/`。コミット対象外)で見た目を確認した。モックアップとの細かな差(件数の注記の折り返し等)は、ウィンドウ幅によるもの | デザインの整合 | 実機での見え方のご確認 | 依頼者ご本人 | テストフェーズ |
 
