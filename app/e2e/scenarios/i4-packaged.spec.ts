@@ -114,4 +114,32 @@ test.describe('配布版: タスク・移行', () => {
     noteEvidence('TC-153', '配布版の確認結果', lines.join('\n'))
     void existsSync
   })
+
+  test('TC-163: 配布版のElectronが44.8.0で、起動・主要画面の遷移が動作する(復元はTC-153)', async () => {
+    const work = createWorkDir('e2e', 'jimuhub-i4-pkg-ver')
+    const app = await launch(join(work, 'ud'))
+    try {
+      const w = await app.firstWindow({ timeout: 30_000 })
+      const ver = await app.evaluate(() => process.versions.electron)
+      expect(ver).toBe('44.8.0')
+      await expect(w.locator('.titlebar-title')).toHaveText('事務HUB - ホーム')
+      const log = [`配布版 Electron ${ver}`]
+      for (const [menu, title] of [
+        ['取引先管理', '事務HUB - 取引先一覧'],
+        ['案件管理', '事務HUB - 案件一覧'],
+        ['見積書・請求書', '事務HUB - 見積書・請求書'],
+        ['入出金・経費', '事務HUB - 入出金・経費'],
+        ['タスク・期限', '事務HUB - タスク一覧'],
+        ['ホーム', '事務HUB - ホーム']
+      ] as const) {
+        await w.getByRole('button', { name: menu }).click()
+        await expect(w.locator('.titlebar-title')).toHaveText(title)
+        log.push(`${menu}: ${title}`)
+      }
+      await shot(w, 'TC-163', '配布版(Electron 44.8.0)のホーム画面')
+      noteEvidence('TC-163', '配布版のElectronの版と主要画面の遷移', log.join('\n'))
+    } finally {
+      await app.close().catch(() => undefined)
+    }
+  })
 })
