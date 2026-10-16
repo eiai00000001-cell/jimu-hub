@@ -36,8 +36,8 @@ export class ProjectService {
     private readonly repository: ProjectRepository,
     private readonly summaryRepository: ProjectSummaryRepository,
     private readonly taskRepository: TaskRepository,
-    private readonly todayProvider: TodayProvider = new LocalTodayProvider(),
-    private readonly now: () => Date = () => new Date()
+    private readonly now: () => Date = () => new Date(),
+    private readonly todayProvider: TodayProvider = new LocalTodayProvider(now)
   ) {}
 
   listProjects(filter: ProjectListFilter = {}): ProjectListItem[] {

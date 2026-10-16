@@ -36,7 +36,6 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
       new ProjectRepository(db),
       new ProjectSummaryRepository(db),
       new TaskRepository(db),
-      undefined,
       () => new Date('2026-10-14T00:00:00.000Z')
     )
   })
@@ -545,6 +544,33 @@ describe('ProjectService(F-27〜F-29。詳細設計書4.27〜4.29章)', () => {
       expect(detail.deletable).toBe(true)
       expect(detail.summary.counts).toEqual(service.getProject(b).summary.counts)
       expect(service.getProject(a).tasks.length).toBe(3)
+    })
+
+    it('「今日」は、現在時刻の関数(now)と連動する(todayProvider省略時。R-29)', () => {
+      const tasks = new TaskRepository(db)
+      const projects = new ProjectRepository(db)
+      const pid = service.createProject(input()).id
+      tasks.insert(
+        { name: '昨日が期限', memo: null, dueDate: '2026-10-14', projectId: pid },
+        '2026-10-01T00:00:00.000Z'
+      )
+      tasks.insert(
+        { name: '今日が期限', memo: null, dueDate: '2026-10-15', projectId: pid },
+        '2026-10-01T00:00:00.000Z'
+      )
+      const at = (y: number, m: number, d: number, h: number): ProjectService =>
+        new ProjectService(
+          db,
+          projects,
+          new ProjectSummaryRepository(db),
+          tasks,
+          () => new Date(y, m - 1, d, h)
+        )
+      const overdue = (s: ProjectService): Record<string, boolean> =>
+        Object.fromEntries(s.getProject(pid).tasks.map((t) => [t.name, t.overdue]))
+      expect(overdue(at(2026, 10, 15, 0))).toEqual({ 昨日が期限: true, 今日が期限: false })
+      expect(overdue(at(2026, 10, 14, 23))).toEqual({ 昨日が期限: false, 今日が期限: false })
+      expect(overdue(at(2026, 10, 16, 0))).toEqual({ 昨日が期限: true, 今日が期限: true })
     })
 
     it('タスクがない案件は空の配列。案件を完了にしても、タスクは変更されない', () => {
