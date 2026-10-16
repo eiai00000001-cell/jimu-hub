@@ -4,7 +4,7 @@ import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Message } from '../components/Message'
 import { TaskDueDate } from '../components/TaskDueDate'
-import { TASK_MESSAGES } from '@shared/messages/messages'
+import { PROJECT_MESSAGES, TASK_MESSAGES } from '@shared/messages/messages'
 import { TaskListFilterSchema } from '@shared/schemas/task.schema'
 import type { ProjectListItem } from '@shared/types/project'
 import type { TaskListItem, TaskListResult } from '@shared/types/task'
@@ -38,7 +38,18 @@ export function TaskListPage({ onNewTask, onSelectTask }: TaskListPageProps): Re
 
   useEffect(() => {
     // 絞り込みのため、完了の案件も含めたすべての案件を取得する
-    window.jimuhubApi.listProjects({ status: 'all' }).then(setProjects)
+    let cancelled = false
+    window.jimuhubApi
+      .listProjects({ status: 'all' })
+      .then((list) => {
+        if (!cancelled) setProjects(list)
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) setError(toErrorMessage(caught, PROJECT_MESSAGES.notFound))
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // 検索条件(入力内容の変化時に即時反映)。期間の範囲エラーがある間は、再取得せず直前の表示を維持する

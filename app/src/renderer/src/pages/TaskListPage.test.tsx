@@ -51,6 +51,19 @@ describe('TaskListPage(F-35〜F-37。詳細設計書3.27章。モックアップ
     render(<TaskListPage onNewTask={vi.fn()} onSelectTask={vi.fn()} {...props} />)
   }
 
+  it('案件の一覧を取得できない場合は、エラーを表示する(未処理のPromise拒否にしない)', async () => {
+    window.jimuhubApi.listProjects = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("Error invoking remote method 'projects:list': Error: 案件を取得できません")
+      )
+    renderPage()
+
+    expect(await screen.findByText('案件を取得できません')).toBeInTheDocument()
+    // タスクの一覧は、案件の取得に失敗しても表示できる
+    expect(await screen.findByText('請求書の送付準備')).toBeInTheDocument()
+  })
+
   it('既定は未完了のみで取得し、タスク名・状態・期限日・案件を表示する。見出しは「タスク一覧」', async () => {
     renderPage()
 
